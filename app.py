@@ -114,7 +114,6 @@ else:
         st.title("📊 Balance General e Indicadores 2026")
         st.markdown("Resumen de impacto ambiental y social consolidado acumulado en tiempo real.")
         
-        # Calcular acumulados reales del historial
         if len(st.session_state.historial_proyectos) > 0:
             df_hist = pd.DataFrame(st.session_state.historial_proyectos)
             co2_total = df_hist["co2_neto"].sum()
@@ -135,7 +134,6 @@ else:
         st.title("➕ Registro de Proyecto de Upcycling")
         st.markdown("Ingresa la información requerida por cada etapa del proceso.")
         
-        # ETAPA 1
         with st.expander("📌 **ETAPA 1: Recepción y Datos del Cliente**", expanded=True):
             c1, c2, c3 = st.columns(3)
             cliente = c1.text_input("Nombre del Cliente / Razón Social", value="HILTI PERÚ S.A.")
@@ -147,7 +145,6 @@ else:
             punto_origen = c5.text_input("Punto de Origen (Sede/Almacén de recojo)", value="Sede Central - Lima")
             tipo_proyecto = c6.selectbox("Tipo de Proyecto", ["Upcycling de uniformes corporativos", "Transformación textil", "Donación circular"])
 
-        # ETAPA 2
         with st.expander("👕 **ETAPA 2: Registro de Uniformes y Prendas Recibidas**", expanded=True):
             df_prendas_default = pd.DataFrame([
                 {"Ítem": 1, "Descripción de Prenda": "POLERA", "Unidades": 100, "Peso Unitario (kg)": 1.0},
@@ -160,7 +157,6 @@ else:
             tot_peso_recibido = df_prendas["Peso Total (kg)"].sum()
             st.info(f"📦 **Total Prendas:** {tot_unidades} unidades | ⚖️ **Total Peso Recibido:** {tot_peso_recibido:.2f} kg")
 
-        # ETAPA 3
         with st.expander("🔄 **ETAPA 3: Trazabilidad de Etapas de Proceso**"):
             df_trazabilidad_default = pd.DataFrame([
                 {"Etapa": "Clasificación", "Fecha": "2026-03-02", "Responsable": "Área de Logística", "Peso (kg)": 280.0, "Tipo de Registro": "Registro interno"},
@@ -170,7 +166,6 @@ else:
             ])
             df_trazabilidad = st.data_editor(df_trazabilidad_default, num_rows="dynamic", key="tabla_trazabilidad")
 
-        # ETAPA 4
         with st.expander("🎁 **ETAPA 4: Salida de Productos Elaborados**"):
             df_productos_default = pd.DataFrame([
                 {"Producto": "Cartucheras", "Cantidad (Unidades)": 2000, "Peso Unitario (kg)": 0.08},
@@ -183,7 +178,6 @@ else:
             tot_prod_peso = df_productos["Peso Total (kg)"].sum()
             st.info(f"🎒 **Total Productos Elaborados:** {tot_prod_unids} unidades | ⚖️ **Peso Transformado:** {tot_prod_peso:.2f} kg")
 
-        # ETAPA 5
         with st.expander("👥 **ETAPA 5: Equipo de Trabajo y Generación de Horas**"):
             col_equipo1, col_equipo2 = st.columns(2)
             with col_equipo1:
@@ -209,7 +203,6 @@ else:
 
         st.write("---")
         
-        # PROCESAR Y GUARDAR EN EL HISTORIAL
         if st.button("🚀 Procesar Proyecto y Guardar en Historial", type="primary", use_container_width=True):
             pct_aprovechamiento = (tot_prod_peso / tot_peso_recibido * 100) if tot_peso_recibido > 0 else 0
             co2_evitado = tot_prod_peso * 7.00676
@@ -217,7 +210,6 @@ else:
             impacto_co2_neto = co2_evitado - emisiones_proceso
             tot_horas_generadas = tot_hrs_corte + tot_hrs_conf
 
-            # Guardar el objeto del proyecto en el Historial de la Sesión
             nuevo_proyecto = {
                 "codigo": codigo_proy,
                 "cliente": cliente,
@@ -233,20 +225,17 @@ else:
                 "ruc": ruc
             }
             
-            # Evitar duplicados con el mismo código de proyecto
             st.session_state.historial_proyectos = [p for p in st.session_state.historial_proyectos if p["codigo"] != codigo_proy]
             st.session_state.historial_proyectos.append(nuevo_proyecto)
 
             st.success(f"✅ ¡Proyecto **{codigo_proy}** procesado y guardado exitosamente en el Historial!")
             
-            # Métricas
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Aprovechamiento", f"{pct_aprovechamiento:.1f}%")
             m2.metric("CO₂e Neto Evitado", f"{impacto_co2_neto:.2f} kg")
             m3.metric("Total Horas Sociales", f"{tot_horas_generadas:.1f} hrs")
             m4.metric("Productos Obtenidos", f"{tot_prod_unids} unids")
 
-            # Botón de Descarga Inmediata
             word_buffer = generar_word(cliente, ruc, codigo_proy, punto_origen, tipo_proyecto, fecha_ejecucion, tot_peso_recibido, tot_prod_peso, pct_aprovechamiento, impacto_co2_neto, tot_horas_generadas)
             
             st.write("---")
@@ -261,16 +250,33 @@ else:
     # MENU 3: HISTORIAL DE PROYECTOS REGISTRADOS
     elif opcion_menu == "📁 Historial de Proyectos":
         st.title("📁 Historial de Proyectos Registrados")
-        st.markdown("Consulta tus proyectos guardados y vuelve a descargar tus informes cuando quieras.")
+        st.markdown("Consulta tus proyectos guardados, revisa los totales y vuelve a descargar tus informes cuando quieras.")
         
         if len(st.session_state.historial_proyectos) == 0:
             st.warning("⚠️ Todavía no hay proyectos registrados en esta sesión. Ve a la pestaña '➕ Nuevo Proyecto' para crear uno.")
         else:
-            df_hist_ver = pd.DataFrame(st.session_state.historial_proyectos)
+            # 1. Crear el DataFrame con los proyectos
+            df_hist_ver = pd.DataFrame(st.session_state.historial_proyectos)[
+                ["codigo", "cliente", "fecha", "peso_recibido", "peso_transformado", "co2_neto", "horas_totales"]
+            ]
             
-            # Tabla estilizada de resumen
+            # 2. Calcular los totales de todas las columnas numéricas
+            fila_totales = pd.DataFrame([{
+                "codigo": "🟢 TOTAL ACUMULADO",
+                "cliente": "-",
+                "fecha": "-",
+                "peso_recibido": df_hist_ver["peso_recibido"].sum(),
+                "peso_transformado": df_hist_ver["peso_transformado"].sum(),
+                "co2_neto": df_hist_ver["co2_neto"].sum(),
+                "horas_totales": df_hist_ver["horas_totales"].sum()
+            }])
+            
+            # 3. Unir la tabla de proyectos con la fila de totales
+            df_final = pd.concat([df_hist_ver, fila_totales], ignore_index=True)
+            
+            # 4. Mostrar la tabla final en pantalla
             st.dataframe(
-                df_hist_ver[["codigo", "cliente", "fecha", "peso_recibido", "peso_transformado", "co2_neto", "horas_totales"]],
+                df_final,
                 column_config={
                     "codigo": "Código",
                     "cliente": "Cliente",
@@ -286,7 +292,6 @@ else:
             st.write("---")
             st.subheader("📥 Re-descargar Informe de Proyecto")
             
-            # Selección de proyecto del historial para descargar su Word
             codigos_disponibles = [p["codigo"] for p in st.session_state.historial_proyectos]
             proy_sel_cod = st.selectbox("Selecciona un proyecto:", codigos_disponibles)
             
