@@ -66,51 +66,101 @@ else:
     # MENU 2: NUEVO PROYECTO
     elif opcion_menu == "➕ Nuevo Proyecto":
         st.title("➕ Registro de Proyecto de Upcycling")
-        st.markdown("Ingresa los datos para calcular la trazabilidad y generar el Informe Técnico.")
+        st.markdown("Ingresa la información requerida por cada etapa del proceso.")
         
-        st.subheader("1. Datos Generales del Cliente")
-        c1, c2, c3 = st.columns(3)
-        cliente = c1.text_input("Nombre del Cliente / Empresa", value="HILTI PERÚ S.A.")
-        ruc = c2.text_input("RUC del Cliente", value="20100000001")
-        codigo_proy = c3.text_input("Código del Proyecto", value="HILTI-MAR26")
-        
-        st.write("---")
-        st.subheader("2. Ingreso de Materiales (Prendas Recibidas)")
-        st.caption("Edita la tabla con las prendas, unidades y peso estimado por unidad:")
-        
-        # Tabla interactiva de prendas
-        df_prendas_default = pd.DataFrame([
-            {"Tipo de Prenda": "POLERA", "Unidades": 100, "Peso Unitario (kg)": 1.0},
-            {"Tipo de Prenda": "PANTALON DRILL", "Unidades": 200, "Peso Unitario (kg)": 1.0},
-            {"Tipo de Prenda": "POLO", "Unidades": 100, "Peso Unitario (kg)": 1.0}
-        ])
-        
-        df_prendas = st.data_editor(df_prendas_default, num_rows="dynamic", key="tabla_prendas")
-        df_prendas["Peso Total (kg)"] = df_prendas["Unidades"] * df_prendas["Peso Unitario (kg)"]
-        
-        total_kilos_recibidos = df_prendas["Peso Total (kg)"].sum()
-        st.info(f"⚖️ **Total Peso Recibido:** {total_kilos_recibidos:.2f} kg")
+        # 📍 ETAPA 1: RECEPCIÓN Y FICHA TÉCNICA
+        with st.expander("📌 **ETAPA 1: Recepción y Datos del Cliente**", expanded=True):
+            c1, c2, c3 = st.columns(3)
+            cliente = c1.text_input("Nombre del Cliente / Razón Social", value="HILTI PERÚ S.A.")
+            ruc = c2.text_input("RUC del Cliente", value="20100000001")
+            codigo_proy = c3.text_input("Código del Proyecto", value="HILTI-MAR26")
+            
+            c4, c5, c6 = st.columns(3)
+            fecha_ejecucion = c4.date_input("Fecha de Ejecución / Inicio")
+            punto_origen = c5.text_input("Punto de Origen (Sede/Almacén de recojo)", value="Sede Central - Lima")
+            tipo_proyecto = c6.selectbox("Tipo de Proyecto", ["Upcycling de uniformes corporativos", "Transformación textil", "Donación circular"])
+
+        # 👕 ETAPA 2: REGISTRO DE UNIFORMES / INGRESO DE MATERIAL
+        with st.expander("👕 **ETAPA 2: Registro de Uniformes y Prendas Recibidas**", expanded=True):
+            st.caption("Detalle de prendas recibidas para el proceso de upcycling:")
+            
+            df_prendas_default = pd.DataFrame([
+                {"Ítem": 1, "Descripción de Prenda": "POLERA", "Unidades": 100, "Peso Unitario (kg)": 1.0},
+                {"Ítem": 2, "Descripción de Prenda": "PANTALON DRILL", "Unidades": 200, "Peso Unitario (kg)": 1.0},
+                {"Ítem": 3, "Descripción de Prenda": "POLO", "Unidades": 100, "Peso Unitario (kg)": 1.0}
+            ])
+            
+            df_prendas = st.data_editor(df_prendas_default, num_rows="dynamic", key="tabla_prendas")
+            df_prendas["Peso Total (kg)"] = df_prendas["Unidades"] * df_prendas["Peso Unitario (kg)"]
+            
+            tot_unidades = df_prendas["Unidades"].sum()
+            tot_peso = df_prendas["Peso Total (kg)"].sum()
+            st.info(f"📦 **Total Prendas:** {tot_unidades} unidades | ⚖️ **Total Peso Recibido:** {tot_peso:.2f} kg")
+
+        # 🔄 ETAPA 3: TRAZABILIDAD DEL PROCESO
+        with st.expander("🔄 **ETAPA 3: Trazabilidad de Etapas de Proceso**"):
+            st.caption("Registro de fechas, peso y responsables por cada etapa del proceso:")
+            
+            df_trazabilidad_default = pd.DataFrame([
+                {"Etapa": "Clasificación", "Fecha": "2026-03-02", "Responsable": "Área de Logística", "Peso (kg)": 280.0, "Tipo de Registro": "Registro interno"},
+                {"Etapa": "Lavado", "Fecha": "2026-03-05", "Responsable": "Lavandería", "Peso (kg)": 280.0, "Tipo de Registro": "Servicio Externo"},
+                {"Etapa": "Corte", "Fecha": "2026-03-06", "Responsable": "Taller de corte", "Peso (kg)": 278.0, "Tipo de Registro": "Pesaje real"},
+                {"Etapa": "Confección", "Fecha": "2026-03-09", "Responsable": "Producción descentralizada", "Peso (kg)": 250.0, "Tipo de Registro": "Entrega / Recepción"}
+            ])
+            
+            df_trazabilidad = st.data_editor(df_trazabilidad_default, num_rows="dynamic", key="tabla_trazabilidad")
+
+        # 🎁 ETAPA 4: PRODUCTOS OBTENIDOS
+        with st.expander("🎁 **ETAPA 4: Salida de Productos Elaborados**"):
+            st.caption("Registro de los productos generados a partir del material textil transformado:")
+            
+            df_productos_default = pd.DataFrame([
+                {"Producto": "Cartucheras", "Cantidad (Unidades)": 2000, "Peso Unitario (kg)": 0.08},
+                {"Producto": "Mochilas", "Cantidad (Unidades)": 5200, "Peso Unitario (kg)": 0.11},
+                {"Producto": "Bolsos", "Cantidad (Unidades)": 2000, "Peso Unitario (kg)": 0.38}
+            ])
+            
+            df_productos = st.data_editor(df_productos_default, num_rows="dynamic", key="tabla_productos")
+            df_productos["Peso Total (kg)"] = df_productos["Cantidad (Unidades)"] * df_productos["Peso Unitario (kg)"]
+            
+            tot_prod_unids = df_productos["Cantidad (Unidades)"].sum()
+            tot_prod_peso = df_productos["Peso Total (kg)"].sum()
+            st.info(f"🎒 **Total Productos Elaborados:** {tot_prod_unids} unidades | ⚖️ **Peso Transformado en Productos:** {tot_prod_peso:.2f} kg")
+
+        # 👥 ETAPA 5: EQUIPO Y HORAS GENERADAS
+        with st.expander("👥 **ETAPA 5: Equipo de Trabajo y Generación de Horas**"):
+            st.caption("Horas sociales generadas en Operaciones (Corte/Logística) y Producción (Confección):")
+            
+            col_equipo1, col_equipo2 = st.columns(2)
+            
+            with col_equipo1:
+                st.markdown("**Corte y Logística**")
+                df_corte_default = pd.DataFrame([
+                    {"Nombre": "Maria Isabel Estrada Sandoval", "Días Trabaljados": 5, "Horas/Día": 8.5},
+                    {"Nombre": "Genaro Jara García", "Días Trabaljados": 4, "Horas/Día": 8.5},
+                    {"Nombre": "Luciana Jara Estrada", "Días Trabaljados": 3, "Horas/Día": 8.5}
+                ])
+                df_corte = st.data_editor(df_corte_default, num_rows="dynamic", key="tabla_corte")
+                df_corte["Horas Totales"] = df_corte["Días Trabaljados"] * df_corte["Horas/Día"]
+                tot_hrs_corte = df_corte["Horas Totales"].sum()
+                st.write(f"⏱️ **Subtotal Corte:** {tot_hrs_corte:.1f} hrs")
+
+            with col_equipo2:
+                st.markdown("**Confección Descentralizada**")
+                df_conf_default = pd.DataFrame([
+                    {"Artesana / Nombre": "Felicita Sandoval Vílchez", "Producto": "Mochilas", "Cantidad (Unids)": 50, "Tiempo/Unid (hrs)": 0.5},
+                    {"Artesana / Nombre": "Nicolle Estrada", "Producto": "Bolsos", "Cantidad (Unids)": 40, "Tiempo/Unid (hrs)": 0.75}
+                ])
+                df_conf = st.data_editor(df_conf_default, num_rows="dynamic", key="tabla_confeccion")
+                df_conf["Horas Totales"] = df_conf["Cantidad (Unids)"] * df_conf["Tiempo/Unid (hrs)"]
+                tot_hrs_conf = df_conf["Horas Totales"].sum()
+                st.write(f"⏱️ **Subtotal Confección:** {tot_hrs_conf:.1f} hrs")
 
         st.write("---")
-        st.subheader("3. Registro de Horas del Equipo (Corte y Logística)")
-        
-        df_corte_default = pd.DataFrame([
-            {"Nombre": "Maria Isabel Estrada Sandoval", "Área": "Corte", "Días Trabajados": 5, "Horas/Día": 8.5},
-            {"Nombre": "Genaro Jara García", "Área": "Corte", "Días Trabajados": 4, "Horas/Día": 8.5},
-            {"Nombre": "Luciana Jara Estrada", "Área": "Corte", "Días Trabajados": 3, "Horas/Día": 8.5}
-        ])
-        
-        df_corte = st.data_editor(df_corte_default, num_rows="dynamic", key="tabla_corte")
-        df_corte["Horas Totales"] = df_corte["Días Trabajados"] * df_corte["Horas/Día"]
-        total_horas_corte = df_corte["Horas Totales"].sum()
-        
-        st.info(f"⏱️ **Total Horas de Corte/Logística:** {total_horas_corte:.1f} hrs")
-
-        st.write("---")
-        if st.button("🚀 Procesar Datos y Guardar Proyecto", type="primary", use_container_width=True):
-            st.success("✅ ¡Proyecto procesado exitosamente! Los cálculos de CO₂e y aprovechamiento se han generado.")
+        if st.button("🚀 Procesar Proyecto y Generar Balance", type="primary", use_container_width=True):
+            st.success("✅ ¡Proyecto procesado exitosamente! Trazabilidad registrada y cálculos de CO₂e completados.")
 
     # MENU 3: HISTORIAL
     elif opcion_menu == "📁 Historial de Proyectos":
         st.title("📁 Proyectos Registrados")
-        st.markdown("Listado de informes procesados e imprevistos de descarga.")
+        st.markdown("Listado de proyectos guardados e imprevistos de descarga de PDF.")
