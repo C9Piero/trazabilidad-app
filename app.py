@@ -1,5 +1,10 @@
+import io
 import streamlit as st
 import pandas as pd
+from docx import Document
+from docx.shared import Pt, Inches, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
 
 # 1. Configuración de la página
 st.set_page_config(
@@ -12,7 +17,6 @@ st.set_page_config(
 USUARIO_CORRECTO = "admin"
 PASSWORD_CORRECTO = "pequenos2026"
 
-# 3. Estado de la sesión
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
@@ -76,7 +80,7 @@ else:
             codigo_proy = c3.text_input("Código del Proyecto", value="HILTI-MAR26")
             
             c4, c5, c6 = st.columns(3)
-            fecha_ejecucion = c4.date_input("Fecha de Ejecución / Inicio")
+            fecha_ejecucion = c4.text_input("Fecha / Período de Ejecución", value="Marzo - Abril 2026")
             punto_origen = c5.text_input("Punto de Origen (Sede/Almacén de recojo)", value="Sede Central - Lima")
             tipo_proyecto = c6.selectbox("Tipo de Proyecto", ["Upcycling de uniformes corporativos", "Transformación textil", "Donación circular"])
 
@@ -94,8 +98,8 @@ else:
             df_prendas["Peso Total (kg)"] = df_prendas["Unidades"] * df_prendas["Peso Unitario (kg)"]
             
             tot_unidades = df_prendas["Unidades"].sum()
-            tot_peso = df_prendas["Peso Total (kg)"].sum()
-            st.info(f"📦 **Total Prendas:** {tot_unidades} unidades | ⚖️ **Total Peso Recibido:** {tot_peso:.2f} kg")
+            tot_peso_recibido = df_prendas["Peso Total (kg)"].sum()
+            st.info(f"📦 **Total Prendas:** {tot_unidades} unidades | ⚖️ **Total Peso Recibido:** {tot_peso_recibido:.2f} kg")
 
         # 🔄 ETAPA 3: TRAZABILIDAD DEL PROCESO
         with st.expander("🔄 **ETAPA 3: Trazabilidad de Etapas de Proceso**"):
@@ -136,12 +140,12 @@ else:
             with col_equipo1:
                 st.markdown("**Corte y Logística**")
                 df_corte_default = pd.DataFrame([
-                    {"Nombre": "Maria Isabel Estrada Sandoval", "Días Trabaljados": 5, "Horas/Día": 8.5},
-                    {"Nombre": "Genaro Jara García", "Días Trabaljados": 4, "Horas/Día": 8.5},
-                    {"Nombre": "Luciana Jara Estrada", "Días Trabaljados": 3, "Horas/Día": 8.5}
+                    {"Nombre": "Maria Isabel Estrada Sandoval", "Días Trabajados": 5, "Horas/Día": 8.5},
+                    {"Nombre": "Genaro Jara García", "Días Trabajados": 4, "Horas/Día": 8.5},
+                    {"Nombre": "Luciana Jara Estrada", "Días Trabajados": 3, "Horas/Día": 8.5}
                 ])
                 df_corte = st.data_editor(df_corte_default, num_rows="dynamic", key="tabla_corte")
-                df_corte["Horas Totales"] = df_corte["Días Trabaljados"] * df_corte["Horas/Día"]
+                df_corte["Horas Totales"] = df_corte["Días Trabajados"] * df_corte["Horas/Día"]
                 tot_hrs_corte = df_corte["Horas Totales"].sum()
                 st.write(f"⏱️ **Subtotal Corte:** {tot_hrs_corte:.1f} hrs")
 
@@ -157,8 +161,85 @@ else:
                 st.write(f"⏱️ **Subtotal Confección:** {tot_hrs_conf:.1f} hrs")
 
         st.write("---")
-        if st.button("🚀 Procesar Proyecto y Generar Balance", type="primary", use_container_width=True):
-            st.success("✅ ¡Proyecto procesado exitosamente! Trazabilidad registrada y cálculos de CO₂e completados.")
+        
+        # BOTÓN PRINCIPAL DE PROCESAMIENTO Y GENERACIÓN DE DOCUMENTO
+        if st.button("🚀 Procesar Proyecto y Generar Documentos", type="primary", use_container_width=True):
+            # CÁLCULOS AUTOMÁTICOS BASADOS EN TU EXCEL
+            pct_aprovechamiento = (tot_prod_peso / tot_peso_recibido * 100) if tot_peso_recibido > 0 else 0
+            co2_evitado = tot_prod_peso * 7.00676  # Factor de emisión evitado por kg de upcycling
+            emisiones_proceso = tot_prod_peso * 0.61976 # Emisiones operativas estimadas
+            impacto_co2_neto = co2_evitado - emisiones_proceso
+            tot_horas_generadas = tot_hrs_corte + tot_hrs_conf
+
+            st.success("✅ ¡Cálculos finalizados exitosamente!")
+            
+            # Muestra de métricas rápidas generadas
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Aprovechamiento", f"{pct_aprovechamiento:.1f}%")
+            m2.metric("CO₂e Neto Evitado", f"{impacto_co2_neto:.2f} kg")
+            m3.metric("Total Horas Sociales", f"{tot_horas_generadas:.1f} hrs")
+            m4.metric("Productos Obtenidos", f"{tot_prod_unids} unids")
+
+            # FUNCIÓN PARA CONSTRUIR EL DOCUMENTO WORD CON EL FORMATO OFICIAL
+            doc = Document()
+
+            # Título del Reporte
+            h1 = doc.add_heading("Reporte de Impacto del Proyecto", level=1)
+            h1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            p_sub = doc.add_paragraph(f"Proyecto de transformación de textiles en desuso\nCliente: {cliente}\nEmpresa: Pequeños Detalles Handmade Perú S.A.C.\nFecha: {fecha_ejecucion}")
+            p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            doc.add_heading("1. FICHA TÉCNICA DEL PROYECTO", level=2)
+            
+            # Tabla Ficha Técnica
+            t1 = doc.add_table(rows=5, cols=2)
+            t1.alignment = WD_TABLE_ALIGNMENT.CENTER
+            t1.style = 'Table Grid'
+            datos_ficha = [
+                ("Cliente", cliente),
+                ("RUC", ruc),
+                ("Código de Proyecto", codigo_proy),
+                ("Punto de Origen", punto_origen),
+                ("Tipo de Proyecto", tipo_proyecto)
+            ]
+            for i, (k, v) in enumerate(datos_ficha):
+                t1.rows[i].cells[0].text = k
+                t1.rows[i].cells[1].text = str(v)
+
+            doc.add_heading("2. BALANCE DE MATERIAL E IMPACTO AMBIENTAL", level=2)
+            
+            t2 = doc.add_table(rows=5, cols=3)
+            t2.style = 'Table Grid'
+            datos_impacto = [
+                ("Categoría", "Indicador", "Valor"),
+                ("Ambiental", "Textiles Recibidos", f"{tot_peso_recibido:.2f} kg"),
+                ("Ambiental", "Textiles Transformados", f"{tot_prod_peso:.2f} kg"),
+                ("Ambiental", "Porcentaje de Aprovechamiento", f"{pct_aprovechamiento:.1f}%"),
+                ("Ambiental", "Emisiones de CO₂e Evitadas (Netas)", f"{impacto_co2_neto:.2f} kg CO₂e")
+            ]
+            for i, (col1_val, col2_val, col3_val) in enumerate(datos_impacto):
+                t2.rows[i].cells[0].text = col1_val
+                t2.rows[i].cells[1].text = col2_val
+                t2.rows[i].cells[2].text = col3_val
+
+            doc.add_heading("3. IMPACTO SOCIAL Y HORAS TRABAJADAS", level=2)
+            doc.add_paragraph(f"Durante el proyecto se generaron un total de {tot_horas_generadas:.1f} horas de trabajo directo repartidas entre las áreas de operaciones, corte, logística y producción descentralizada con artesanas.")
+
+            # Guardar en memoria de Python para descarga inmediata
+            buffer = io.BytesIO()
+            doc.save(buffer)
+            buffer.seek(0)
+
+            st.write("---")
+            st.subheader("📥 Descargar Entregable Generado")
+            st.download_button(
+                label="📄 Descargar Informe Técnico en Word (.docx)",
+                data=buffer,
+                file_name=f"Informe_Tecnico_{codigo_proy}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
+            )
 
     # MENU 3: HISTORIAL
     elif opcion_menu == "📁 Historial de Proyectos":
