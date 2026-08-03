@@ -5,6 +5,7 @@ from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
+from supabase import create_client, Client
 
 # 1. Configuración de la página
 st.set_page_config(
@@ -13,17 +14,46 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Credenciales
+# 2. Conexión con Supabase (Base de datos persistente)
+@st.cache_resource
+def init_supabase() -> Client:
+    url = st.secrets["supabase"]["SUPABASE_URL"]
+    key = st.secrets["supabase"]["SUPABASE_KEY"]
+    return create_client(url, key)
+
+try:
+    supabase = init_supabase()
+except Exception as e:
+    st.error("Error al conectar con la Base de Datos. Revisa las claves en Secrets.")
+
+# Funciones de lectura y escritura en la Base de Datos
+def cargar_proyectos():
+    try:
+        response = supabase.table("proyectos").select("*").execute()
+        return response.data
+    except Exception as e:
+        st.error(f"Error al cargar proyectos: {e}")
+        return []
+
+def guardar_proyecto_db(datos_proyecto):
+    try:
+        # Revisa si ya existe el código para actualizarlo o insertarlo
+        existente = supabase.table("proyectos").select("id").eq("codigo", datos_proyecto["codigo"]).execute()
+        if existente.data:
+            supabase.table("proyectos").update(datos_proyecto).eq("codigo", datos_proyecto["codigo"]).execute()
+        else:
+            supabase.table("proyectos").insert(datos_proyecto).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar en la base de datos: {e}")
+        return False
+
+# 3. Credenciales de acceso
 USUARIO_CORRECTO = "admin"
 PASSWORD_CORRECTO = "pequenos2026"
 
-# 3. Inicialización del estado de sesión
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
-
-# --- BASE DE DATOS TEMPORAL EN MEMORIA DE SESIÓN ---
-if "historial_proyectos" not in st.session_state:
-    st.session_state.historial_proyectos = []
 
 # --- PANTALLA DE LOGIN ---
 if not st.session_state.autenticado:
@@ -64,7 +94,6 @@ else:
     # FUNCIÓN PARA GENERAR EL WORD (.DOCX)
     def generar_word(cliente, ruc, codigo_proy, punto_origen, tipo_proyecto, fecha_ejecucion, tot_peso_recibido, tot_prod_peso, pct_aprovechamiento, impacto_co2_neto, tot_horas_generadas):
         doc = Document()
-
         h1 = doc.add_heading("Reporte de Impacto del Proyecto", level=1)
         h1.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
@@ -109,13 +138,16 @@ else:
         buffer.seek(0)
         return buffer
 
+    # Cargar proyectos desde Supabase
+    lista_proyectos = cargar_proyectos()
+
     # MENU 1: DASHBOARD CONSOLIDADOR
     if opcion_menu == "📊 Dashboard 2026":
         st.title("📊 Balance General e Indicadores 2026")
-        st.markdown("Resumen de impacto ambiental y social consolidado acumulado en tiempo real.")
+        st.markdown("Resumen de impacto ambiental y social consolidado en tiempo real desde la Base de Datos.")
         
-        if len(st.session_state.historial_proyectos) > 0:
-            df_hist = pd.DataFrame(st.session_state.historial_proyectos)
+        if len(lista_proyectos) > 0:
+            df_hist = pd.DataFrame(lista_proyectos)
             co2_total = df_hist["co2_neto"].sum()
             textil_total = df_hist["peso_transformado"].sum()
             horas_totales = df_hist["horas_totales"].sum()
@@ -203,7 +235,7 @@ else:
 
         st.write("---")
         
-        if st.button("🚀 Procesar Proyecto y Guardar en Historial", type="primary", use_container_width=True):
+        if st.button("🚀 Procesar Proyecto y Guardar Permanentemente", type="primary", use_container_width=True):
             pct_aprovechamiento = (tot_prod_peso / tot_peso_recibido * 100) if tot_peso_recibido > 0 else 0
             co2_evitado = tot_prod_peso * 7.00676
             emisiones_proceso = tot_prod_peso * 0.61976
@@ -214,21 +246,19 @@ else:
                 "codigo": codigo_proy,
                 "cliente": cliente,
                 "fecha": fecha_ejecucion,
-                "peso_recibido": tot_peso_recibido,
-                "peso_transformado": tot_prod_peso,
-                "aprovechamiento": pct_aprovechamiento,
-                "co2_neto": impacto_co2_neto,
-                "horas_totales": tot_horas_generadas,
-                "productos_unids": tot_prod_unids,
+                "peso_recibido": float(tot_peso_recibido),
+                "peso_transformado": float(tot_prod_peso),
+                "aprovechamiento": float(pct_aprovechamiento),
+                "co2_neto": float(impacto_co2_neto),
+                "horas_totales": float(tot_horas_generadas),
+                "productos_unids": float(tot_prod_unids),
                 "punto_origen": punto_origen,
                 "tipo_proyecto": tipo_proyecto,
                 "ruc": ruc
             }
             
-            st.session_state.historial_proyectos = [p for p in st.session_state.historial_proyectos if p["codigo"] != codigo_proy]
-            st.session_state.historial_proyectos.append(nuevo_proyecto)
-
-            st.success(f"✅ ¡Proyecto **{codigo_proy}** procesado y guardado exitosamente en el Historial!")
+            if guardar_proyecto_db(nuevo_proyecto):
+                st.success(f"✅ ¡Proyecto **{codigo_proy}** guardado exitosamente en la Base de Datos permanentemente!")
             
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Aprovechamiento", f"{pct_aprovechamiento:.1f}%")
@@ -250,17 +280,15 @@ else:
     # MENU 3: HISTORIAL DE PROYECTOS REGISTRADOS
     elif opcion_menu == "📁 Historial de Proyectos":
         st.title("📁 Historial de Proyectos Registrados")
-        st.markdown("Consulta tus proyectos guardados, revisa los totales y vuelve a descargar tus informes cuando quieras.")
+        st.markdown("Proyectos almacenados en la nube de forma permanente.")
         
-        if len(st.session_state.historial_proyectos) == 0:
-            st.warning("⚠️ Todavía no hay proyectos registrados en esta sesión. Ve a la pestaña '➕ Nuevo Proyecto' para crear uno.")
+        if len(lista_proyectos) == 0:
+            st.warning("⚠️ Todavía no hay proyectos registrados. Ve a la pestaña '➕ Nuevo Proyecto' para crear uno.")
         else:
-            # 1. Crear el DataFrame con los proyectos
-            df_hist_ver = pd.DataFrame(st.session_state.historial_proyectos)[
+            df_hist_ver = pd.DataFrame(lista_proyectos)[
                 ["codigo", "cliente", "fecha", "peso_recibido", "peso_transformado", "co2_neto", "horas_totales"]
             ]
             
-            # 2. Calcular los totales de todas las columnas numéricas
             fila_totales = pd.DataFrame([{
                 "codigo": "🟢 TOTAL ACUMULADO",
                 "cliente": "-",
@@ -271,10 +299,8 @@ else:
                 "horas_totales": df_hist_ver["horas_totales"].sum()
             }])
             
-            # 3. Unir la tabla de proyectos con la fila de totales
             df_final = pd.concat([df_hist_ver, fila_totales], ignore_index=True)
             
-            # 4. Mostrar la tabla final en pantalla
             st.dataframe(
                 df_final,
                 column_config={
@@ -292,16 +318,16 @@ else:
             st.write("---")
             st.subheader("📥 Re-descargar Informe de Proyecto")
             
-            codigos_disponibles = [p["codigo"] for p in st.session_state.historial_proyectos]
+            codigos_disponibles = [p["codigo"] for p in lista_proyectos]
             proy_sel_cod = st.selectbox("Selecciona un proyecto:", codigos_disponibles)
             
-            proy_sel = next(p for p in st.session_state.historial_proyectos if p["codigo"] == proy_sel_cod)
+            proy_sel = next(p for p in lista_proyectos if p["codigo"] == proy_sel_cod)
             
             word_buffer_hist = generar_word(
                 proy_sel["cliente"], proy_sel["ruc"], proy_sel["codigo"], 
                 proy_sel["punto_origen"], proy_sel["tipo_proyecto"], proy_sel["fecha"], 
-                proy_sel["peso_recibido"], proy_sel["peso_transformado"], 
-                proy_sel["aprovechamiento"], proy_sel["co2_neto"], proy_sel["horas_totales"]
+                float(proy_sel["peso_recibido"]), float(proy_sel["peso_transformado"]), 
+                float(proy_sel["aprovechamiento"]), float(proy_sel["co2_neto"]), float(proy_sel["horas_totales"])
             )
             
             st.download_button(
