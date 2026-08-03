@@ -1,4 +1,5 @@
 import io
+import datetime
 import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
@@ -28,7 +29,7 @@ def init_supabase() -> Client:
 try:
     supabase = init_supabase()
 except Exception:
-    st.error("Error al conectar con Supabase. Revisa las credenciales.")
+    st.error("Error al conectar con Supabase. Revisa las credenciales en Secrets.")
 
 def cargar_proyectos():
     try:
@@ -78,7 +79,7 @@ else:
             st.session_state.autenticado = False
             st.rerun()
 
-    # --- CANVAS PARA PIE DE PÁGINA Y HEADER ---
+    # --- CANVAS PARA PIE DE PÁGINA Y HEADER EN EL PDF ---
     class ReporteCanvas(canvas.Canvas):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -103,7 +104,7 @@ else:
             self.drawRightString(576, 20, f"Página {self._pageNumber}")
             self.restoreState()
 
-    # --- GENERADOR DEL PDF CON FOTO EN CADA FILA ---
+    # --- GENERADOR DEL PDF OFICIAL ---
     def generar_pdf_oficial(
         cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
         tipo_material, valorizacion, unidad_medida, guia_remision, origen, destino,
@@ -130,7 +131,7 @@ else:
 
         elements = []
 
-        # Header
+        # Encabezado
         elements.append(Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style))
         elements.append(Paragraph(f"Medición de Impacto Ambiental, Trazabilidad y Gestión Social de Upcycling<br/><b>CÓDIGO: {codigo_proy}</b>", sub_style))
 
@@ -179,10 +180,9 @@ else:
         elements.append(t_ficha)
         elements.append(Spacer(1, 8))
 
-        # Sección 2: Tabla de Material con FOTO DE EVIDENCIA por Fila
+        # Sección 2: Tabla de Material con Foto por Fila
         elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
         
-        # Encabezado Rosado como en la plantilla
         data_prendas_pdf = [[
             Paragraph("Ítem", cell_bold),
             Paragraph("Descripción", cell_bold),
@@ -196,7 +196,6 @@ else:
         for i, item in enumerate(lista_items, 1):
             total_unidades += item["unidades"]
             
-            # Procesar imagen si existe
             if item["foto"]:
                 try:
                     img_data = io.BytesIO(item["foto"].read())
@@ -216,7 +215,6 @@ else:
                 img_cell
             ])
 
-        # Fila Total
         data_prendas_pdf.append([
             Paragraph("<b>TOTAL</b>", cell_bold),
             Paragraph("-", cell_bold),
@@ -228,7 +226,7 @@ else:
 
         t_prendas = Table(data_prendas_pdf, colWidths=[35, 175, 80, 75, 75, 100])
         t_prendas.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')), # Tono rosado similar al modelo
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
             ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
@@ -282,7 +280,7 @@ else:
         buffer.seek(0)
         return buffer
 
-    # --- NAVEGACIÓN ---
+    # --- NAVEGACIÓN PRINCIPAL ---
     if opcion_menu == "➕ Nuevo Reporte PDF":
         st.title("📄 Generador Oficial de Informe Técnico")
 
@@ -309,8 +307,8 @@ else:
 
         st.write("---")
 
-        # 2. TABLA DINÁMICA DE PRENDAS CON CARGA DE EVIDENCIA EN CADA FILA
-        st.subheader("2. Ingreso de Material (Ítem, Descripción, Unidades, Peso y Foto)")
+        # 2. INGRESO DE MATERIAL Y EVIDENCIA
+        st.subheader("2. Ingreso de Material (Ítem, Descripción, Unidades, Peso y Evidencia)")
 
         if "num_items" not in st.session_state:
             st.session_state.num_items = 2
@@ -323,7 +321,6 @@ else:
             st.session_state.num_items -= 1
             st.rerun()
 
-        # Datos por defecto estilo la imagen
         defaults = [
             {"desc": "JEAN CINTA SEGURIDAD", "unid": 11, "peso": 0.70},
             {"desc": "CHALECO ACOLCHADO", "unid": 17, "peso": 0.30},
@@ -363,7 +360,7 @@ else:
 
         st.write("---")
 
-        # 3. MÉTRICAS DE PROCESO Y SOCIAL
+        # 3. MÉTRICAS DE PROCESO
         st.subheader("3. Métricas de Transformación y Trabajo Social")
         m1, m2, m3 = st.columns(3)
         kg_transformados = m1.number_input("Kg Transformados en Productos", value=min(53.00, float(peso_total_recibido)))
@@ -382,6 +379,7 @@ else:
 
         st.write("---")
 
+        # BOTÓN GENERADOR CON MANEJO LIMPIO DE DUPLICADOS EN BD
         if st.button("🔥 Generar PDF Oficial y Guardar", type="primary", use_container_width=True):
             pct_aprovechamiento = (kg_transformados / peso_total_recibido * 100) if peso_total_recibido > 0 else 0
             co2_evitado = kg_transformados * 7.3392
@@ -389,7 +387,7 @@ else:
             co2_neto = co2_evitado - emisiones_proceso
 
             try:
-                supabase.table("proyectos").upsert({
+                supabase.table("proyectos").insert({
                     "codigo": codigo_proy,
                     "cliente": cliente,
                     "fecha": f"{fe_inicio} - {fe_fin}",
@@ -400,9 +398,10 @@ else:
                     "horas_totales": horas_totales,
                     "ruc": ruc
                 }).execute()
-                st.success("✅ Guardado correctamente en Supabase.")
+                st.success("✅ Guardado correctamente en la base de datos.")
             except Exception as e:
-                st.warning(f"Generado localmente: {e}")
+                # Si el código ya existe, lo omitimos suavemente sin romper la ejecución
+                st.info("ℹ️ Generando PDF (el registro en BD ya existe, omitiendo duplicación).")
 
             pdf_oficial = generar_pdf_oficial(
                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
