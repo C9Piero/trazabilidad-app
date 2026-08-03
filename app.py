@@ -2,11 +2,12 @@ import io
 import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
+from PIL import Image as PILImage
 
-# Importaciones de ReportLab para el diseño exacto en PDF
+# Importaciones de ReportLab para el PDF exacto
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
 
@@ -33,8 +34,7 @@ def cargar_proyectos():
     try:
         response = supabase.table("proyectos").select("*").execute()
         return response.data
-    except Exception as e:
-        st.error(f"Error al cargar proyectos: {e}")
+    except Exception:
         return []
 
 # --- 3. SISTEMA DE AUTENTICACIÓN (LOGIN) ---
@@ -44,7 +44,6 @@ PASSWORD_CORRECTO = "pequenos2026"
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
-# --- PANTALLA DE LOGIN ---
 if not st.session_state.autenticado:
     st.markdown("<h2 style='text-align: center;'>🌸 Pequeños Detalles Handmade Perú</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center;'>Generador Oficial de Informes Técnicos</h4>", unsafe_allow_html=True)
@@ -64,7 +63,6 @@ if not st.session_state.autenticado:
             else:
                 st.error("⚠️ Usuario o contraseña incorrectos.")
 
-# --- APLICACIÓN PRINCIPAL (SOLO SI SE AUTENTICA) ---
 else:
     # --- MENÚ LATERAL ---
     with st.sidebar:
@@ -92,7 +90,6 @@ else:
             self._startPage()
 
         def save(self):
-            num_pages = len(self.pages)
             for page in self.pages:
                 self.__dict__.update(page)
                 self.draw_page_decorations()
@@ -107,13 +104,14 @@ else:
             self.drawRightString(576, 20, f"Página {self._pageNumber}")
             self.restoreState()
 
-    # --- FUNCIÓN GENERADORA DEL PDF EXACTO ---
+    # --- FUNCIÓN GENERADORA DEL PDF CON PRENDAS E IMÁGENES ---
     def generar_pdf_oficial(
         cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
         tipo_material, valorizacion, unidad_medida, guia_remision, origen, destino,
-        kg_recibidos, kg_transformados, horas_totales, cant_personas, emisiones_transporte,
-        emisiones_lavado, emisiones_corte, emisiones_bordado
+        df_prendas, kg_transformados, horas_totales, cant_personas, emisiones_transporte,
+        emisiones_lavado, emisiones_corte, emisiones_bordado, imagenes_subidas
     ):
+        kg_recibidos = df_prendas["Peso Total (kg)"].sum() if not df_prendas.empty else 0.0
         pct_aprovechamiento = (kg_transformados / kg_recibidos * 100) if kg_recibidos > 0 else 0
         co2_evitado = kg_transformados * 7.3392
         emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
@@ -159,12 +157,11 @@ else:
             ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
             ('PADDING', (0,0), (-1,-1), 6),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ]))
         elements.append(t_cards)
         elements.append(Spacer(1, 10))
 
-        # Sección 1
+        # Sección 1: Ficha General
         elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
         data_ficha = [
             [Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style), Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / {responsable}", cell_style)],
@@ -183,27 +180,43 @@ else:
         elements.append(t_ficha)
         elements.append(Spacer(1, 10))
 
-        # Sección 2
-        elements.append(Paragraph("2. BALANCE DE MATERIALES Y APROVECHAMIENTO", h2_style))
-        data_balance = [
-            [Paragraph("CONCEPTO", cell_bold), Paragraph("PESO (KG)", cell_bold), Paragraph("PARTICIPACIÓN (%)", cell_bold)],
-            [Paragraph("Material Recibido Total", cell_style), Paragraph(f"{kg_recibidos:.2f}", cell_style), Paragraph("100.00%", cell_style)],
-            [Paragraph("Material Transformado en Productos", cell_style), Paragraph(f"{kg_transformados:.2f}", cell_style), Paragraph(f"{pct_aprovechamiento:.2f}%", cell_style)],
-            [Paragraph("Pérdida / Residuo No Aprovechable", cell_style), Paragraph(f"{(kg_recibidos - kg_transformados):.2f}", cell_style), Paragraph(f"{(100 - pct_aprovechamiento):.2f}%", cell_style)],
-        ]
-        t_bal = Table(data_balance, colWidths=[240, 150, 150])
-        t_bal.setStyle(TableStyle([
+        # Sección 2: Detalle de Prendas Ingresadas
+        elements.append(Paragraph("2. INGRESO DE MATERIAL Y DETALLE DE PRENDAS", h2_style))
+        
+        data_prendas_pdf = [[
+            Paragraph("TIPO DE PRENDA", cell_bold),
+            Paragraph("CANTIDAD", cell_bold),
+            Paragraph("PESO UNIT. (KG)", cell_bold),
+            Paragraph("PESO TOTAL (KG)", cell_bold)
+        ]]
+
+        for idx, row in df_prendas.iterrows():
+            data_prendas_pdf.append([
+                Paragraph(str(row["Tipo de Prenda"]), cell_style),
+                Paragraph(str(int(row["Cantidad"])), cell_style),
+                Paragraph(f"{row['Peso Unitario (kg)']:.3f}", cell_style),
+                Paragraph(f"{row['Peso Total (kg)']:.2f}", cell_style),
+            ])
+
+        data_prendas_pdf.append([
+            Paragraph("<b>TOTAL MATERIAL RECIBIDO</b>", cell_bold),
+            Paragraph(f"<b>{df_prendas['Cantidad'].sum():.0f} pcs</b>", cell_bold),
+            Paragraph("-", cell_bold),
+            Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold)
+        ])
+
+        t_prendas = Table(data_prendas_pdf, colWidths=[200, 100, 120, 120])
+        t_prendas.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#E2E8F0')),
+            ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('PADDING', (0,0), (-1,-1), 5),
+            ('PADDING', (0,0), (-1,-1), 4),
         ]))
-        elements.append(t_bal)
-        elements.append(Spacer(1, 4))
-        elements.append(Paragraph(f"<b>Nota de Eficiencia:</b> El proceso presenta un alto nivel de aprovechamiento ({pct_aprovechamiento:.2f}%). La reincorporación de sobrantes como insumo interno redujo sustancialmente la generación de residuo final.", cell_style))
+        elements.append(t_prendas)
 
         elements.append(PageBreak())
 
-        # Sección 3
+        # Sección 3: Balance de Impacto Ambiental
         elements.append(Paragraph("3. BALANCE DE IMPACTO AMBIENTAL (HUELLA DE CARBONO Y CO₂ EVITADO)", h2_style))
         data_co2_box = [
             [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Neto Positivo</b>", card_sub)],
@@ -236,62 +249,122 @@ else:
             ('PADDING', (0,0), (-1,-1), 5),
         ]))
         elements.append(t_emisiones)
-        elements.append(Spacer(1, 15))
+        elements.append(Spacer(1, 10))
 
-        # Sección 4
-        elements.append(Paragraph("4. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
-        elements.append(Paragraph(f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{horas_totales:.2f} horas de trabajo directo</b> distribuidas entre <b>{cant_personas} participantes</b> en las etapas de clasificación, corte, confección y acabados.", cell_style))
+        # Sección 4: Registro Fotográfico (Si se subieron imágenes)
+        if imagenes_subidas:
+            elements.append(Paragraph("4. EVIDENCIA FOTOGRÁFICA DEL MATERIAL / PROCESO", h2_style))
+            img_cells = []
+            for img_file in imagenes_subidas:
+                try:
+                    img_data = io.BytesIO(img_file.read())
+                    rl_img = Image(img_data, width=160, height=120)
+                    img_cells.append(rl_img)
+                except Exception:
+                    pass
+            
+            # Acomodar imágenes en cuadrícula
+            if img_cells:
+                grid_data = [img_cells[i:i+3] for i in range(0, len(img_cells), 3)]
+                t_imgs = Table(grid_data)
+                t_imgs.setStyle(TableStyle([
+                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                    ('PADDING', (0,0), (-1,-1), 4),
+                ]))
+                elements.append(t_imgs)
 
         doc.build(elements, canvasmaker=ReporteCanvas)
         buffer.seek(0)
         return buffer
 
-    # --- NAVEGACIÓN ---
+    # --- NAVEGACIÓN DE STREAMLIT ---
     if opcion_menu == "➕ Nuevo Reporte PDF":
-        st.title("📄 Generador Oficial de PDF de Impacto")
-        st.markdown("Ingresa los **datos clave** para calcular métricas y descargar el informe exacto en PDF.")
+        st.title("📄 Generador Oficial de Informe Técnico")
+        
+        # 1. FICHA
+        st.subheader("1. Ficha del Proyecto")
+        c1, c2, c3 = st.columns(3)
+        cliente = c1.text_input("Cliente / Empresa", value="REAL PLAZA S.R.L.")
+        ruc = c2.text_input("RUC", value="20511315922")
+        codigo_proy = c3.text_input("Código de Proyecto", value="REAL PLAZA-JUL26")
 
-        with st.form("form_datos_clave"):
-            st.subheader("1. Ficha del Proyecto")
-            c1, c2, c3 = st.columns(3)
-            cliente = c1.text_input("Cliente / Empresa", value="REAL PLAZA S.R.L.")
-            ruc = c2.text_input("RUC", value="20511315922")
-            codigo_proy = c3.text_input("Código de Proyecto", value="REAL PLAZA-JUL26")
+        c4, c5, c6 = st.columns(3)
+        proyecto_nom = c4.text_input("Nombre del Proyecto", value="Upcycling de uniformes corporativos")
+        fe_inicio = c5.text_input("Fecha Inicio", value="27/05/2026")
+        fe_fin = c6.text_input("Fecha Término", value="09/07/2026")
 
-            c4, c5, c6 = st.columns(3)
-            proyecto_nom = c4.text_input("Nombre del Proyecto", value="Upcycling de uniformes corporativos")
-            fe_inicio = c5.text_input("Fecha Inicio", value="27/05/2026")
-            fe_fin = c6.text_input("Fecha Término", value="09/07/2026")
+        c7, c8, c9 = st.columns(3)
+        responsable = c7.text_input("Responsable", value="Pequeños Detalles S.A.C.")
+        area = c8.text_input("Área", value="Sostenibilidad")
+        guia_remision = c9.text_input("Nº Guía Remisión", value="001-0012568")
 
-            c7, c8, c9 = st.columns(3)
-            responsable = c7.text_input("Responsable", value="Pequeños Detalles S.A.C.")
-            area = c8.text_input("Área", value="Sostenibilidad")
-            guia_remision = c9.text_input("Nº Guía Remisión", value="001-0012568")
+        c10, c11 = st.columns(2)
+        origen = c10.text_input("Punto Origen", value="Av. Eduardo Avaroa 2403 - Jesús María")
+        destino = c11.text_input("Punto Destino", value="Las Flores, SJL - Lima")
 
-            c10, c11 = st.columns(2)
-            origen = c10.text_input("Punto Origen", value="Av. Eduardo Avaroa 2403 - Jesús María")
-            destino = c11.text_input("Punto Destino", value="Las Flores, SJL - Lima")
+        st.write("---")
+        
+        # 2. INGRESO DE MATERIAL (PRENDAS, CANTIDAD, PESO UNITARIO)
+        st.subheader("2. Ingreso de Material (Detalle de Prendas)")
+        st.markdown("Añade o edita los tipos de prenda. El **Peso Total** se calcula multiplicando `Cantidad` x `Peso Unitario`.")
 
-            st.write("---")
-            st.subheader("2. Métricas de Peso e Impacto Social")
-            m1, m2, m3, m4 = st.columns(4)
-            kg_recibidos = m1.number_input("Kg Recibidos", value=59.25)
-            kg_transformados = m2.number_input("Kg Transformados", value=53.00)
-            horas_totales = m3.number_input("Horas Generadas", value=337.73)
-            cant_personas = m4.number_input("Cantidad Personas", value=17, step=1)
+        df_inicial = pd.DataFrame([
+            {"Tipo de Prenda": "Camisas / Blusas", "Cantidad": 80, "Peso Unitario (kg)": 0.25},
+            {"Tipo de Prenda": "Pantalones", "Cantidad": 60, "Peso Unitario (kg)": 0.45},
+            {"Tipo de Prenda": "Casacas / Poleras", "Cantidad": 25, "Peso Unitario (kg)": 0.49},
+        ])
 
-            st.write("---")
-            st.subheader("3. Desglose de Emisiones del Proceso (kg CO₂e)")
-            e1, e2, e3, e4 = st.columns(4)
-            emisiones_transporte = e1.number_input("Emisión Transporte", value=9.45)
-            emisiones_lavado = e2.number_input("Emisión Lavandería", value=3.90)
-            emisiones_corte = e3.number_input("Emisión Corte", value=2.96)
-            emisiones_bordado = e4.number_input("Emisión Bordado", value=8.18)
+        df_editor = st.data_editor(
+            df_inicial,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Tipo de Prenda": st.column_config.TextColumn("Tipo de Prenda", required=True),
+                "Cantidad": st.column_config.NumberColumn("Cantidad (pcs)", min_value=1, step=1, required=True),
+                "Peso Unitario (kg)": st.column_config.NumberColumn("Peso Unitario (kg)", min_value=0.01, step=0.01, format="%.3f kg", required=True),
+            }
+        )
 
-            btn_generar_pdf = st.form_submit_button("🔥 Generar PDF Oficial y Guardar", type="primary", use_container_width=True)
+        # Cálculo automático del peso total por fila y del total general
+        df_editor["Peso Total (kg)"] = df_editor["Cantidad"] * df_editor["Peso Unitario (kg)"]
+        peso_total_calculado = df_editor["Peso Total (kg)"].sum()
 
-        if btn_generar_pdf:
-            pct_aprovechamiento = (kg_transformados / kg_recibidos * 100) if kg_recibidos > 0 else 0
+        st.info(f"💡 **Peso Total Recibido Calculado:** {peso_total_calculado:.2f} kg ({df_editor['Cantidad'].sum()} prendas totales)")
+
+        st.write("---")
+
+        # 3. IMÁGENES Y EVIDENCIA
+        st.subheader("3. Evidencia Fotográfica (Opcional)")
+        imagenes_subidas = st.file_uploader(
+            "Carga fotos de las prendas o del proceso (se incluirán en el informe PDF)",
+            type=["jpg", "png", "jpeg"],
+            accept_multiple_files=True
+        )
+
+        st.write("---")
+
+        # 4. MÉTRICAS DE PROCESO Y SOCIAL
+        st.subheader("4. Métricas de Transformación y Trabajo Social")
+        m1, m2, m3 = st.columns(3)
+        kg_transformados = m1.number_input("Kg Transformados en Productos", value=min(53.00, float(peso_total_calculado)))
+        horas_totales = m2.number_input("Horas Generadas", value=337.73)
+        cant_personas = m3.number_input("Cantidad Personas Beneficiadas", value=17, step=1)
+
+        st.write("---")
+
+        # 5. EMISIONES
+        st.subheader("5. Desglose de Emisiones del Proceso (kg CO₂e)")
+        e1, e2, e3, e4 = st.columns(4)
+        emisiones_transporte = e1.number_input("Emisión Transporte", value=9.45)
+        emisiones_lavado = e2.number_input("Emisión Lavandería", value=3.90)
+        emisiones_corte = e3.number_input("Emisión Corte", value=2.96)
+        emisiones_bordado = e4.number_input("Emisión Bordado", value=8.18)
+
+        st.write("---")
+
+        if st.button("🔥 Generar PDF Oficial y Guardar", type="primary", use_container_width=True):
+            pct_aprovechamiento = (kg_transformados / peso_total_calculado * 100) if peso_total_calculado > 0 else 0
             co2_evitado = kg_transformados * 7.3392
             emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
             co2_neto = co2_evitado - emisiones_proceso
@@ -301,28 +374,29 @@ else:
                     "codigo": codigo_proy,
                     "cliente": cliente,
                     "fecha": f"{fe_inicio} - {fe_fin}",
-                    "peso_recibido": kg_recibidos,
+                    "peso_recibido": peso_total_calculado,
                     "peso_transformado": kg_transformados,
                     "aprovechamiento": pct_aprovechamiento,
                     "co2_neto": co2_neto,
                     "horas_totales": horas_totales,
                     "ruc": ruc
                 }).execute()
-                st.success("✅ Guardado correctamente en la base de datos.")
+                st.success("✅ Guardado correctamente en Supabase.")
             except Exception as e:
-                st.warning(f"Guardado local activado (falló BD): {e}")
+                st.warning(f"Informe listo (BD no conectada): {e}")
 
             pdf_oficial = generar_pdf_oficial(
                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
-                "Uniformes en desuso (operativos y administrativos)", "Upcycling", "Kilogramos (kg)",
-                guia_remision, origen, destino, kg_recibidos, kg_transformados, horas_totales,
-                cant_personas, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
+                "Uniformes en desuso", "Upcycling", "Kilogramos (kg)",
+                guia_remision, origen, destino, df_editor, kg_transformados, horas_totales,
+                cant_personas, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado,
+                imagenes_subidas
             )
 
             st.download_button(
-                label=f"📥 DESCARGAR INFORME EN PDF ({codigo_proy}.pdf)",
+                label=f"📥 DESCARGAR INFORME TÉCNICO COMPLETO ({codigo_proy}.pdf)",
                 data=pdf_oficial,
-                file_name=f"Informe_Tecnico_Upcycling_{codigo_proy}.pdf",
+                file_name=f"Informe_Tecnico_{codigo_proy}.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
@@ -330,7 +404,6 @@ else:
     elif opcion_menu == "📊 Dashboard 2026":
         st.title("📊 Dashboard Consolidado 2026")
         lista_proyectos = cargar_proyectos()
-        
         if lista_proyectos:
             df = pd.DataFrame(lista_proyectos)
             col1, col2, col3, col4 = st.columns(4)
@@ -339,7 +412,7 @@ else:
             col3.metric("Horas Generadas", f"{df['horas_totales'].sum():.1f} hrs")
             col4.metric("Total Proyectos", len(df))
         else:
-            st.info("No hay datos cargados aún.")
+            st.info("No hay datos cargados en la base de datos.")
 
     elif opcion_menu == "📁 Historial de Proyectos":
         st.title("📁 Historial de Proyectos")
