@@ -108,7 +108,7 @@ else:
     def generar_pdf_oficial(
         cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
         tipo_material, valorizacion, unidad_medida, guia_remision, origen, destino,
-        lista_items, kg_transformados, horas_totales, cant_personas,
+        lista_items, lista_trazabilidad, kg_transformados, horas_totales, cant_personas,
         emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
     ):
         kg_recibidos = sum([item["peso_total"] for item in lista_items])
@@ -180,7 +180,7 @@ else:
         elements.append(t_ficha)
         elements.append(Spacer(1, 8))
 
-        # Sección 2: Tabla de Material con Foto por Fila
+        # Sección 2: Tabla de Ingreso de Material
         elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
         
         data_prendas_pdf = [[
@@ -200,7 +200,7 @@ else:
                 try:
                     img_data = io.BytesIO(item["foto"].read())
                     item["foto"].seek(0)
-                    img_cell = Image(img_data, width=55, height=55)
+                    img_cell = Image(img_data, width=50, height=50)
                 except Exception:
                     img_cell = Paragraph("Sin foto", cell_style)
             else:
@@ -215,10 +215,10 @@ else:
                 img_cell
             ])
 
-        # Fila Total combinando Descripción y ajustando alineación
+        # Fila Total combinada
         data_prendas_pdf.append([
             Paragraph("<b>TOTAL MATERIAL RECIBIDO</b>", cell_bold),
-            "", # Se deja vacío porque se combina con SPAN
+            "", 
             Paragraph(f"<b>{total_unidades}</b>", cell_bold),
             Paragraph("-", cell_bold),
             Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold),
@@ -230,18 +230,63 @@ else:
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
             ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('SPAN', (0, -1), (1, -1)), # Combina Ítem y Descripción en la última fila
+            ('SPAN', (0, -1), (1, -1)),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('ALIGN', (2,0), (4,-1), 'CENTER'),
-            ('ALIGN', (0,-1), (0,-1), 'LEFT'), # Alinea 'TOTAL MATERIAL RECIBIDO' a la izquierda
-            ('PADDING', (0,0), (-1,-1), 5),
+            ('ALIGN', (0,-1), (0,-1), 'LEFT'),
+            ('PADDING', (0,0), (-1,-1), 4),
         ]))
         elements.append(t_prendas)
+        elements.append(Spacer(1, 10))
+
+        # --- SECCIÓN 3: TRAZABILIDAD DEL PROCESO ---
+        elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN TRANSFORMACIÓN", h2_style))
+        
+        data_traza_pdf = [[
+            Paragraph("Código Proyecto", cell_bold),
+            Paragraph("Etapa", cell_bold),
+            Paragraph("Fecha", cell_bold),
+            Paragraph("Responsable", cell_bold),
+            Paragraph("Peso (kg)", cell_bold),
+            Paragraph("Tipo de Registro", cell_bold),
+            Paragraph("Evidencia", cell_bold)
+        ]]
+
+        for t_item in lista_trazabilidad:
+            if t_item["foto"]:
+                try:
+                    img_data = io.BytesIO(t_item["foto"].read())
+                    t_item["foto"].seek(0)
+                    img_cell = Image(img_data, width=50, height=40)
+                except Exception:
+                    img_cell = Paragraph("Sin foto", cell_style)
+            else:
+                img_cell = Paragraph("Sin foto", cell_style)
+
+            data_traza_pdf.append([
+                Paragraph(codigo_proy, cell_style),
+                Paragraph(t_item["etapa"], cell_style),
+                Paragraph(t_item["fecha"], cell_style),
+                Paragraph(t_item["responsable"], cell_style),
+                Paragraph(f"{t_item['peso']:.2f}", cell_style),
+                Paragraph(t_item["tipo_registro"], cell_style),
+                img_cell
+            ])
+
+        t_traza = Table(data_traza_pdf, colWidths=[80, 80, 65, 100, 55, 80, 80])
+        t_traza.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('ALIGN', (2,0), (4,-1), 'CENTER'),
+            ('PADDING', (0,0), (-1,-1), 4),
+        ]))
+        elements.append(t_traza)
 
         elements.append(PageBreak())
 
-        # Sección 3: Impacto Ambiental
-        elements.append(Paragraph("3. BALANCE DE IMPACTO AMBIENTAL (HUELLA DE CARBONO Y CO₂ EVITADO)", h2_style))
+        # Sección 4: Impacto Ambiental
+        elements.append(Paragraph("4. BALANCE DE IMPACTO AMBIENTAL (HUELLA DE CARBONO Y CO₂ EVITADO)", h2_style))
         data_co2_box = [
             [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Neto Positivo</b>", card_sub)],
             [Paragraph(f"<b>{co2_evitado:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{emisiones_proceso:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{co2_neto:.2f} kg CO₂e</b>", card_title)]
@@ -275,8 +320,8 @@ else:
         elements.append(t_emisiones)
         elements.append(Spacer(1, 15))
 
-        # Sección 4: Impacto Social
-        elements.append(Paragraph("4. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
+        # Sección 5: Impacto Social
+        elements.append(Paragraph("5. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
         elements.append(Paragraph(f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{horas_totales:.2f} horas de trabajo directo</b> distribuidas entre <b>{cant_personas} participantes</b>.", cell_style))
 
         doc.build(elements, canvasmaker=ReporteCanvas)
@@ -310,7 +355,7 @@ else:
 
         st.write("---")
 
-        # 2. INGRESO DE MATERIAL Y EVIDENCIA
+        # 2. INGRESO DE MATERIAL
         st.subheader("2. Ingreso de Material (Ítem, Descripción, Unidades, Peso y Evidencia)")
 
         if "num_items" not in st.session_state:
@@ -324,7 +369,7 @@ else:
             st.session_state.num_items -= 1
             st.rerun()
 
-        defaults = [
+        defaults_items = [
             {"desc": "JEAN CINTA SEGURIDAD", "unid": 11, "peso": 0.70},
             {"desc": "CHALECO ACOLCHADO", "unid": 17, "peso": 0.30},
             {"desc": "CASACA TÉRMICA", "unid": 15, "peso": 0.50},
@@ -337,9 +382,9 @@ else:
             st.markdown(f"**Ítem {i+1}**")
             col_desc, col_unid, col_peso, col_tot, col_foto = st.columns([3, 1.5, 1.5, 1.5, 3])
             
-            def_desc = defaults[i]["desc"] if i < len(defaults) else f"Prenda {i+1}"
-            def_unid = defaults[i]["unid"] if i < len(defaults) else 10
-            def_peso = defaults[i]["peso"] if i < len(defaults) else 0.40
+            def_desc = defaults_items[i]["desc"] if i < len(defaults_items) else f"Prenda {i+1}"
+            def_unid = defaults_items[i]["unid"] if i < len(defaults_items) else 10
+            def_peso = defaults_items[i]["peso"] if i < len(defaults_items) else 0.40
 
             desc = col_desc.text_input(f"Descripción", value=def_desc, key=f"desc_{i}")
             unid = col_unid.number_input(f"Ingreso (unid.)", value=def_unid, min_value=1, key=f"unid_{i}")
@@ -347,7 +392,6 @@ else:
             
             p_total = unid * peso_u
             col_tot.text_input(f"Peso Total", value=f"{p_total:.2f} kg", disabled=True, key=f"tot_{i}")
-            
             foto = col_foto.file_uploader(f"Evidencia (Foto)", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
 
             peso_total_recibido += p_total
@@ -363,8 +407,59 @@ else:
 
         st.write("---")
 
-        # 3. MÉTRICAS DE PROCESO
-        st.subheader("3. Métricas de Transformación y Trabajo Social")
+        # 3. TRAZABILIDAD DEL PROCESO
+        st.subheader("3. Trazabilidad del Proceso (Hitos, Fechas, Responsables, Peso y Registro)")
+        
+        default_trazabilidad = [
+            {"etapa": "Clasificación", "fecha": "27/05/2026", "resp": "Área de Logística", "peso": 59.25, "tipo": "Registro interno"},
+            {"etapa": "Lavado", "fecha": "29/05/2026", "resp": "Lavandería", "peso": 13.00, "tipo": "Servicio Externo"},
+            {"etapa": "Corte", "fecha": "12/06/2026", "resp": "Taller de corte", "peso": 59.25, "tipo": "Pesaje real"},
+            {"etapa": "Confección", "fecha": "09/07/2026", "resp": "Producción descentralizada", "peso": 53.00, "tipo": "Entrega / Recepción"},
+        ]
+
+        if "num_trazas" not in st.session_state:
+            st.session_state.num_trazas = 4
+
+        col_tb1, col_tb2, _ = st.columns([1, 1, 4])
+        if col_tb1.button("➕ Agregar Etapa"):
+            st.session_state.num_trazas += 1
+            st.rerun()
+        if col_tb2.button("➖ Quitar Etapa") and st.session_state.num_trazas > 1:
+            st.session_state.num_trazas -= 1
+            st.rerun()
+
+        lista_trazabilidad = []
+
+        for i in range(st.session_state.num_trazas):
+            st.markdown(f"**Etapa {i+1}**")
+            c_etapa, c_fecha, c_resp, c_peso, c_tipo, c_foto = st.columns([2, 1.5, 2, 1.5, 2, 2.5])
+            
+            def_etapa = default_trazabilidad[i]["etapa"] if i < len(default_trazabilidad) else "Nueva Etapa"
+            def_fecha = default_trazabilidad[i]["fecha"] if i < len(default_trazabilidad) else "01/06/2026"
+            def_resp = default_trazabilidad[i]["resp"] if i < len(default_trazabilidad) else "Taller"
+            def_peso = default_trazabilidad[i]["peso"] if i < len(default_trazabilidad) else 50.00
+            def_tipo = default_trazabilidad[i]["tipo"] if i < len(default_trazabilidad) else "Registro interno"
+
+            e_nom = c_etapa.text_input("Etapa", value=def_etapa, key=f"tr_etapa_{i}")
+            e_fec = c_fecha.text_input("Fecha", value=def_fecha, key=f"tr_fecha_{i}")
+            e_res = c_resp.text_input("Responsable", value=def_resp, key=f"tr_resp_{i}")
+            e_pes = c_peso.number_input("Peso (kg)", value=def_peso, step=0.1, key=f"tr_peso_{i}")
+            e_tip = c_tipo.text_input("Tipo Registro", value=def_tipo, key=f"tr_tipo_{i}")
+            e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
+
+            lista_trazabilidad.append({
+                "etapa": e_nom,
+                "fecha": e_fec,
+                "responsable": e_res,
+                "peso": e_pes,
+                "tipo_registro": e_tip,
+                "foto": e_fot
+            })
+
+        st.write("---")
+
+        # 4. MÉTRICAS DE PROCESO
+        st.subheader("4. Métricas de Transformación y Trabajo Social")
         m1, m2, m3 = st.columns(3)
         kg_transformados = m1.number_input("Kg Transformados en Productos", value=min(53.00, float(peso_total_recibido)))
         horas_totales = m2.number_input("Horas Generadas", value=337.73)
@@ -372,8 +467,8 @@ else:
 
         st.write("---")
 
-        # 4. EMISIONES
-        st.subheader("4. Desglose de Emisiones del Proceso (kg CO₂e)")
+        # 5. EMISIONES
+        st.subheader("5. Desglose de Emisiones del Proceso (kg CO₂e)")
         e1, e2, e3, e4 = st.columns(4)
         emisiones_transporte = e1.number_input("Emisión Transporte", value=9.45)
         emisiones_lavado = e2.number_input("Emisión Lavandería", value=3.90)
@@ -382,7 +477,7 @@ else:
 
         st.write("---")
 
-        # BOTÓN GENERADOR CON MANEJO LIMPIO DE DUPLICADOS EN BD
+        # BOTÓN GENERADOR
         if st.button("🔥 Generar PDF Oficial y Guardar", type="primary", use_container_width=True):
             pct_aprovechamiento = (kg_transformados / peso_total_recibido * 100) if peso_total_recibido > 0 else 0
             co2_evitado = kg_transformados * 7.3392
@@ -402,14 +497,13 @@ else:
                     "ruc": ruc
                 }).execute()
                 st.success("✅ Guardado correctamente en la base de datos.")
-            except Exception as e:
-                # Si el código ya existe, lo omitimos suavemente sin romper la ejecución
+            except Exception:
                 st.info("ℹ️ Generando PDF (el registro en BD ya existe, omitiendo duplicación).")
 
             pdf_oficial = generar_pdf_oficial(
                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
                 "Uniformes en desuso", "Upcycling", "Kilogramos (kg)",
-                guia_remision, origen, destino, lista_items, kg_transformados, horas_totales,
+                guia_remision, origen, destino, lista_items, lista_trazabilidad, kg_transformados, horas_totales,
                 cant_personas, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
             )
 
