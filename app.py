@@ -1,20 +1,23 @@
 import io
 import streamlit as st
 import pandas as pd
-from docx import Document
-from docx.shared import Pt, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
 from supabase import create_client, Client
 
-# 1. Configuración de la página
+# Importaciones de ReportLab para réplica visual exacta
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfgen import canvas
+
+# --- CONFIGURACIÓN PÁGINA STREAMLIT ---
 st.set_page_config(
     page_title="Control Interno - Pequeños Detalles",
     page_icon="🌸",
     layout="wide"
 )
 
-# 2. Conexión con Supabase (Base de datos persistente)
+# --- CONEXIÓN SUPABASE ---
 @st.cache_resource
 def init_supabase() -> Client:
     url = st.secrets["supabase"]["SUPABASE_URL"]
@@ -23,317 +26,273 @@ def init_supabase() -> Client:
 
 try:
     supabase = init_supabase()
-except Exception as e:
-    st.error("Error al conectar con la Base de Datos. Revisa las claves en Secrets.")
+except Exception:
+    st.error("Error de conexión con Supabase. Revisa las credenciales.")
 
-# Funciones de lectura y escritura en la Base de Datos
-def cargar_proyectos():
-    try:
-        response = supabase.table("proyectos").select("*").execute()
-        return response.data
-    except Exception as e:
-        st.error(f"Error al cargar proyectos: {e}")
-        return []
+# --- DIBUJADO DEL DISEÑO IDÉNTICO (HEADER + CARDS) ---
+class ReporteCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pages = []
 
-def guardar_proyecto_db(datos_proyecto):
-    try:
-        # Revisa si ya existe el código para actualizarlo o insertarlo
-        existente = supabase.table("proyectos").select("id").eq("codigo", datos_proyecto["codigo"]).execute()
-        if existente.data:
-            supabase.table("proyectos").update(datos_proyecto).eq("codigo", datos_proyecto["codigo"]).execute()
-        else:
-            supabase.table("proyectos").insert(datos_proyecto).execute()
-        return True
-    except Exception as e:
-        st.error(f"Error al guardar en la base de datos: {e}")
-        return False
+    def showPage(self):
+        self.pages.append(dict(self.__dict__))
+        self._startPage()
 
-# 3. Credenciales de acceso
-USUARIO_CORRECTO = "admin"
-PASSWORD_CORRECTO = "pequenos2026"
+    def save(self):
+        num_pages = len(self.pages)
+        for page in self.pages:
+            self.__dict__.update(page)
+            self.draw_page_decorations()
+            super().showPage()
+        super().save()
 
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
+    def draw_page_decorations(self):
+        # Pie de página en todas las páginas
+        self.saveState()
+        self.setFont("Helvetica", 8)
+        self.setFillColor(colors.HexColor("#7F8C8D"))
+        self.drawString(36, 20, "Pequeños Detalles Handmade Perú S.A.C. - Sistema de Trazabilidad y Sostenibilidad Textil")
+        self.drawRightString(576, 20, f"Página {self._pageNumber}")
+        self.restoreState()
 
-# --- PANTALLA DE LOGIN ---
-if not st.session_state.autenticado:
-    st.markdown("<h2 style='text-align: center;'>🌸 Pequeños Detalles Handmade Perú</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='text-align: center;'>Sistema Interno de Trazabilidad e Impacto</h4>", unsafe_allow_html=True)
-    st.write("---")
+# --- FUNCIÓN GENERADORA DEL PDF EXACTO ---
+def generar_pdf_oficial(
+    cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
+    tipo_material, valorizacion, unidad_medida, guia_remision, origen, destino,
+    kg_recibidos, kg_transformados, horas_totales, cant_personas, emisiones_transporte,
+    emisiones_lavado, emisiones_corte, emisiones_bordado
+):
+    # Cálculos automáticos basados en la plantilla
+    pct_aprovechamiento = (kg_transformados / kg_recibidos * 100) if kg_recibidos > 0 else 0
+    co2_evitado = kg_transformados * 7.3392  # Factor derivado de plantilla (388.98 / 53)
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.subheader("🔐 Iniciar Sesión")
-        usuario_input = st.text_input("Usuario", placeholder="Ingresa tu usuario")
-        password_input = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
-        
-        if st.button("Ingresar al Sistema", use_container_width=True):
-            if usuario_input == USUARIO_CORRECTO and password_input == PASSWORD_CORRECTO:
-                st.session_state.autenticado = True
-                st.success("¡Bienvenido/a! Cargando panel...")
-                st.rerun()
-            else:
-                st.error("⚠️ Usuario o contraseña incorrectos.")
+    emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
+    co2_neto = co2_evitado - emisiones_proceso
 
-# --- APLICACIÓN PRINCIPAL (POST-LOGIN) ---
-else:
-    with st.sidebar:
-        st.title("Pequeños Detalles")
-        st.write("👤 **Usuario:** Admin")
-        st.write("---")
-        
-        opcion_menu = st.radio(
-            "Selecciona una opción:",
-            ["📊 Dashboard 2026", "➕ Nuevo Proyecto", "📁 Historial de Proyectos"]
-        )
-        st.write("---")
-        if st.button("Cerrar Sesión"):
-            st.session_state.autenticado = False
-            st.rerun()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
 
-    # FUNCIÓN PARA GENERAR EL WORD (.DOCX)
-    def generar_word(cliente, ruc, codigo_proy, punto_origen, tipo_proyecto, fecha_ejecucion, tot_peso_recibido, tot_prod_peso, pct_aprovechamiento, impacto_co2_neto, tot_horas_generadas):
-        doc = Document()
-        h1 = doc.add_heading("Reporte de Impacto del Proyecto", level=1)
-        h1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        p_sub = doc.add_paragraph(f"Proyecto de transformación de textiles en desuso\nCliente: {cliente}\nEmpresa: Pequeños Detalles Handmade Perú S.A.C.\nFecha: {fecha_ejecucion}")
-        p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        doc.add_heading("1. FICHA TÉCNICA DEL PROYECTO", level=2)
-        t1 = doc.add_table(rows=5, cols=2)
-        t1.alignment = WD_TABLE_ALIGNMENT.CENTER
-        t1.style = 'Table Grid'
-        datos_ficha = [
-            ("Cliente", cliente),
-            ("RUC", ruc),
-            ("Código de Proyecto", codigo_proy),
-            ("Punto de Origen", punto_origen),
-            ("Tipo de Proyecto", tipo_proyecto)
+    styles = getSampleStyleSheet()
+    
+    # Estilos exactos
+    h1_style = ParagraphStyle('H1', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, textColor=colors.HexColor('#1E293B'), alignment=1, spaceAfter=2)
+    sub_style = ParagraphStyle('Sub', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#64748B'), alignment=1, spaceAfter=12)
+    h2_style = ParagraphStyle('H2', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#0F172A'), spaceBefore=10, spaceAfter=6)
+    cell_style = ParagraphStyle('Cell', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#334155'), leading=10)
+    cell_bold = ParagraphStyle('CellB', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8, textColor=colors.HexColor('#0F172A'), leading=10)
+    
+    # Estilo métricas
+    card_title = ParagraphStyle('CardT', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#0F172A'), alignment=1)
+    card_sub = ParagraphStyle('CardS', parent=styles['Normal'], fontName='Helvetica', fontSize=7, textColor=colors.HexColor('#475569'), alignment=1)
+
+    elements = []
+
+    # 1. TÍTULO Y SUBTÍTULO
+    elements.append(Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style))
+    elements.append(Paragraph(f"Medición de Impacto Ambiental, Trazabilidad y Gestión Social de Upcycling<br/><b>CÓDIGO: {codigo_proy}</b>", sub_style))
+
+    # 2. CAJAS DE MÉTRICAS PRINCIPALES (TARJETAS EN CABECERA)
+    cards_data = [
+        [
+            Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", card_title),
+            Paragraph(f"<b>{pct_aprovechamiento:.2f}%</b>", card_title),
+            Paragraph(f"<b>{co2_neto:.2f} kg</b>", card_title),
+            Paragraph(f"<b>{horas_totales:.2f} hrs</b>", card_title)
+        ],
+        [
+            Paragraph("MATERIAL RECIBIDO", card_sub),
+            Paragraph("% APROVECHAMIENTO", card_sub),
+            Paragraph("CO₂e NETO EVITADO", card_sub),
+            Paragraph(f"TRABAJO GENERADO ({cant_personas} PERS.)", card_sub)
         ]
-        for i, (k, v) in enumerate(datos_ficha):
-            t1.rows[i].cells[0].text = k
-            t1.rows[i].cells[1].text = str(v)
+    ]
+    t_cards = Table(cards_data, colWidths=[135, 135, 135, 135])
+    t_cards.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F1F5F9')),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    elements.append(t_cards)
+    elements.append(Spacer(1, 10))
 
-        doc.add_heading("2. BALANCE DE MATERIAL E IMPACTO AMBIENTAL", level=2)
-        t2 = doc.add_table(rows=5, cols=3)
-        t2.style = 'Table Grid'
-        datos_impacto = [
-            ("Categoría", "Indicador", "Valor"),
-            ("Ambiental", "Textiles Recibidos", f"{tot_peso_recibido:.2f} kg"),
-            ("Ambiental", "Textiles Transformados", f"{tot_prod_peso:.2f} kg"),
-            ("Ambiental", "Porcentaje de Aprovechamiento", f"{pct_aprovechamiento:.1f}%"),
-            ("Ambiental", "Emisiones de CO₂e Evitadas (Netas)", f"{impacto_co2_neto:.2f} kg CO₂e")
-        ]
-        for i, (col1_val, col2_val, col3_val) in enumerate(datos_impacto):
-            t2.rows[i].cells[0].text = col1_val
-            t2.rows[i].cells[1].text = col2_val
-            t2.rows[i].cells[2].text = col3_val
+    # 3. SECCIÓN 1: FICHA GENERAL DEL PROYECTO
+    elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
+    
+    data_ficha = [
+        [Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style), Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / {responsable}", cell_style)],
+        [Paragraph("Nombre del Proyecto", cell_bold), Paragraph(proyecto_nom, cell_style), Paragraph("Periodo de Ejecución", cell_bold), Paragraph(f"{fe_inicio} al {fe_fin}", cell_style)],
+        [Paragraph("Tipo de Material", cell_bold), Paragraph(tipo_material, cell_style), Paragraph("Tipo de Valorización", cell_bold), Paragraph(valorizacion, cell_style)],
+        [Paragraph("Guía de Remisión", cell_bold), Paragraph(guia_remision, cell_style), Paragraph("Unidad de Medida", cell_bold), Paragraph(unidad_medida, cell_style)],
+        [Paragraph("Punto de Origen", cell_bold), Paragraph(origen, cell_style), Paragraph("Punto de Destino", cell_bold), Paragraph(destino, cell_style)],
+    ]
+    t_ficha = Table(data_ficha, colWidths=[100, 170, 100, 170])
+    t_ficha.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F8FAFC')),
+        ('BACKGROUND', (2,0), (2,-1), colors.HexColor('#F8FAFC')),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    elements.append(t_ficha)
+    elements.append(Spacer(1, 10))
 
-        doc.add_heading("3. IMPACTO SOCIAL Y HORAS TRABAJADAS", level=2)
-        doc.add_paragraph(f"Durante el proyecto se generaron un total de {tot_horas_generadas:.1f} horas de trabajo directo repartidas entre las áreas de operaciones, corte, logística y producción descentralizada con artesanas.")
+    # 4. SECCIÓN 2: BALANCE DE MATERIALES Y EFICIENCIA
+    elements.append(Paragraph("2. BALANCE DE MATERIALES Y APROVECHAMIENTO", h2_style))
+    data_balance = [
+        [Paragraph("CONCEPTO", cell_bold), Paragraph("PESO (KG)", cell_bold), Paragraph("PARTICIPACIÓN (%)", cell_bold)],
+        [Paragraph("Material Recibido Total", cell_style), Paragraph(f"{kg_recibidos:.2f}", cell_style), Paragraph("100.00%", cell_style)],
+        [Paragraph("Material Transformado en Productos", cell_style), Paragraph(f"{kg_transformados:.2f}", cell_style), Paragraph(f"{pct_aprovechamiento:.2f}%", cell_style)],
+        [Paragraph("Pérdida / Residuo No Aprovechable", cell_style), Paragraph(f"{(kg_recibidos - kg_transformados):.2f}", cell_style), Paragraph(f"{(100 - pct_aprovechamiento):.2f}%", cell_style)],
+    ]
+    t_bal = Table(data_balance, colWidths=[240, 150, 150])
+    t_bal.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#E2E8F0')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    elements.append(t_bal)
+    
+    note_text = f"<b>Nota de Eficiencia:</b> El proceso presenta un alto nivel de aprovechamiento ({pct_aprovechamiento:.2f}%). La reincorporación de sobrantes como insumo interno redujo sustancialmente la generación de residuo final."
+    elements.append(Spacer(1, 4))
+    elements.append(Paragraph(note_text, cell_style))
 
-        buffer = io.BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
-        return buffer
+    # SALTO A PÁGINA 2
+    elements.append(PageBreak())
 
-    # Cargar proyectos desde Supabase
-    lista_proyectos = cargar_proyectos()
+    # 5. SECCIÓN 3: IMPACTO AMBIENTAL (CO2)
+    elements.append(Paragraph("3. BALANCE DE IMPACTO AMBIENTAL (HUELLA DE CARBONO Y CO₂ EVITADO)", h2_style))
+    
+    data_co2_box = [
+        [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Neto Positivo</b>", card_sub)],
+        [Paragraph(f"<b>{co2_evitado:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{emisiones_proceso:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{co2_neto:.2f} kg CO₂e</b>", card_title)]
+    ]
+    t_co2_box = Table(data_co2_box, colWidths=[180, 180, 180])
+    t_co2_box.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('PADDING', (0,0), (-1,-1), 6),
+    ]))
+    elements.append(t_co2_box)
+    elements.append(Spacer(1, 10))
 
-    # MENU 1: DASHBOARD CONSOLIDADOR
-    if opcion_menu == "📊 Dashboard 2026":
-        st.title("📊 Balance General e Indicadores 2026")
-        st.markdown("Resumen de impacto ambiental y social consolidado en tiempo real desde la Base de Datos.")
-        
-        if len(lista_proyectos) > 0:
-            df_hist = pd.DataFrame(lista_proyectos)
-            co2_total = df_hist["co2_neto"].sum()
-            textil_total = df_hist["peso_transformado"].sum()
-            horas_totales = df_hist["horas_totales"].sum()
-            prod_total = df_hist["productos_unids"].sum()
-        else:
-            co2_total, textil_total, horas_totales, prod_total = 0.0, 0.0, 0.0, 0
+    elements.append(Paragraph("Desglose de Emisiones Generadas durante la Operación:", cell_bold))
+    data_emisiones = [
+        [Paragraph("ETAPA OPERATIVA", cell_bold), Paragraph("EMISIONES (KG CO₂E)", cell_bold), Paragraph("PARTICIPACIÓN (%)", cell_bold)],
+        [Paragraph("Transporte y Logística", cell_style), Paragraph(f"{emisiones_transporte:.2f}", cell_style), Paragraph(f"{(emisiones_transporte/emisiones_proceso*100):.1f}%", cell_style)],
+        [Paragraph("Lavandería", cell_style), Paragraph(f"{emisiones_lavado:.2f}", cell_style), Paragraph(f"{(emisiones_lavado/emisiones_proceso*100):.1f}%", cell_style)],
+        [Paragraph("Corte", cell_style), Paragraph(f"{emisiones_corte:.2f}", cell_style), Paragraph(f"{(emisiones_corte/emisiones_proceso*100):.1f}%", cell_style)],
+        [Paragraph("Bordado y Acabados", cell_style), Paragraph(f"{emisiones_bordado:.2f}", cell_style), Paragraph(f"{(emisiones_bordado/emisiones_proceso*100):.1f}%", cell_style)],
+        [Paragraph("<b>TOTAL EMISIONES PROCESO</b>", cell_bold), Paragraph(f"<b>{emisiones_proceso:.2f}</b>", cell_bold), Paragraph("<b>100.0%</b>", cell_bold)],
+    ]
+    t_emisiones = Table(data_emisiones, colWidths=[240, 150, 150])
+    t_emisiones.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#E2E8F0')),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    elements.append(t_emisiones)
+    elements.append(Spacer(1, 15))
 
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("CO₂e Evitado Total", f"{co2_total:.2f} kg", "🌱 Impacto Ambiental")
-        col2.metric("Textil Procesado Total", f"{textil_total:.2f} kg", "♻️ Upcycling")
-        col3.metric("Horas Sociales Totales", f"{horas_totales:.1f} hrs", "👥 Confección + Corte")
-        col4.metric("Productos Obtenidos", f"{prod_total:,} unids", "📦 Producción")
+    # 6. SECCIÓN 4: IMPACTO SOCIAL Y TRABAJO GENERADO
+    elements.append(Paragraph("4. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
+    social_txt = f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{horas_totales:.2f} horas de trabajo directo</b> distribuidas entre <b>{cant_personas} participantes</b> en las etapas de clasificación, corte, confección y acabados."
+    elements.append(Paragraph(social_txt, cell_style))
 
-    # MENU 2: NUEVO PROYECTO
-    elif opcion_menu == "➕ Nuevo Proyecto":
-        st.title("➕ Registro de Proyecto de Upcycling")
-        st.markdown("Ingresa la información requerida por cada etapa del proceso.")
-        
-        with st.expander("📌 **ETAPA 1: Recepción y Datos del Cliente**", expanded=True):
-            c1, c2, c3 = st.columns(3)
-            cliente = c1.text_input("Nombre del Cliente / Razón Social", value="HILTI PERÚ S.A.")
-            ruc = c2.text_input("RUC del Cliente", value="20100000001")
-            codigo_proy = c3.text_input("Código del Proyecto", value="HILTI-MAR26")
-            
-            c4, c5, c6 = st.columns(3)
-            fecha_ejecucion = c4.text_input("Fecha / Período de Ejecución", value="Marzo - Abril 2026")
-            punto_origen = c5.text_input("Punto de Origen (Sede/Almacén de recojo)", value="Sede Central - Lima")
-            tipo_proyecto = c6.selectbox("Tipo de Proyecto", ["Upcycling de uniformes corporativos", "Transformación textil", "Donación circular"])
+    # CONSTRUCCIÓN DEL DOCUMENTO
+    doc.build(elements, canvasmaker=ReporteCanvas)
+    buffer.seek(0)
+    return buffer
 
-        with st.expander("👕 **ETAPA 2: Registro de Uniformes y Prendas Recibidas**", expanded=True):
-            df_prendas_default = pd.DataFrame([
-                {"Ítem": 1, "Descripción de Prenda": "POLERA", "Unidades": 100, "Peso Unitario (kg)": 1.0},
-                {"Ítem": 2, "Descripción de Prenda": "PANTALON DRILL", "Unidades": 200, "Peso Unitario (kg)": 1.0},
-                {"Ítem": 3, "Descripción de Prenda": "POLO", "Unidades": 100, "Peso Unitario (kg)": 1.0}
-            ])
-            df_prendas = st.data_editor(df_prendas_default, num_rows="dynamic", key="tabla_prendas")
-            df_prendas["Peso Total (kg)"] = df_prendas["Unidades"] * df_prendas["Peso Unitario (kg)"]
-            tot_unidades = df_prendas["Unidades"].sum()
-            tot_peso_recibido = df_prendas["Peso Total (kg)"].sum()
-            st.info(f"📦 **Total Prendas:** {tot_unidades} unidades | ⚖️ **Total Peso Recibido:** {tot_peso_recibido:.2f} kg")
 
-        with st.expander("🔄 **ETAPA 3: Trazabilidad de Etapas de Proceso**"):
-            df_trazabilidad_default = pd.DataFrame([
-                {"Etapa": "Clasificación", "Fecha": "2026-03-02", "Responsable": "Área de Logística", "Peso (kg)": 280.0, "Tipo de Registro": "Registro interno"},
-                {"Etapa": "Lavado", "Fecha": "2026-03-05", "Responsable": "Lavandería", "Peso (kg)": 280.0, "Tipo de Registro": "Servicio Externo"},
-                {"Etapa": "Corte", "Fecha": "2026-03-06", "Responsable": "Taller de corte", "Peso (kg)": 278.0, "Tipo de Registro": "Pesaje real"},
-                {"Etapa": "Confección", "Fecha": "2026-03-09", "Responsable": "Producción descentralizada", "Peso (kg)": 250.0, "Tipo de Registro": "Entrega / Recepción"}
-            ])
-            df_trazabilidad = st.data_editor(df_trazabilidad_default, num_rows="dynamic", key="tabla_trazabilidad")
+# --- INTERFAZ DE USUARIO STREAMLIT ---
+st.title("📄 Generador Oficial de PDF de Impacto")
+st.markdown("Completa los **datos clave** del proyecto para emitir automáticamente el **Informe Técnico Oficial de 2 Páginas**.")
 
-        with st.expander("🎁 **ETAPA 4: Salida de Productos Elaborados**"):
-            df_productos_default = pd.DataFrame([
-                {"Producto": "Cartucheras", "Cantidad (Unidades)": 2000, "Peso Unitario (kg)": 0.08},
-                {"Producto": "Mochilas", "Cantidad (Unidades)": 5200, "Peso Unitario (kg)": 0.11},
-                {"Producto": "Bolsos", "Cantidad (Unidades)": 2000, "Peso Unitario (kg)": 0.38}
-            ])
-            df_productos = st.data_editor(df_productos_default, num_rows="dynamic", key="tabla_productos")
-            df_productos["Peso Total (kg)"] = df_productos["Cantidad (Unidades)"] * df_productos["Peso Unitario (kg)"]
-            tot_prod_unids = df_productos["Cantidad (Unidades)"].sum()
-            tot_prod_peso = df_productos["Peso Total (kg)"].sum()
-            st.info(f"🎒 **Total Productos Elaborados:** {tot_prod_unids} unidades | ⚖️ **Peso Transformado:** {tot_prod_peso:.2f} kg")
+with st.form("form_datos_clave"):
+    st.subheader("1. Ficha del Proyecto")
+    c1, c2, c3 = st.columns(3)
+    cliente = c1.text_input("Cliente / Empresa", value="REAL PLAZA S.R.L.")
+    ruc = c2.text_input("RUC", value="20511315922")
+    codigo_proy = c3.text_input("Código de Proyecto", value="REAL PLAZA-JUL26")
 
-        with st.expander("👥 **ETAPA 5: Equipo de Trabajo y Generación de Horas**"):
-            col_equipo1, col_equipo2 = st.columns(2)
-            with col_equipo1:
-                st.markdown("**Corte y Logística**")
-                df_corte_default = pd.DataFrame([
-                    {"Nombre": "Maria Isabel Estrada Sandoval", "Días Trabajados": 5, "Horas/Día": 8.5},
-                    {"Nombre": "Genaro Jara García", "Días Trabajados": 4, "Horas/Día": 8.5},
-                    {"Nombre": "Luciana Jara Estrada", "Días Trabajados": 3, "Horas/Día": 8.5}
-                ])
-                df_corte = st.data_editor(df_corte_default, num_rows="dynamic", key="tabla_corte")
-                df_corte["Horas Totales"] = df_corte["Días Trabajados"] * df_corte["Horas/Día"]
-                tot_hrs_corte = df_corte["Horas Totales"].sum()
+    c4, c5, c6 = st.columns(3)
+    proyecto_nom = c4.text_input("Nombre del Proyecto", value="Upcycling de uniformes corporativos")
+    fe_inicio = c5.text_input("Fecha Inicio", value="27/05/2026")
+    fe_fin = c6.text_input("Fecha Término", value="09/07/2026")
 
-            with col_equipo2:
-                st.markdown("**Confección Descentralizada**")
-                df_conf_default = pd.DataFrame([
-                    {"Artesana / Nombre": "Felicita Sandoval Vílchez", "Producto": "Mochilas", "Cantidad (Unids)": 50, "Tiempo/Unid (hrs)": 0.5},
-                    {"Artesana / Nombre": "Nicolle Estrada", "Producto": "Bolsos", "Cantidad (Unids)": 40, "Tiempo/Unid (hrs)": 0.75}
-                ])
-                df_conf = st.data_editor(df_conf_default, num_rows="dynamic", key="tabla_confeccion")
-                df_conf["Horas Totales"] = df_conf["Cantidad (Unids)"] * df_conf["Tiempo/Unid (hrs)"]
-                tot_hrs_conf = df_conf["Horas Totales"].sum()
+    c7, c8, c9 = st.columns(3)
+    responsable = c7.text_input("Responsable", value="Pequeños Detalles S.A.C.")
+    area = c8.text_input("Área", value="Sostenibilidad")
+    guia_remision = c9.text_input("Nº Guía Remisión", value="001-0012568")
 
-        st.write("---")
-        
-        if st.button("🚀 Procesar Proyecto y Guardar Permanentemente", type="primary", use_container_width=True):
-            pct_aprovechamiento = (tot_prod_peso / tot_peso_recibido * 100) if tot_peso_recibido > 0 else 0
-            co2_evitado = tot_prod_peso * 7.00676
-            emisiones_proceso = tot_prod_peso * 0.61976
-            impacto_co2_neto = co2_evitado - emisiones_proceso
-            tot_horas_generadas = tot_hrs_corte + tot_hrs_conf
+    c10, c11 = st.columns(2)
+    origen = c10.text_input("Punto Origen", value="Av. Eduardo Avaroa 2403 - Jesús María")
+    destino = c11.text_input("Punto Destino", value="Las Flores, SJL - Lima")
 
-            nuevo_proyecto = {
-                "codigo": codigo_proy,
-                "cliente": cliente,
-                "fecha": fecha_ejecucion,
-                "peso_recibido": float(tot_peso_recibido),
-                "peso_transformado": float(tot_prod_peso),
-                "aprovechamiento": float(pct_aprovechamiento),
-                "co2_neto": float(impacto_co2_neto),
-                "horas_totales": float(tot_horas_generadas),
-                "productos_unids": float(tot_prod_unids),
-                "punto_origen": punto_origen,
-                "tipo_proyecto": tipo_proyecto,
-                "ruc": ruc
-            }
-            
-            if guardar_proyecto_db(nuevo_proyecto):
-                st.success(f"✅ ¡Proyecto **{codigo_proy}** guardado exitosamente en la Base de Datos permanentemente!")
-            
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Aprovechamiento", f"{pct_aprovechamiento:.1f}%")
-            m2.metric("CO₂e Neto Evitado", f"{impacto_co2_neto:.2f} kg")
-            m3.metric("Total Horas Sociales", f"{tot_horas_generadas:.1f} hrs")
-            m4.metric("Productos Obtenidos", f"{tot_prod_unids} unids")
+    st.write("---")
+    st.subheader("2. Métricas de Peso e Impacto Social")
+    m1, m2, m3, m4 = st.columns(4)
+    kg_recibidos = m1.number_input("Kg Recibidos", value=59.25)
+    kg_transformados = m2.number_input("Kg Transformados", value=53.00)
+    horas_totales = m3.number_input("Horas Generadas", value=337.73)
+    cant_personas = m4.number_input("Cantidad Personas", value=17, step=1)
 
-            word_buffer = generar_word(cliente, ruc, codigo_proy, punto_origen, tipo_proyecto, fecha_ejecucion, tot_peso_recibido, tot_prod_peso, pct_aprovechamiento, impacto_co2_neto, tot_horas_generadas)
-            
-            st.write("---")
-            st.download_button(
-                label="📄 Descargar Informe Técnico en Word (.docx)",
-                data=word_buffer,
-                file_name=f"Informe_Tecnico_{codigo_proy}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                use_container_width=True
-            )
+    st.write("---")
+    st.subheader("3. Desglose de Emisiones del Proceso (kg CO₂e)")
+    e1, e2, e3, e4 = st.columns(4)
+    emisiones_transporte = e1.number_input("Emisión Transporte", value=9.45)
+    emisiones_lavado = e2.number_input("Emisión Lavandería", value=3.90)
+    emisiones_corte = e3.number_input("Emisión Corte", value=2.96)
+    emisiones_bordado = e4.number_input("Emisión Bordado", value=8.18)
 
-    # MENU 3: HISTORIAL DE PROYECTOS REGISTRADOS
-    elif opcion_menu == "📁 Historial de Proyectos":
-        st.title("📁 Historial de Proyectos Registrados")
-        st.markdown("Proyectos almacenados en la nube de forma permanente.")
-        
-        if len(lista_proyectos) == 0:
-            st.warning("⚠️ Todavía no hay proyectos registrados. Ve a la pestaña '➕ Nuevo Proyecto' para crear uno.")
-        else:
-            df_hist_ver = pd.DataFrame(lista_proyectos)[
-                ["codigo", "cliente", "fecha", "peso_recibido", "peso_transformado", "co2_neto", "horas_totales"]
-            ]
-            
-            fila_totales = pd.DataFrame([{
-                "codigo": "🟢 TOTAL ACUMULADO",
-                "cliente": "-",
-                "fecha": "-",
-                "peso_recibido": df_hist_ver["peso_recibido"].sum(),
-                "peso_transformado": df_hist_ver["peso_transformado"].sum(),
-                "co2_neto": df_hist_ver["co2_neto"].sum(),
-                "horas_totales": df_hist_ver["horas_totales"].sum()
-            }])
-            
-            df_final = pd.concat([df_hist_ver, fila_totales], ignore_index=True)
-            
-            st.dataframe(
-                df_final,
-                column_config={
-                    "codigo": "Código",
-                    "cliente": "Cliente",
-                    "fecha": "Período",
-                    "peso_recibido": st.column_config.NumberColumn("Kg Recibidos", format="%.2f kg"),
-                    "peso_transformado": st.column_config.NumberColumn("Kg Transformados", format="%.2f kg"),
-                    "co2_neto": st.column_config.NumberColumn("CO₂e Evitado", format="%.2f kg"),
-                    "horas_totales": st.column_config.NumberColumn("Horas Sociales", format="%.1f hrs")
-                },
-                use_container_width=True
-            )
+    btn_generar_pdf = st.form_submit_button("🔥 Generar PDF Oficial", type="primary", use_container_width=True)
 
-            st.write("---")
-            st.subheader("📥 Re-descargar Informe de Proyecto")
-            
-            codigos_disponibles = [p["codigo"] for p in lista_proyectos]
-            proy_sel_cod = st.selectbox("Selecciona un proyecto:", codigos_disponibles)
-            
-            proy_sel = next(p for p in lista_proyectos if p["codigo"] == proy_sel_cod)
-            
-            word_buffer_hist = generar_word(
-                proy_sel["cliente"], proy_sel["ruc"], proy_sel["codigo"], 
-                proy_sel["punto_origen"], proy_sel["tipo_proyecto"], proy_sel["fecha"], 
-                float(proy_sel["peso_recibido"]), float(proy_sel["peso_transformado"]), 
-                float(proy_sel["aprovechamiento"]), float(proy_sel["co2_neto"]), float(proy_sel["horas_totales"])
-            )
-            
-            st.download_button(
-                label=f"📄 Descargar Informe Técnico de {proy_sel['codigo']}",
-                data=word_buffer_hist,
-                file_name=f"Informe_Tecnico_{proy_sel['codigo']}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                use_container_width=True
-            )
+if btn_generar_pdf:
+    pdf_oficial = generar_pdf_oficial(
+        cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
+        "Uniformes en desuso (operativos y administrativos)", "Upcycling", "Kilogramos (kg)",
+        guia_remision, origen, destino, kg_recibidos, kg_transformados, horas_totales,
+        cant_personas, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
+    )
+
+    # Guardar también en base de datos Supabase
+    try:
+        pct_aprovechamiento = (kg_transformados / kg_recibidos * 100) if kg_recibidos > 0 else 0
+        co2_evitado = kg_transformados * 7.3392
+        emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
+        co2_neto = co2_evitado - emisiones_proceso
+
+        supabase.table("proyectos").upsert({
+            "codigo": codigo_proy,
+            "cliente": cliente,
+            "fecha": f"{fe_inicio} - {fe_fin}",
+            "peso_recibido": kg_recibidos,
+            "peso_transformado": kg_transformados,
+            "aprovechamiento": pct_aprovechamiento,
+            "co2_neto": co2_neto,
+            "horas_totales": horas_totales,
+            "ruc": ruc
+        }).execute()
+        st.success("✅ Datos guardados correctamente en Supabase.")
+    except Exception as e:
+        st.warning(f"No se pudo guardar en Supabase: {e}")
+
+    st.download_button(
+        label=f"📥 DESCARGAR PDF OFICIAL ({codigo_proy}.pdf)",
+        data=pdf_oficial,
+        file_name=f"Informe_Tecnico_Upcycling_{codigo_proy}.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
