@@ -411,10 +411,10 @@ else:
         st.subheader("3. Trazabilidad del Proceso (Hitos, Fechas, Responsables, Peso y Registro)")
         
         default_trazabilidad = [
-            {"etapa": "Clasificación", "fecha": "27/05/2026", "resp": "Área de Logística", "peso": 59.25, "tipo": "Registro interno"},
-            {"etapa": "Lavado", "fecha": "29/05/2026", "resp": "Lavandería", "peso": 13.00, "tipo": "Servicio Externo"},
-            {"etapa": "Corte", "fecha": "12/06/2026", "resp": "Taller de corte", "peso": 59.25, "tipo": "Pesaje real"},
-            {"etapa": "Confección", "fecha": "09/07/2026", "resp": "Producción descentralizada", "peso": 53.00, "tipo": "Entrega / Recepción"},
+            {"etapa": "Clasificación", "fecha": datetime.date(2026, 5, 27), "resp": "Área de Logística", "peso": 59.25, "tipo": "Registro interno"},
+            {"etapa": "Lavado", "fecha": datetime.date(2026, 5, 29), "resp": "Lavandería", "peso": 13.00, "tipo": "Servicio Externo"},
+            {"etapa": "Corte", "fecha": datetime.date(2026, 6, 12), "resp": "Taller de corte", "peso": 59.25, "tipo": "Pesaje real"},
+            {"etapa": "Confección", "fecha": datetime.date(2026, 7, 9), "resp": "Producción descentralizada", "peso": 53.00, "tipo": "Entrega / Recepción"},
         ]
 
         if "num_trazas" not in st.session_state:
@@ -432,24 +432,28 @@ else:
 
         for i in range(st.session_state.num_trazas):
             st.markdown(f"**Etapa {i+1}**")
-            c_etapa, c_fecha, c_resp, c_peso, c_tipo, c_foto = st.columns([2, 1.5, 2, 1.5, 2, 2.5])
+            c_etapa, c_fecha, c_resp, c_peso, c_tipo, c_foto = st.columns([2, 1.8, 2, 1.5, 2, 2.5])
             
-            def_etapa = default_trazabilidad[i]["etapa"] if i < len(default_trazabilidad) else "Nueva Etapa"
-            def_fecha = default_trazabilidad[i]["fecha"] if i < len(default_trazabilidad) else "01/06/2026"
-            def_resp = default_trazabilidad[i]["resp"] if i < len(default_trazabilidad) else "Taller"
+            def_etapa = default_trazabilidad[i]["etapa"] if i < len(default_trazabilidad) else f"Etapa {i+1}"
+            def_fecha = default_trazabilidad[i]["fecha"] if i < len(default_trazabilidad) else datetime.date.today()
+            def_resp = default_trazabilidad[i]["resp"] if i < len(default_trazabilidad) else "Taller de corte"
             def_peso = default_trazabilidad[i]["peso"] if i < len(default_trazabilidad) else 50.00
             def_tipo = default_trazabilidad[i]["tipo"] if i < len(default_trazabilidad) else "Registro interno"
 
-            e_nom = c_etapa.text_input("Etapa", value=def_etapa, key=f"tr_etapa_{i}")
-            e_fec = c_fecha.text_input("Fecha", value=def_fecha, key=f"tr_fecha_{i}")
-            e_res = c_resp.text_input("Responsable", value=def_resp, key=f"tr_resp_{i}")
+            # Campos Fijos (disabled=True) y Selector de Fecha (st.date_input)
+            e_nom = c_etapa.text_input("Etapa", value=def_etapa, disabled=True, key=f"tr_etapa_{i}")
+            e_fec_val = c_fecha.date_input("Fecha", value=def_fecha, format="DD/MM/YYYY", key=f"tr_fecha_{i}")
+            e_res = c_resp.text_input("Responsable", value=def_resp, disabled=True, key=f"tr_resp_{i}")
             e_pes = c_peso.number_input("Peso (kg)", value=def_peso, step=0.1, key=f"tr_peso_{i}")
-            e_tip = c_tipo.text_input("Tipo Registro", value=def_tipo, key=f"tr_tipo_{i}")
+            e_tip = c_tipo.text_input("Tipo Registro", value=def_tipo, disabled=True, key=f"tr_tipo_{i}")
             e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
+
+            # Convertimos la fecha a string formateado DD/MM/YYYY para la BD y el PDF
+            e_fec_str = e_fec_val.strftime("%d/%m/%Y")
 
             lista_trazabilidad.append({
                 "etapa": e_nom,
-                "fecha": e_fec,
+                "fecha": e_fec_str,
                 "responsable": e_res,
                 "peso": e_pes,
                 "tipo_registro": e_tip,
