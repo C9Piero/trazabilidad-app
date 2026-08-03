@@ -18,6 +18,20 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- ESTILO CSS CUSTOM ---
+# Oculta los botones incrementales (+ y -) de los number_input
+st.markdown("""
+    <style>
+    /* Ocultar botones incrementales (+ y -) en inputs numéricos de Streamlit */
+    div[data-testid="stNumberInput"] button {
+        display: none !important;
+    }
+    div[data-testid="stNumberInput"] input {
+        text-align: left;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # --- 2. CONEXIÓN SUPABASE ---
 @st.cache_resource
 def init_supabase() -> Client:
@@ -52,8 +66,8 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.subheader("🔐 Iniciar Sesión")
-        usuario_input = st.text_input("Usuario", placeholder="Ingresa tu usuario")
-        password_input = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
+        usuario_input = st.text_input("Usuario")
+        password_input = st.text_input("Contraseña", type="password")
         
         if st.button("Ingresar al Sistema", use_container_width=True):
             if usuario_input == USUARIO_CORRECTO and password_input == PASSWORD_CORRECTO:
@@ -262,7 +276,7 @@ else:
 
         elements.append(PageBreak())
 
-        # --- 4. SALIDA DE PRODUCTOS (NUEVA TABLA SIMPLIFICADA) ---
+        # 4. SALIDA DE PRODUCTOS (TABLA DE 3 COLUMNAS)
         elements.append(Paragraph("4. SALIDA DE PRODUCTOS", h2_style))
         elements.append(Paragraph("Registro de productos obtenidos a partir del proceso de upcycling", sub_style))
 
@@ -298,7 +312,6 @@ else:
             Paragraph("-", cell_bold)
         ])
 
-        # Tabla con anchos optimizados para 3 columnas (Ancho total = 540pt)
         t_prod = Table(data_prod_pdf, colWidths=[240, 150, 150])
         t_prod.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
@@ -361,23 +374,23 @@ else:
         # 1. FICHA
         st.subheader("1. Ficha del Proyecto")
         c1, c2, c3 = st.columns(3)
-        cliente = c1.text_input("Cliente / Empresa", value="REAL PLAZA S.R.L.")
-        ruc = c2.text_input("RUC", value="20511315922")
-        codigo_proy = c3.text_input("Código de Proyecto", value="REAL PLAZA-JUL26")
+        cliente = c1.text_input("Cliente / Empresa", value="")
+        ruc = c2.text_input("RUC", value="")
+        codigo_proy = c3.text_input("Código de Proyecto", value="")
 
         c4, c5, c6 = st.columns(3)
-        proyecto_nom = c4.text_input("Nombre del Proyecto", value="Upcycling de uniformes corporativos")
-        fe_inicio = c5.text_input("Fecha Inicio", value="27/05/2026")
-        fe_fin = c6.text_input("Fecha Término", value="09/07/2026")
+        proyecto_nom = c4.text_input("Nombre del Proyecto", value="")
+        fe_inicio = c5.text_input("Fecha Inicio", value="")
+        fe_fin = c6.text_input("Fecha Término", value="")
 
         c7, c8, c9 = st.columns(3)
-        responsable = c7.text_input("Responsable", value="Pequeños Detalles S.A.C.")
-        area = c8.text_input("Área", value="Sostenibilidad")
-        guia_remision = c9.text_input("Nº Guía Remisión", value="001-0012568")
+        responsable = c7.text_input("Responsable", value="")
+        area = c8.text_input("Área", value="")
+        guia_remision = c9.text_input("Nº Guía Remisión", value="")
 
         c10, c11 = st.columns(2)
-        origen = c10.text_input("Punto Origen", value="Av. Eduardo Avaroa 2403 - Jesús María")
-        destino = c11.text_input("Punto Destino", value="Las Flores, SJL - Lima")
+        origen = c10.text_input("Punto Origen", value="")
+        destino = c11.text_input("Punto Destino", value="")
 
         st.write("---")
 
@@ -394,30 +407,22 @@ else:
             st.session_state.num_items -= 1
             st.rerun()
 
-        defaults_items = [
-            {"desc": "JEAN CINTA SEGURIDAD", "unid": 11, "peso": 0.70},
-            {"desc": "CHALECO ACOLCHADO", "unid": 17, "peso": 0.30},
-        ]
-
         lista_items = []
         peso_total_recibido = 0.0
 
         for i in range(st.session_state.num_items):
             st.markdown(f"**Material {i+1}**")
             col_desc, col_unid, col_peso, col_tot, col_foto = st.columns([3, 1.5, 1.5, 1.5, 3])
-            def_desc = defaults_items[i]["desc"] if i < len(defaults_items) else f"Prenda {i+1}"
-            def_unid = defaults_items[i]["unid"] if i < len(defaults_items) else 10
-            def_peso = defaults_items[i]["peso"] if i < len(defaults_items) else 0.40
 
-            desc = col_desc.text_input(f"Descripción", value=def_desc, key=f"desc_{i}")
-            unid = col_unid.number_input(f"Ingreso (unid.)", value=def_unid, min_value=1, key=f"unid_{i}")
-            peso_u = col_peso.number_input(f"Peso Unit. (kg)", value=def_peso, step=0.05, key=f"peso_{i}")
+            desc = col_desc.text_input("Descripción", value="", key=f"desc_{i}")
+            unid = col_unid.number_input("Ingreso (unid.)", min_value=0, value=0, key=f"unid_{i}")
+            peso_u = col_peso.number_input("Peso Unit. (kg)", min_value=0.0, value=0.0, step=0.05, key=f"peso_{i}")
             p_total = unid * peso_u
-            col_tot.text_input(f"Peso Total", value=f"{p_total:.2f} kg", disabled=True, key=f"tot_{i}")
-            foto = col_foto.file_uploader(f"Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
+            col_tot.text_input("Peso Total", value=f"{p_total:.2f} kg", disabled=True, key=f"tot_{i}")
+            foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
 
             peso_total_recibido += p_total
-            lista_items.append({"descripcion": desc, "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total, "foto": foto})
+            lista_items.append({"descripcion": desc if desc.strip() else f"Material {i+1}", "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total, "foto": foto})
 
         st.info(f"💡 **Total Material Recibido:** {peso_total_recibido:.2f} kg")
         st.write("---")
@@ -425,10 +430,10 @@ else:
         # 3. TRAZABILIDAD
         st.subheader("3. Trazabilidad del Proceso en Upcycling")
         etapas_fijas = [
-            {"etapa": "Clasificación", "fecha": datetime.date(2026, 5, 27), "resp": "Área de Logística", "peso": "59.25", "tipo": "Registro interno"},
-            {"etapa": "Lavado", "fecha": datetime.date(2026, 5, 29), "resp": "Lavandería", "peso": "13.00", "tipo": "Servicio Externo"},
-            {"etapa": "Corte", "fecha": datetime.date(2026, 6, 12), "resp": "Taller de corte", "peso": "59.25", "tipo": "Pesaje real"},
-            {"etapa": "Confección", "fecha": datetime.date(2026, 7, 9), "resp": "Producción descentralizada", "peso": "53.00", "tipo": "Entrega / Recepción"},
+            {"etapa": "Clasificación", "fecha": datetime.date.today(), "resp": "Área de Logística", "peso": "0.00", "tipo": "Registro interno"},
+            {"etapa": "Lavado", "fecha": datetime.date.today(), "resp": "Lavandería", "peso": "0.00", "tipo": "Servicio Externo"},
+            {"etapa": "Corte", "fecha": datetime.date.today(), "resp": "Taller de corte", "peso": "0.00", "tipo": "Pesaje real"},
+            {"etapa": "Confección", "fecha": datetime.date.today(), "resp": "Producción descentralizada", "peso": "0.00", "tipo": "Entrega / Recepción"},
         ]
         lista_trazabilidad = []
         for i, item_fijo in enumerate(etapas_fijas):
@@ -449,7 +454,7 @@ else:
 
         st.write("---")
 
-        # 4. SALIDA DE PRODUCTOS (INTERFAZ INTERACTIVA)
+        # 4. SALIDA DE PRODUCTOS (PLANTILLA COMPLETAMENTE EN BLANCO Y SIN BOTONES + / -)
         st.subheader("4. Salida de Productos (Nombre, Cantidad y Foto)")
 
         if "num_prods" not in st.session_state:
@@ -463,12 +468,6 @@ else:
             st.session_state.num_prods -= 1
             st.rerun()
 
-        defaults_prods = [
-            {"prod": "Mochila Pita", "cant": 220},
-            {"prod": "Circulo Llavero", "cant": 400},
-            {"prod": "Neceser Banner", "cant": 200},
-        ]
-
         lista_productos = []
         total_prod_unid = 0
 
@@ -476,37 +475,36 @@ else:
             st.markdown(f"**Producto {i+1}**")
             col_pnom, col_pcant, col_pfoto = st.columns([4, 2, 4])
 
-            def_pname = defaults_prods[i]["prod"] if i < len(defaults_prods) else f"Producto {i+1}"
-            def_pcant = defaults_prods[i]["cant"] if i < len(defaults_prods) else 50
-
-            p_nombre = col_pnom.text_input("Producto", value=def_pname, key=f"prod_nom_{i}")
-            p_cant = col_pcant.number_input("Cantidad (Unidad)", value=def_pcant, min_value=1, key=f"prod_cant_{i}")
+            # Campo de texto totalmente vacío
+            p_nombre = col_pnom.text_input("Producto", value="", key=f"prod_nom_{i}")
+            # Campo numérico en cero (sin botones + / - por CSS)
+            p_cant = col_pcant.number_input("Cantidad (Unidad)", min_value=0, value=0, key=f"prod_cant_{i}")
             p_foto = col_pfoto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}")
 
             total_prod_unid += p_cant
             lista_productos.append({
-                "producto": p_nombre,
+                "producto": p_nombre if p_nombre.strip() else f"Producto {i+1}",
                 "cantidad": p_cant,
                 "foto": p_foto
             })
 
-        st.success(f"📦 **Suma Total de Productos Obtencionados:** {total_prod_unid} unidades")
+        st.success(f"📦 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
 
         st.write("---")
 
         # 5. MÉTRICAS Y EMISIONES
         st.subheader("5. Métricas de Transformación, Trabajo Social y Emisiones")
         m1, m2, m3 = st.columns(3)
-        kg_transformados = m1.number_input("Kg Transformados en Productos", value=min(53.00, float(peso_total_recibido)))
-        horas_totales = m2.number_input("Horas Generadas", value=337.73)
-        cant_personas = m3.number_input("Cantidad Personas Beneficiadas", value=17, step=1)
+        kg_transformados = m1.number_input("Kg Transformados en Productos", min_value=0.0, value=0.0, step=0.1)
+        horas_totales = m2.number_input("Horas Generadas", min_value=0.0, value=0.0, step=0.5)
+        cant_personas = m3.number_input("Cantidad Personas Beneficiadas", min_value=0, value=0, step=1)
 
         st.markdown("**Desglose de Emisiones del Proceso (kg CO₂e)**")
         e1, e2, e3, e4 = st.columns(4)
-        emisiones_transporte = e1.number_input("Emisión Transporte", value=9.45)
-        emisiones_lavado = e2.number_input("Emisión Lavandería", value=3.90)
-        emisiones_corte = e3.number_input("Emisión Corte", value=2.96)
-        emisiones_bordado = e4.number_input("Emisión Bordado", value=8.18)
+        emisiones_transporte = e1.number_input("Emisión Transporte", min_value=0.0, value=0.0)
+        emisiones_lavado = e2.number_input("Emisión Lavandería", min_value=0.0, value=0.0)
+        emisiones_corte = e3.number_input("Emisión Corte", min_value=0.0, value=0.0)
+        emisiones_bordado = e4.number_input("Emisión Bordado", min_value=0.0, value=0.0)
 
         st.write("---")
 
@@ -519,8 +517,8 @@ else:
 
             try:
                 supabase.table("proyectos").insert({
-                    "codigo": codigo_proy,
-                    "cliente": cliente,
+                    "codigo": codigo_proy if codigo_proy else "SIN-CODIGO",
+                    "cliente": cliente if cliente else "CLIENTE GENERAL",
                     "fecha": f"{fe_inicio} - {fe_fin}",
                     "peso_recibido": peso_total_recibido,
                     "peso_transformado": kg_transformados,
@@ -542,9 +540,9 @@ else:
             )
 
             st.download_button(
-                label=f"📥 DESCARGAR INFORME EN PDF ({codigo_proy}.pdf)",
+                label=f"📥 DESCARGAR INFORME EN PDF ({codigo_proy if codigo_proy else 'INFORME'}.pdf)",
                 data=pdf_oficial,
-                file_name=f"Informe_Tecnico_{codigo_proy}.pdf",
+                file_name=f"Informe_Tecnico_{codigo_proy if codigo_proy else 'PROYECTO'}.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
