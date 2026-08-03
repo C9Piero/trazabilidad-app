@@ -3,7 +3,6 @@ import datetime
 import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
-from PIL import Image as PILImage
 
 # Importaciones para ReportLab
 from reportlab.lib.pagesizes import letter
@@ -215,7 +214,6 @@ else:
                 img_cell
             ])
 
-        # Fila Total combinada
         data_prendas_pdf.append([
             Paragraph("<b>TOTAL MATERIAL RECIBIDO</b>", cell_bold),
             "", 
@@ -407,55 +405,45 @@ else:
 
         st.write("---")
 
-        # 3. TRAZABILIDAD DEL PROCESO
+        # 3. TRAZABILIDAD DEL PROCESO (ESTÁTICO Y SIN MÁS O MENOS EN EL PESO)
         st.subheader("3. Trazabilidad del Proceso (Hitos, Fechas, Responsables, Peso y Registro)")
         
-        default_trazabilidad = [
-            {"etapa": "Clasificación", "fecha": datetime.date(2026, 5, 27), "resp": "Área de Logística", "peso": 59.25, "tipo": "Registro interno"},
-            {"etapa": "Lavado", "fecha": datetime.date(2026, 5, 29), "resp": "Lavandería", "peso": 13.00, "tipo": "Servicio Externo"},
-            {"etapa": "Corte", "fecha": datetime.date(2026, 6, 12), "resp": "Taller de corte", "peso": 59.25, "tipo": "Pesaje real"},
-            {"etapa": "Confección", "fecha": datetime.date(2026, 7, 9), "resp": "Producción descentralizada", "peso": 53.00, "tipo": "Entrega / Recepción"},
+        # Etapas fijas de la operación
+        etapas_fijas = [
+            {"etapa": "Clasificación", "fecha": datetime.date(2026, 5, 27), "resp": "Área de Logística", "peso": "59.25", "tipo": "Registro interno"},
+            {"etapa": "Lavado", "fecha": datetime.date(2026, 5, 29), "resp": "Lavandería", "peso": "13.00", "tipo": "Servicio Externo"},
+            {"etapa": "Corte", "fecha": datetime.date(2026, 6, 12), "resp": "Taller de corte", "peso": "59.25", "tipo": "Pesaje real"},
+            {"etapa": "Confección", "fecha": datetime.date(2026, 7, 9), "resp": "Producción descentralizada", "peso": "53.00", "tipo": "Entrega / Recepción"},
         ]
-
-        if "num_trazas" not in st.session_state:
-            st.session_state.num_trazas = 4
-
-        col_tb1, col_tb2, _ = st.columns([1, 1, 4])
-        if col_tb1.button("➕ Agregar Etapa"):
-            st.session_state.num_trazas += 1
-            st.rerun()
-        if col_tb2.button("➖ Quitar Etapa") and st.session_state.num_trazas > 1:
-            st.session_state.num_trazas -= 1
-            st.rerun()
 
         lista_trazabilidad = []
 
-        for i in range(st.session_state.num_trazas):
+        for i, item_fijo in enumerate(etapas_fijas):
             st.markdown(f"**Etapa {i+1}**")
             c_etapa, c_fecha, c_resp, c_peso, c_tipo, c_foto = st.columns([2, 1.8, 2, 1.5, 2, 2.5])
-            
-            def_etapa = default_trazabilidad[i]["etapa"] if i < len(default_trazabilidad) else f"Etapa {i+1}"
-            def_fecha = default_trazabilidad[i]["fecha"] if i < len(default_trazabilidad) else datetime.date.today()
-            def_resp = default_trazabilidad[i]["resp"] if i < len(default_trazabilidad) else "Taller de corte"
-            def_peso = default_trazabilidad[i]["peso"] if i < len(default_trazabilidad) else 50.00
-            def_tipo = default_trazabilidad[i]["tipo"] if i < len(default_trazabilidad) else "Registro interno"
 
-            # Campos Fijos (disabled=True) y Selector de Fecha (st.date_input)
-            e_nom = c_etapa.text_input("Etapa", value=def_etapa, disabled=True, key=f"tr_etapa_{i}")
-            e_fec_val = c_fecha.date_input("Fecha", value=def_fecha, format="DD/MM/YYYY", key=f"tr_fecha_{i}")
-            e_res = c_resp.text_input("Responsable", value=def_resp, disabled=True, key=f"tr_resp_{i}")
-            e_pes = c_peso.number_input("Peso (kg)", value=def_peso, step=0.1, key=f"tr_peso_{i}")
-            e_tip = c_tipo.text_input("Tipo Registro", value=def_tipo, disabled=True, key=f"tr_tipo_{i}")
+            # Etapa, Responsable y Tipo Registro son deshabilitados (fijos)
+            e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
+            e_fec_val = c_fecha.date_input("Fecha", value=item_fijo["fecha"], format="DD/MM/YYYY", key=f"tr_fecha_{i}")
+            e_res = c_resp.text_input("Responsable", value=item_fijo["resp"], disabled=True, key=f"tr_resp_{i}")
+            
+            # Peso como text_input sin botones + / -
+            e_pes_str = c_peso.text_input("Peso (kg)", value=item_fijo["peso"], key=f"tr_peso_{i}")
+            try:
+                e_pes_num = float(e_pes_str)
+            except ValueError:
+                e_pes_num = 0.0
+
+            e_tip = c_tipo.text_input("Tipo Registro", value=item_fijo["tipo"], disabled=True, key=f"tr_tipo_{i}")
             e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
 
-            # Convertimos la fecha a string formateado DD/MM/YYYY para la BD y el PDF
             e_fec_str = e_fec_val.strftime("%d/%m/%Y")
 
             lista_trazabilidad.append({
                 "etapa": e_nom,
                 "fecha": e_fec_str,
                 "responsable": e_res,
-                "peso": e_pes,
+                "peso": e_pes_num,
                 "tipo_registro": e_tip,
                 "foto": e_fot
             })
