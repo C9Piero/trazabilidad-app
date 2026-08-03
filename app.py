@@ -237,11 +237,11 @@ else:
         elements.append(t_prendas)
         elements.append(Spacer(1, 10))
 
-        # --- SECCIÓN 3: TRAZABILIDAD DEL PROCESO ---
-        elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN TRANSFORMACIÓN", h2_style))
+        # --- SECCIÓN 3: TRAZABILIDAD DEL PROCESO EN UPCYCLING ---
+        elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
         
+        # Sin la columna "Código Proyecto"
         data_traza_pdf = [[
-            Paragraph("Código Proyecto", cell_bold),
             Paragraph("Etapa", cell_bold),
             Paragraph("Fecha", cell_bold),
             Paragraph("Responsable", cell_bold),
@@ -262,7 +262,6 @@ else:
                 img_cell = Paragraph("Sin foto", cell_style)
 
             data_traza_pdf.append([
-                Paragraph(codigo_proy, cell_style),
                 Paragraph(t_item["etapa"], cell_style),
                 Paragraph(t_item["fecha"], cell_style),
                 Paragraph(t_item["responsable"], cell_style),
@@ -271,12 +270,13 @@ else:
                 img_cell
             ])
 
-        t_traza = Table(data_traza_pdf, colWidths=[80, 80, 65, 100, 55, 80, 80])
+        # Anchos ajustados para las 6 columnas resultantes
+        t_traza = Table(data_traza_pdf, colWidths=[90, 70, 130, 60, 100, 90])
         t_traza.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('ALIGN', (2,0), (4,-1), 'CENTER'),
+            ('ALIGN', (1,0), (3,-1), 'CENTER'),
             ('PADDING', (0,0), (-1,-1), 4),
         ]))
         elements.append(t_traza)
@@ -405,10 +405,9 @@ else:
 
         st.write("---")
 
-        # 3. TRAZABILIDAD DEL PROCESO (ESTÁTICO Y SIN MÁS O MENOS EN EL PESO)
+        # 3. TRAZABILIDAD DEL PROCESO EN UPCYCLING
         st.subheader("3. Trazabilidad del Proceso (Hitos, Fechas, Responsables, Peso y Registro)")
         
-        # Etapas fijas de la operación
         etapas_fijas = [
             {"etapa": "Clasificación", "fecha": datetime.date(2026, 5, 27), "resp": "Área de Logística", "peso": "59.25", "tipo": "Registro interno"},
             {"etapa": "Lavado", "fecha": datetime.date(2026, 5, 29), "resp": "Lavandería", "peso": "13.00", "tipo": "Servicio Externo"},
@@ -422,12 +421,10 @@ else:
             st.markdown(f"**Etapa {i+1}**")
             c_etapa, c_fecha, c_resp, c_peso, c_tipo, c_foto = st.columns([2, 1.8, 2, 1.5, 2, 2.5])
 
-            # Etapa, Responsable y Tipo Registro son deshabilitados (fijos)
             e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
             e_fec_val = c_fecha.date_input("Fecha", value=item_fijo["fecha"], format="DD/MM/YYYY", key=f"tr_fecha_{i}")
             e_res = c_resp.text_input("Responsable", value=item_fijo["resp"], disabled=True, key=f"tr_resp_{i}")
             
-            # Peso como text_input sin botones + / -
             e_pes_str = c_peso.text_input("Peso (kg)", value=item_fijo["peso"], key=f"tr_peso_{i}")
             try:
                 e_pes_num = float(e_pes_str)
