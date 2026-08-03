@@ -215,23 +215,26 @@ else:
                 img_cell
             ])
 
+        # Fila Total combinando Descripción y ajustando alineación
         data_prendas_pdf.append([
-            Paragraph("<b>TOTAL</b>", cell_bold),
-            Paragraph("-", cell_bold),
+            Paragraph("<b>TOTAL MATERIAL RECIBIDO</b>", cell_bold),
+            "", # Se deja vacío porque se combina con SPAN
             Paragraph(f"<b>{total_unidades}</b>", cell_bold),
             Paragraph("-", cell_bold),
             Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold),
             Paragraph("-", cell_bold)
         ])
 
-        t_prendas = Table(data_prendas_pdf, colWidths=[35, 175, 80, 75, 75, 100])
+        t_prendas = Table(data_prendas_pdf, colWidths=[30, 180, 80, 75, 75, 100])
         t_prendas.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
             ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+            ('SPAN', (0, -1), (1, -1)), # Combina Ítem y Descripción en la última fila
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('ALIGN', (2,0), (4,-1), 'CENTER'),
-            ('PADDING', (0,0), (-1,-1), 4),
+            ('ALIGN', (0,-1), (0,-1), 'LEFT'), # Alinea 'TOTAL MATERIAL RECIBIDO' a la izquierda
+            ('PADDING', (0,0), (-1,-1), 5),
         ]))
         elements.append(t_prendas)
 
