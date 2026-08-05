@@ -354,6 +354,7 @@ else:
         elements.append(t_balance)
         elements.append(Spacer(1, 6))
 
+        # NOTA EXPLICATIVA EXCLUSIVA PARA EL REPORTE PDF
         nota_style = ParagraphStyle('NotaBalance', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8, textColor=colors.HexColor('#334155'))
         elements.append(Paragraph("<b>Nota:</b> El proceso presenta un alto nivel de aprovechamiento del material, donde los retazos generados son reincorporados como insumo en nuevos productos, reduciendo la generación de residuos.", nota_style))
         elements.append(Spacer(1, 15))
@@ -535,6 +536,7 @@ else:
 
         total_procesado = mat_transformado + retazos_aprovechables + perdida_no_aprovechable
 
+        # CÁLCULOS EXACTOS SOBRE EL MATERIAL RECIBIDO TOTAL:
         if peso_total_recibido > 0:
             pct_aprovechamiento_total = ((mat_transformado + retazos_aprovechables) / peso_total_recibido) * 100
             pct_perdida = (perdida_no_aprovechable / peso_total_recibido) * 100
@@ -547,8 +549,6 @@ else:
         ind1.metric("Total Procesado", f"{total_procesado:.2f} kg")
         ind2.metric("% Aprovechamiento Total", f"{pct_aprovechamiento_total:.2f}%")
         ind3.metric("% Pérdida", f"{pct_perdida:.2f}%")
-
-        st.caption("📝 *Nota: El proceso presenta un alto nivel de aprovechamiento del material, donde los retazos generados son reincorporados como insumo en nuevos productos, reduciendo la generación de residuos.*")
         st.write("---")
 
         # 6. MÉTRICAS SOCIALES Y EMISIONES
