@@ -8,9 +8,14 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
 
+
+# ==============================================================================
+# 1. CLASE CANVAS PARA PIE DE PÁGINA DIVERSIFICADO Y NUMERACIÓN DUAL
+# ==============================================================================
 class ReporteCanvas(canvas.Canvas):
     """
-    Canvas personalizado para agregar pie de página con número de páginas.
+    Canvas personalizado para calcular y dibujar el número total de páginas 
+    y el pie de página oficial al construir el PDF.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,22 +30,30 @@ class ReporteCanvas(canvas.Canvas):
         for state in self._saved_page_states:
             self.__dict__.update(state)
             self.draw_page_number(num_pages)
-            canvas.Canvas.showPage(self)
-        canvas.Canvas.save(self)
+            super().showPage()
+        super().save()
 
     def draw_page_number(self, page_count):
         self.saveState()
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor("#64748B"))
+        
+        # Texto pie de página
         page_text = f"Página {self._pageNumber} de {page_count}"
         self.drawRightString(612 - 36, 20, page_text)
         self.drawString(36, 20, "Informe Técnico de Valorización Textil — Confidencial")
+        
+        # Línea divisoria inferior
         self.setStrokeColor(colors.HexColor("#CBD5E1"))
         self.setLineWidth(0.5)
         self.line(36, 32, 612 - 36, 32)
+        
         self.restoreState()
 
 
+# ==============================================================================
+# 2. FUNCIÓN PRINCIPAL DE GENERACIÓN DEL PDF
+# ==============================================================================
 def generar_pdf_oficial(
     cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
     tipo_material, valorizacion, unidad_medida, guia_remision, origen, destino,
@@ -50,29 +63,65 @@ def generar_pdf_oficial(
     horas_totales, cant_personas,
     co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
 ):
+    """
+    Genera un informe oficial en formato PDF en memoria (BytesIO)
+    con métricas de impacto ambiental, trazabilidad y gestión social.
+    """
+    # Cálculos dinámicos preliminares
     kg_recibidos = sum([item["peso_total"] for item in lista_items])
     emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
     co2_neto = co2_evitado_total - emisiones_proceso
 
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=letter, 
+        leftMargin=36, 
+        rightMargin=36, 
+        topMargin=36, 
+        bottomMargin=36
+    )
 
+    # --- ESTILOS DE TEXTO ---
     styles = getSampleStyleSheet()
-    h1_style = ParagraphStyle('H1', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, textColor=colors.HexColor('#1E293B'), alignment=1, spaceAfter=2)
-    sub_style = ParagraphStyle('Sub', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#64748B'), alignment=1, spaceAfter=12)
-    h2_style = ParagraphStyle('H2', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#0F172A'), spaceBefore=10, spaceAfter=6)
-    cell_style = ParagraphStyle('Cell', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#334155'), leading=10)
-    cell_bold = ParagraphStyle('CellB', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8, textColor=colors.HexColor('#0F172A'), leading=10)
-    card_title = ParagraphStyle('CardT', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#0F172A'), alignment=1)
-    card_sub = ParagraphStyle('CardS', parent=styles['Normal'], fontName='Helvetica', fontSize=7, textColor=colors.HexColor('#475569'), alignment=1)
+    
+    h1_style = ParagraphStyle(
+        'H1', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, 
+        textColor=colors.HexColor('#1E293B'), alignment=1, spaceAfter=2
+    )
+    sub_style = ParagraphStyle(
+        'Sub', parent=styles['Normal'], fontName='Helvetica', fontSize=8, 
+        textColor=colors.HexColor('#64748B'), alignment=1, spaceAfter=12
+    )
+    h2_style = ParagraphStyle(
+        'H2', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, 
+        textColor=colors.HexColor('#0F172A'), spaceBefore=10, spaceAfter=6
+    )
+    cell_style = ParagraphStyle(
+        'Cell', parent=styles['Normal'], fontName='Helvetica', fontSize=8, 
+        textColor=colors.HexColor('#334155'), leading=10
+    )
+    cell_bold = ParagraphStyle(
+        'CellB', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8, 
+        textColor=colors.HexColor('#0F172A'), leading=10
+    )
+    card_title = ParagraphStyle(
+        'CardT', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=12, 
+        textColor=colors.HexColor('#0F172A'), alignment=1
+    )
+    card_sub = ParagraphStyle(
+        'CardS', parent=styles['Normal'], fontName='Helvetica', fontSize=7, 
+        textColor=colors.HexColor('#475569'), alignment=1
+    )
 
     elements = []
 
-    # Encabezado
+    # --- ENCABEZADO PRINCIPAL ---
     elements.append(Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style))
     elements.append(Paragraph(f"Medición de Impacto Ambiental, Trazabilidad y Gestión Social de Upcycling<br/><b>CÓDIGO: {codigo_proy}</b>", sub_style))
 
-    # Tarjetas Métricas
+    # --- TARJETAS MÉTRICAS SUPERIORES ---
+    # NOTA: CO2e arreglado usando CO<sub>2</sub>e
     cards_data = [
         [
             Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", card_title),
@@ -98,7 +147,7 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 8))
 
-    # 1. Ficha General
+    # --- 1. FICHA GENERAL ---
     elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
     data_ficha = [
         [Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style), Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / {responsable}", cell_style)],
@@ -117,7 +166,7 @@ def generar_pdf_oficial(
     elements.append(t_ficha)
     elements.append(Spacer(1, 8))
 
-    # 2. Ingreso de Material
+    # --- 2. INGRESO DE MATERIAL ---
     elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
     data_prendas_pdf = [[
         Paragraph("Ítem", cell_bold), Paragraph("Tipo de Producto / Prenda", cell_bold),
@@ -131,7 +180,8 @@ def generar_pdf_oficial(
         if item.get("foto"):
             try:
                 img_data = io.BytesIO(item["foto"].read()) if hasattr(item["foto"], 'read') else item["foto"]
-                if hasattr(item["foto"], 'seek'): item["foto"].seek(0)
+                if hasattr(item["foto"], 'seek'): 
+                    item["foto"].seek(0)
                 img_cell = Image(img_data, width=45, height=45)
             except Exception:
                 img_cell = Paragraph("Sin foto", cell_style)
@@ -163,7 +213,7 @@ def generar_pdf_oficial(
     elements.append(t_prendas)
     elements.append(Spacer(1, 8))
 
-    # 3. Trazabilidad
+    # --- 3. TRAZABILIDAD ---
     elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
     data_traza_pdf = [[
         Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold),
@@ -175,7 +225,8 @@ def generar_pdf_oficial(
         if t_item.get("foto"):
             try:
                 img_data = io.BytesIO(t_item["foto"].read()) if hasattr(t_item["foto"], 'read') else t_item["foto"]
-                if hasattr(t_item["foto"], 'seek'): t_item["foto"].seek(0)
+                if hasattr(t_item["foto"], 'seek'): 
+                    t_item["foto"].seek(0)
                 img_cell = Image(img_data, width=45, height=35)
             except Exception:
                 img_cell = Paragraph("Sin foto", cell_style)
@@ -198,9 +249,10 @@ def generar_pdf_oficial(
     ]))
     elements.append(t_traza)
 
+    # Salto de página para separar contenido
     elements.append(PageBreak())
 
-    # 4. SALIDA DE PRODUCTOS
+    # --- 4. SALIDA DE PRODUCTOS ---
     elements.append(Paragraph("4. SALIDA DE PRODUCTOS", h2_style))
     elements.append(Paragraph("Registro de productos obtenidos a partir del proceso de upcycling", sub_style))
 
@@ -216,7 +268,8 @@ def generar_pdf_oficial(
         if p_item.get("foto"):
             try:
                 img_data = io.BytesIO(p_item["foto"].read()) if hasattr(p_item["foto"], 'read') else p_item["foto"]
-                if hasattr(p_item["foto"], 'seek'): p_item["foto"].seek(0)
+                if hasattr(p_item["foto"], 'seek'): 
+                    p_item["foto"].seek(0)
                 img_cell = Image(img_data, width=70, height=70)
             except Exception:
                 img_cell = Paragraph("Sin foto", cell_style)
@@ -248,7 +301,7 @@ def generar_pdf_oficial(
     elements.append(t_prod)
     elements.append(Spacer(1, 15))
 
-    # 5. BALANCE DE MATERIAL
+    # --- 5. BALANCE DE MATERIAL ---
     elements.append(Paragraph("5. BALANCE DE MATERIAL", h2_style))
     elements.append(Paragraph("Resumen del flujo y aprovechamiento del material procesado", sub_style))
 
@@ -276,15 +329,27 @@ def generar_pdf_oficial(
     elements.append(t_balance)
     elements.append(Spacer(1, 6))
 
-    nota_style = ParagraphStyle('NotaBalance', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8, textColor=colors.HexColor('#334155'))
+    nota_style = ParagraphStyle(
+        'NotaBalance', parent=styles['Normal'], fontName='Helvetica-Oblique', 
+        fontSize=8, textColor=colors.HexColor('#334155')
+    )
     elements.append(Paragraph("<b>Nota:</b> El proceso presenta un alto nivel de aprovechamiento del material, donde los retazos generados son reincorporados como insumo en nuevos productos, reduciendo la generación de residuos.", nota_style))
     elements.append(Spacer(1, 15))
 
-    # 6. BALANCE DE IMPACTO AMBIENTAL (USANDO <sub>2</sub>)
+    # --- 6. IMPACTO AMBIENTAL (SECCIÓN CORREGIDA CON HTML SUB) ---
     elements.append(Paragraph("6. RESUMEN DE IMPACTO AMBIENTAL DEL PROYECTO (CO<sub>2</sub>e)", h2_style))
+    
     data_co2_box = [
-        [Paragraph("<b>(+) CO<sub>2</sub> Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Ambiental Neto</b>", card_sub)],
-        [Paragraph(f"<b>{co2_evitado_total:.2f} kg CO<sub>2</sub>e</b>", card_title), Paragraph(f"<b>{emisiones_proceso:.2f} kg CO<sub>2</sub>e</b>", card_title), Paragraph(f"<b>{co2_neto:.2f} kg CO<sub>2</sub>e</b>", card_title)]
+        [
+            Paragraph("<b>(+) CO<sub>2</sub> Evitado por Upcycling</b>", card_sub), 
+            Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), 
+            Paragraph("<b>(=) Impacto Ambiental Neto</b>", card_sub)
+        ],
+        [
+            Paragraph(f"<b>{co2_evitado_total:.2f} kg CO<sub>2</sub>e</b>", card_title), 
+            Paragraph(f"<b>{emisiones_proceso:.2f} kg CO<sub>2</sub>e</b>", card_title), 
+            Paragraph(f"<b>{co2_neto:.2f} kg CO<sub>2</sub>e</b>", card_title)
+        ]
     ]
     t_co2_box = Table(data_co2_box, colWidths=[180, 180, 180])
     t_co2_box.setStyle(TableStyle([
@@ -297,7 +362,10 @@ def generar_pdf_oficial(
     elements.append(Spacer(1, 10))
 
     # Interpretación
-    interp_style = ParagraphStyle('Interp', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1E293B'), alignment=1)
+    interp_style = ParagraphStyle(
+        'Interp', parent=styles['Normal'], fontName='Helvetica', fontSize=8, 
+        textColor=colors.HexColor('#1E293B'), alignment=1
+    )
     elements.append(Paragraph(f"<b>Interpretación de resultados:</b><br/>El proceso de upcycling permitió evitar la emisión de <b>{co2_neto:.2f} kg de CO<sub>2</sub>e</b> en comparación con la producción de material textil nuevo.", interp_style))
     elements.append(Spacer(1, 10))
 
@@ -324,14 +392,72 @@ def generar_pdf_oficial(
     elements.append(t_emisiones)
     elements.append(Spacer(1, 6))
 
-    nota_emision = ParagraphStyle('NotaEmi', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=7.5, textColor=colors.HexColor('#475569'), alignment=1)
+    nota_emision = ParagraphStyle(
+        'NotaEmi', parent=styles['Normal'], fontName='Helvetica-Oblique', 
+        fontSize=7.5, textColor=colors.HexColor('#475569'), alignment=1
+    )
     elements.append(Paragraph("Nota: Las emisiones fueron estimadas considerando factores de emisión por tipo de proceso y transporte.<br/>Las emisiones generadas durante el proceso representaron una fracción menor frente al impacto positivo obtenido, evidenciando la eficiencia ambiental del modelo de reaprovechamiento.", nota_emision))
     elements.append(Spacer(1, 15))
 
-    # 7. Impacto Social
+    # --- 7. IMPACTO SOCIAL ---
     elements.append(Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
     elements.append(Paragraph(f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{horas_totales:.2f} horas de trabajo directo</b> distribuidas entre <b>{cant_personas} participantes</b>.", cell_style))
 
+    # Construir PDF
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
     return buffer
+
+
+# ==============================================================================
+# 3. BLOQUE DE EJECUCIÓN PRÁCTICA / PRUEBA
+# ==============================================================================
+if __name__ == "__main__":
+    print("Generando archivo PDF de prueba...")
+    
+    # Datos sintéticos de prueba
+    pdf_resultado = generar_pdf_oficial(
+        cliente="Empresa Ejemplo S.A.C.",
+        ruc="20123456789",
+        proyecto_nom="Upcycling Uniformes 2024",
+        codigo_proy="PROY-2024-001",
+        fe_inicio="01/02/2024",
+        fe_fin="15/02/2024",
+        responsable="Juan Pérez",
+        area="Sostenibilidad",
+        tipo_material="Textil / Poliéster",
+        valorizacion="Upcycling",
+        unidad_medida="Kilogramos (kg)",
+        guia_remision="GR-001-9876",
+        origen="Almacén Central",
+        destino="Taller Upcycling",
+        lista_items=[
+            {"descripcion": "Polos Usados Corporativos", "unidades": 100, "peso_unitario": 0.25, "peso_total": 25.0, "foto": None}
+        ],
+        lista_trazabilidad=[
+            {"etapa": "Recepción y Selección", "fecha": "01/02/2024", "responsable": "Maria L.", "peso": 25.0, "tipo_registro": "Ingreso Almacén", "foto": None}
+        ],
+        lista_productos=[
+            {"producto": "Cartucheras Ecológicas", "cantidad": 80, "foto": None}
+        ],
+        mat_transformado=20.0,
+        retazos_aprovechables=3.5,
+        perdida_no_aprovechable=1.5,
+        total_procesado=25.0,
+        pct_aprovechamiento_total=94.0,
+        pct_perdida=6.0,
+        horas_totales=45.0,
+        cant_personas=3,
+        co2_evitado_total=120.0,
+        emisiones_transporte=2.5,
+        emisiones_lavado=1.2,
+        emisiones_corte=0.5,
+        emisiones_bordado=0.8
+    )
+
+    # Guardar en disco duro
+    nombre_archivo = "Informe_Valorizacion_Textil.pdf"
+    with open(nombre_archivo, "wb") as f:
+        f.write(pdf_resultado.read())
+        
+    print(f"¡Éxito! El PDF fue guardado correctamente como '{nombre_archivo}'.")
