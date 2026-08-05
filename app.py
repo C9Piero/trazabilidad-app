@@ -11,7 +11,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
 
-# --- DICCIONARIO BASE DE DATOS DE FACTORES DE EMISIÓN DE CO2 ---
+# --- FACTORES DE EMISIÓN DE MATERIALES (CO2 EVITADO) ---
 FACTORES_CO2 = {
     "Banner": 9.5,
     "Bata de laboratorio": 6.575,
@@ -71,6 +71,24 @@ FACTORES_CO2 = {
     "Short": 6.575,
     "Toalla": 5.0,
     "Otro": 6.575
+}
+
+# --- FACTORES DE TRANSPORTE ---
+FACTORES_TRANSPORTE = {
+    "Auto": {"consumo": 0.10, "factor": 2.31},
+    "Minivan": {"consumo": 0.12, "factor": 2.00},
+    "Mototaxi": {"consumo": 0.04, "factor": 2.31},
+    "Moto": {"consumo": 0.03, "factor": 2.31},
+    "Camión mediano": {"consumo": 0.30, "factor": 2.68},
+    "Camión grande": {"consumo": 0.40, "factor": 2.68}
+}
+
+# --- FACTORES DE BORDADO ---
+FACTORES_BORDADO = {
+    "Sin bordado / Ninguno": 0.0,
+    "Simple (5 min/pieza)": 0.020,
+    "Medio (9 min/pieza)": 0.037,
+    "Complejo (10 min/pieza)": 0.041
 }
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
@@ -418,9 +436,9 @@ else:
         elements.append(Spacer(1, 15))
 
         # 6. BALANCE DE IMPACTO AMBIENTAL
-        elements.append(Paragraph("6. BALANCE DE IMPACTO AMBIENTAL (HUELLA DE CARBONO Y CO₂ EVITADO)", h2_style))
+        elements.append(Paragraph("6. RESUMEN DE IMPACTO AMBIENTAL DEL PROYECTO (CO₂e)", h2_style))
         data_co2_box = [
-            [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Neto Positivo</b>", card_sub)],
+            [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Ambiental Neto</b>", card_sub)],
             [Paragraph(f"<b>{co2_evitado_total:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{emisiones_proceso:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{co2_neto:.2f} kg CO₂e</b>", card_title)]
         ]
         t_co2_box = Table(data_co2_box, colWidths=[180, 180, 180])
@@ -433,22 +451,36 @@ else:
         elements.append(t_co2_box)
         elements.append(Spacer(1, 10))
 
+        # Interpretación
+        interp_style = ParagraphStyle('Interp', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1E293B'), alignment=1)
+        elements.append(Paragraph(f"<b>Interpretación de resultados:</b><br/>El proceso de upcycling permitió evitar la emisión de <b>{co2_neto:.2f} kg de CO₂e</b> en comparación con la producción de material textil nuevo.", interp_style))
+        elements.append(Spacer(1, 10))
+
+        # Desglose de Emisiones
+        elements.append(Paragraph("<b>Desglose de emisiones del proceso (kg CO₂e)</b>", ParagraphStyle('SubSub', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#0F172A'), alignment=1)))
+        elements.append(Spacer(1, 4))
+
         data_emisiones = [
-            [Paragraph("ETAPA OPERATIVA", cell_bold), Paragraph("EMISIONES (KG CO₂E)", cell_bold), Paragraph("PARTICIPACIÓN (%)", cell_bold)],
-            [Paragraph("Transporte y Logística", cell_style), Paragraph(f"{emisiones_transporte:.2f}", cell_style), Paragraph(f"{(emisiones_transporte/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
+            [Paragraph("<b>Etapa</b>", cell_bold), Paragraph("<b>Emisiones (kg CO₂e)</b>", cell_bold), Paragraph("<b>Participación (%)</b>", cell_bold)],
+            [Paragraph("Transporte", cell_style), Paragraph(f"{emisiones_transporte:.2f}", cell_style), Paragraph(f"{(emisiones_transporte/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
             [Paragraph("Lavandería", cell_style), Paragraph(f"{emisiones_lavado:.2f}", cell_style), Paragraph(f"{(emisiones_lavado/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
             [Paragraph("Corte", cell_style), Paragraph(f"{emisiones_corte:.2f}", cell_style), Paragraph(f"{(emisiones_corte/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
-            [Paragraph("Bordado y Acabados", cell_style), Paragraph(f"{emisiones_bordado:.2f}", cell_style), Paragraph(f"{(emisiones_bordado/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
-            [Paragraph("<b>TOTAL EMISIONES PROCESO</b>", cell_bold), Paragraph(f"<b>{emisiones_proceso:.2f}</b>", cell_bold), Paragraph("<b>100.0%</b>", cell_bold)],
+            [Paragraph("Bordado", cell_style), Paragraph(f"{emisiones_bordado:.2f}", cell_style), Paragraph(f"{(emisiones_bordado/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
+            [Paragraph("<b>TOTAL</b>", cell_bold), Paragraph(f"<b>{emisiones_proceso:.2f}</b>", cell_bold), Paragraph("<b>100.0%</b>", cell_bold)],
         ]
         t_emisiones = Table(data_emisiones, colWidths=[240, 150, 150])
         t_emisiones.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#E2E8F0')),
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
             ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+            ('ALIGN', (1,0), (-1,-1), 'CENTER'),
             ('PADDING', (0,0), (-1,-1), 5),
         ]))
         elements.append(t_emisiones)
+        elements.append(Spacer(1, 6))
+
+        nota_emision = ParagraphStyle('NotaEmi', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=7.5, textColor=colors.HexColor('#475569'), alignment=1)
+        elements.append(Paragraph("Nota: Las emisiones fueron estimadas considerando factores de emisión por tipo de proceso y transporte.<br/>Las emisiones generadas durante el proceso representaron una fracción menor frente al impacto positivo obtenido, evidenciando la eficiencia ambiental del modelo de reaprovechamiento.", nota_emision))
         elements.append(Spacer(1, 15))
 
         # 7. Impacto Social
@@ -516,7 +548,6 @@ else:
             col_tot.text_input("Peso Total", value=f"{p_total:.2f} kg", disabled=True, key=f"tot_{i}")
             foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
 
-            # Factor CO2 para esta prenda
             factor = FACTORES_CO2.get(desc, 6.575)
             co2_item = p_total * factor
             co2_evitado_total += co2_item
@@ -543,6 +574,9 @@ else:
             {"etapa": "Confección", "fecha": datetime.date.today(), "resp": "Producción descentralizada", "peso": "0.00", "tipo": "Entrega / Recepción"},
         ]
         lista_trazabilidad = []
+        peso_lavado_auto = 0.0
+        peso_corte_auto = 0.0
+
         for i, item_fijo in enumerate(etapas_fijas):
             st.markdown(f"**Etapa {i+1}**")
             c_etapa, c_fecha, c_resp, c_peso, c_tipo, c_foto = st.columns([2, 1.8, 2, 1.5, 2, 2.5])
@@ -554,6 +588,12 @@ else:
                 e_pes_num = float(e_pes_str)
             except ValueError:
                 e_pes_num = 0.0
+            
+            if item_fijo["etapa"] == "Lavado":
+                peso_lavado_auto = e_pes_num
+            elif item_fijo["etapa"] == "Corte":
+                peso_corte_auto = e_pes_num
+
             e_tip = c_tipo.text_input("Tipo Registro", value=item_fijo["tipo"], disabled=True, key=f"tr_tipo_{i}")
             e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
 
@@ -623,30 +663,57 @@ else:
         ind3.metric("% Pérdida", f"{pct_perdida:.2f}%")
         st.write("---")
 
-        # 6. MÉTRICAS SOCIALES Y EMISIONES
-        st.subheader("6. Métricas de Trabajo Social y Emisiones del Proceso")
-        
-        # Muestra el CO2 evitado suma de prendas ingresadas
-        st.success(f"🌱 **CO₂ Evitado por prendas recibidas (Suma total):** {co2_evitado_total:.2f} kg CO₂e")
+        # 6. CÁLCULO DE EMISIONES Y MÉTRICAS SOCIALES
+        st.subheader("6. Balance de Emisiones del Proceso e Impacto Social")
 
+        # A. TRANSPORTE
+        st.markdown("##### 🚗 A. Cálculo de Transporte")
+        ct1, ct2, ct3 = st.columns(3)
+        vehiculo_sel = ct1.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()))
+        recorrido_tipo = ct2.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"])
+        distancia_km = ct3.number_input("Distancia Recorrida (km)", min_value=0.0, value=0.0, step=0.5)
+
+        factor_veh = FACTORES_TRANSPORTE[vehiculo_sel]
+        mult_recorrido = 2.0 if "2" in recorrido_tipo else 1.0
+        emisiones_transporte = distancia_km * mult_recorrido * factor_veh["consumo"] * factor_veh["factor"]
+
+        st.caption(f"Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
+
+        # B. LAVANDERÍA Y CORTE (Automáticos desde Trazabilidad)
+        st.markdown("##### 🧼 B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
+        emisiones_lavado = peso_lavado_auto * 0.30
+        emisiones_corte = peso_corte_auto * 0.05
+
+        clav, ccort = st.columns(2)
+        clav.info(f"**Lavandería ({peso_lavado_auto:.2f} kg):** {emisiones_lavado:.2f} kg CO₂e *(Factor: 0.30)*")
+        ccort.info(f"**Corte ({peso_corte_auto:.2f} kg):** {emisiones_corte:.2f} kg CO₂e *(Factor: 0.05)*")
+
+        # C. BORDADO
+        st.markdown("##### 🪡 C. Cálculo de Bordado")
+        cb1, cb2 = st.columns(2)
+        cant_prendas_bordado = cb1.number_input("Cantidad de prendas que requieren bordado", min_value=0, value=0, step=1)
+        tipo_diseno_bordado = cb2.selectbox("Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()))
+
+        factor_bordado = FACTORES_BORDADO[tipo_diseno_bordado]
+        emisiones_bordado = cant_prendas_bordado * factor_bordado
+
+        st.caption(f"Emisión de Bordado estimada: **{emisiones_bordado:.2f} kg CO₂e**")
+
+        # RESUMEN EMISIONES
+        emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
+        co2_neto = co2_evitado_total - emisiones_proceso
+
+        st.warning(f"🔥 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
+
+        st.markdown("##### 👥 D. Impacto Social")
         m1, m2 = st.columns(2)
         horas_totales = m1.number_input("Horas Generadas", min_value=0.0, value=0.0, step=0.5)
         cant_personas = m2.number_input("Cantidad Personas Beneficiadas", min_value=0, value=0, step=1)
-
-        st.markdown("**Desglose de Emisiones del Proceso (kg CO₂e)**")
-        e1, e2, e3, e4 = st.columns(4)
-        emisiones_transporte = e1.number_input("Emisión Transporte", min_value=0.0, value=0.0)
-        emisiones_lavado = e2.number_input("Emisión Lavandería", min_value=0.0, value=0.0)
-        emisiones_corte = e3.number_input("Emisión Corte", min_value=0.0, value=0.0)
-        emisiones_bordado = e4.number_input("Emisión Bordado", min_value=0.0, value=0.0)
 
         st.write("---")
 
         # BOTÓN GENERADOR
         if st.button("🔥 Generar PDF Oficial y Guardar", type="primary", use_container_width=True):
-            emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
-            co2_neto = co2_evitado_total - emisiones_proceso
-
             try:
                 supabase.table("proyectos").insert({
                     "codigo": codigo_proy if codigo_proy else "SIN-CODIGO",
