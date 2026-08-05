@@ -11,6 +11,68 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
 
+# --- DICCIONARIO BASE DE DATOS DE FACTORES DE EMISIÓN DE CO2 ---
+FACTORES_CO2 = {
+    "Banner": 9.5,
+    "Bata de laboratorio": 6.575,
+    "Bolsas": 8.0,
+    "Camisa": 6.575,
+    "Camisa algodón": 5.0,
+    "Camisa drill": 5.9,
+    "Camisa ignífuga": 5.35,
+    "Camisa jean / denim": 5.0,
+    "Camisaco": 5.0,
+    "Camisaco drill": 5.9,
+    "Camisaco drill con cinta": 6.25,
+    "Casaca": 6.575,
+    "Casaca drill": 5.9,
+    "Casaca polar": 6.0,
+    "Casaca polar con cinta reflectiva": 6.3,
+    "Casaca térmica": 6.1,
+    "Chaleco": 6.575,
+    "Chaleco con cinta": 6.925,
+    "Chaleco de seguridad": 9.75,
+    "Chaleco Fluorescente": 9.625,
+    "Chaleco polar": 6.0,
+    "Chaleco reversible": 9.5,
+    "Chompa": 7.1,
+    "Chompa con cinta reflectiva": 7.45,
+    "Chompa Jorge Chavez": 6.0,
+    "Chompa Jorge Chavez con cinta reflectiva": 6.3,
+    "Chompa polar": 6.0,
+    "Enterizo": 6.575,
+    "Gorro": 7.925,
+    "Impermeable": 9.425,
+    "Mameluco": 6.575,
+    "Mameluco acolchado": 5.825,
+    "Mameluco drill": 5.9,
+    "Mameluco jean reflectivo": 5.35,
+    "Merma": 6.575,
+    "Overol": 6.575,
+    "Pantalón": 6.575,
+    "Pantalón algodón": 5.0,
+    "Pantalón drill": 5.9,
+    "Pantalón drill con cinta": 6.25,
+    "Pantalón ignífugo": 5.35,
+    "Pantalón jean": 5.0,
+    "Pantalón jean / drill": 5.675,
+    "Pantalón jean con cinta reflectiva": 5.35,
+    "Pantalón polar": 6.0,
+    "Pantalón térmico": 6.0,
+    "Polera": 5.0,
+    "Polera polar": 6.0,
+    "Polo": 6.8,
+    "Polo algodón": 5.0,
+    "Polo con cinta reflectiva": 6.925,
+    "Polo manga corta": 6.8,
+    "Polo manga larga": 6.8,
+    "Polo manga larga con cinta reflectiva": 6.7,
+    "Polo piqué": 5.0,
+    "Short": 6.575,
+    "Toalla": 5.0,
+    "Otro": 6.575
+}
+
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
     page_title="Control Interno - Pequeños Detalles",
@@ -19,10 +81,8 @@ st.set_page_config(
 )
 
 # --- ESTILO CSS CUSTOM ---
-# Oculta los botones incrementales (+ y -) de los number_input
 st.markdown("""
     <style>
-    /* Ocultar botones incrementales (+ y -) en inputs numéricos de Streamlit */
     div[data-testid="stNumberInput"] button {
         display: none !important;
     }
@@ -125,12 +185,11 @@ else:
         mat_transformado, retazos_aprovechables, perdida_no_aprovechable, total_procesado,
         pct_aprovechamiento_total, pct_perdida,
         horas_totales, cant_personas,
-        emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
+        co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
     ):
         kg_recibidos = sum([item["peso_total"] for item in lista_items])
-        co2_evitado = mat_transformado * 7.3392
         emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
-        co2_neto = co2_evitado - emisiones_proceso
+        co2_neto = co2_evitado_total - emisiones_proceso
 
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
@@ -198,8 +257,8 @@ else:
         # 2. Ingreso de Material
         elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
         data_prendas_pdf = [[
-            Paragraph("Ítem", cell_bold), Paragraph("Descripción", cell_bold),
-            Paragraph("Ingreso (unidades)", cell_bold), Paragraph("Peso unitario (kg)", cell_bold),
+            Paragraph("Ítem", cell_bold), Paragraph("Tipo de Producto / Prenda", cell_bold),
+            Paragraph("Ingreso (unid)", cell_bold), Paragraph("Peso unit. (kg)", cell_bold),
             Paragraph("Peso total (kg)", cell_bold), Paragraph("Evidencia", cell_bold)
         ]]
 
@@ -332,11 +391,11 @@ else:
 
         data_balance = [
             [Paragraph("<b>Concepto</b>", cell_bold), Paragraph("<b>Cantidad (kg)</b>", cell_bold)],
-            [Paragraph("Material recibido", cell_style), Paragraph(f"{kg_recibidos:.1f}", cell_style)],
-            [Paragraph("Material transformado en productos", cell_style), Paragraph(f"{mat_transformado:.1f}", cell_style)],
-            [Paragraph("Retazos aprovechables", cell_style), Paragraph(f"{retazos_aprovechables:.1f}", cell_style)],
-            [Paragraph("Pérdida no aprovechable", cell_style), Paragraph(f"{perdida_no_aprovechable:.1f}", cell_style)],
-            [Paragraph("<b>Total procesado</b>", cell_bold), Paragraph(f"<b>{total_procesado:.1f}</b>", cell_bold)],
+            [Paragraph("Material recibido", cell_style), Paragraph(f"{kg_recibidos:.2f}", cell_style)],
+            [Paragraph("Material transformado en productos", cell_style), Paragraph(f"{mat_transformado:.2f}", cell_style)],
+            [Paragraph("Retazos aprovechables", cell_style), Paragraph(f"{retazos_aprovechables:.2f}", cell_style)],
+            [Paragraph("Pérdida no aprovechable", cell_style), Paragraph(f"{perdida_no_aprovechable:.2f}", cell_style)],
+            [Paragraph("<b>Total procesado</b>", cell_bold), Paragraph(f"<b>{total_procesado:.2f}</b>", cell_bold)],
             [Paragraph("<b>Indicador</b>", cell_bold), Paragraph("<b>Valor</b>", cell_bold)],
             [Paragraph("% aprovechamiento total", cell_style), Paragraph(f"{pct_aprovechamiento_total:.2f}%", cell_style)],
             [Paragraph("% pérdida", cell_style), Paragraph(f"{pct_perdida:.2f}%", cell_style)],
@@ -354,16 +413,15 @@ else:
         elements.append(t_balance)
         elements.append(Spacer(1, 6))
 
-        # NOTA EXPLICATIVA EXCLUSIVA PARA EL REPORTE PDF
         nota_style = ParagraphStyle('NotaBalance', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8, textColor=colors.HexColor('#334155'))
         elements.append(Paragraph("<b>Nota:</b> El proceso presenta un alto nivel de aprovechamiento del material, donde los retazos generados son reincorporados como insumo en nuevos productos, reduciendo la generación de residuos.", nota_style))
         elements.append(Spacer(1, 15))
 
-        # 6. Balance CO2
+        # 6. BALANCE DE IMPACTO AMBIENTAL
         elements.append(Paragraph("6. BALANCE DE IMPACTO AMBIENTAL (HUELLA DE CARBONO Y CO₂ EVITADO)", h2_style))
         data_co2_box = [
             [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Neto Positivo</b>", card_sub)],
-            [Paragraph(f"<b>{co2_evitado:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{emisiones_proceso:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{co2_neto:.2f} kg CO₂e</b>", card_title)]
+            [Paragraph(f"<b>{co2_evitado_total:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{emisiones_proceso:.2f} kg CO₂e</b>", card_title), Paragraph(f"<b>{co2_neto:.2f} kg CO₂e</b>", card_title)]
         ]
         t_co2_box = Table(data_co2_box, colWidths=[180, 180, 180])
         t_co2_box.setStyle(TableStyle([
@@ -428,7 +486,7 @@ else:
 
         st.write("---")
 
-        # 2. INGRESO DE MATERIAL
+        # 2. INGRESO DE MATERIAL (CON MENÚ DESPLEGABLE)
         st.subheader("2. Ingreso de Material")
         if "num_items" not in st.session_state:
             st.session_state.num_items = 2
@@ -443,22 +501,37 @@ else:
 
         lista_items = []
         peso_total_recibido = 0.0
+        co2_evitado_total = 0.0
+
+        opciones_prendas = sorted(list(FACTORES_CO2.keys()))
 
         for i in range(st.session_state.num_items):
             st.markdown(f"**Material {i+1}**")
             col_desc, col_unid, col_peso, col_tot, col_foto = st.columns([3, 1.5, 1.5, 1.5, 3])
 
-            desc = col_desc.text_input("Descripción", value="", key=f"desc_{i}")
+            desc = col_desc.selectbox("Tipo de Producto / Prenda", opciones_prendas, key=f"desc_{i}")
             unid = col_unid.number_input("Ingreso (unid.)", min_value=0, value=0, key=f"unid_{i}")
             peso_u = col_peso.number_input("Peso Unit. (kg)", min_value=0.0, value=0.0, step=0.05, key=f"peso_{i}")
             p_total = unid * peso_u
             col_tot.text_input("Peso Total", value=f"{p_total:.2f} kg", disabled=True, key=f"tot_{i}")
             foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
 
-            peso_total_recibido += p_total
-            lista_items.append({"descripcion": desc if desc.strip() else f"Material {i+1}", "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total, "foto": foto})
+            # Factor CO2 para esta prenda
+            factor = FACTORES_CO2.get(desc, 6.575)
+            co2_item = p_total * factor
+            co2_evitado_total += co2_item
 
-        st.info(f"💡 **Total Material Recibido:** {peso_total_recibido:.2f} kg")
+            peso_total_recibido += p_total
+            lista_items.append({
+                "descripcion": desc,
+                "unidades": unid,
+                "peso_unitario": peso_u,
+                "peso_total": p_total,
+                "foto": foto,
+                "co2_evitado": co2_item
+            })
+
+        st.info(f"💡 **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
         st.write("---")
 
         # 3. TRAZABILIDAD
@@ -488,7 +561,7 @@ else:
 
         st.write("---")
 
-        # 4. SALIDA DE PRODUCTOS (PLANTILLA COMPLETAMENTE EN BLANCO Y SIN BOTONES + / -)
+        # 4. SALIDA DE PRODUCTOS
         st.subheader("4. Salida de Productos (Nombre, Cantidad y Foto)")
 
         if "num_prods" not in st.session_state:
@@ -536,7 +609,6 @@ else:
 
         total_procesado = mat_transformado + retazos_aprovechables + perdida_no_aprovechable
 
-        # CÁLCULOS EXACTOS SOBRE EL MATERIAL RECIBIDO TOTAL:
         if peso_total_recibido > 0:
             pct_aprovechamiento_total = ((mat_transformado + retazos_aprovechables) / peso_total_recibido) * 100
             pct_perdida = (perdida_no_aprovechable / peso_total_recibido) * 100
@@ -553,6 +625,10 @@ else:
 
         # 6. MÉTRICAS SOCIALES Y EMISIONES
         st.subheader("6. Métricas de Trabajo Social y Emisiones del Proceso")
+        
+        # Muestra el CO2 evitado suma de prendas ingresadas
+        st.success(f"🌱 **CO₂ Evitado por prendas recibidas (Suma total):** {co2_evitado_total:.2f} kg CO₂e")
+
         m1, m2 = st.columns(2)
         horas_totales = m1.number_input("Horas Generadas", min_value=0.0, value=0.0, step=0.5)
         cant_personas = m2.number_input("Cantidad Personas Beneficiadas", min_value=0, value=0, step=1)
@@ -568,9 +644,8 @@ else:
 
         # BOTÓN GENERADOR
         if st.button("🔥 Generar PDF Oficial y Guardar", type="primary", use_container_width=True):
-            co2_evitado = mat_transformado * 7.3392
             emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
-            co2_neto = co2_evitado - emisiones_proceso
+            co2_neto = co2_evitado_total - emisiones_proceso
 
             try:
                 supabase.table("proyectos").insert({
@@ -594,7 +669,7 @@ else:
                 guia_remision, origen, destino, lista_items, lista_trazabilidad, lista_productos,
                 mat_transformado, retazos_aprovechables, perdida_no_aprovechable, total_procesado,
                 pct_aprovechamiento_total, pct_perdida,
-                horas_totales, cant_personas, emisiones_transporte, emisiones_lavado,
+                horas_totales, cant_personas, co2_evitado_total, emisiones_transporte, emisiones_lavado,
                 emisiones_corte, emisiones_bordado
             )
 
