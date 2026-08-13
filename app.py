@@ -50,14 +50,24 @@ FACTORES_BORDADO = {
     "Complejo (10 min/pieza)": 0.041
 }
 
-# --- TIEMPOS BASE RECOMENDADOS POR IA (HORAS POR UNIDAD) ---
+# --- TIEMPOS BASE RECOMENDADOS POR IA PARA CONFECCIÓN ---
 TIEMPOS_IA_CONFECCION = {
-    "Costurera Principal": 0.75, # 45 min
-    "Remalladora": 0.40,          # 24 min
-    "Recubridora": 0.35,         # 21 min
-    "Acabados / Empaque": 0.20,  # 12 min
-    "Artesana / Manualidades": 1.20 # 1 hora 12 min
+    "Costurera Principal": 0.75,
+    "Remalladora": 0.40,
+    "Recubridora": 0.35,
+    "Acabados / Empaque": 0.20,
+    "Artesana / Manualidades": 1.20
 }
+
+# --- PERSONAL FIJO DE OPERACIONES (CORTE Y LOGÍSTICA) ---
+PERSONAL_FIJO_OPERACIONES = [
+    {"rol": "Corte", "nombre": "Maria Isabel Estrada Sandoval"},
+    {"rol": "Corte", "nombre": "Genaro Jara García"},
+    {"rol": "Corte", "nombre": "Luciana Jara estrada"},
+    {"rol": "Corte", "nombre": "Felicita Sandoval vilchez"},
+    {"rol": "Corte", "nombre": "Nicolle Estrada"},
+    {"rol": "Logística", "nombre": "Evelyn Prada Vizarreta"}
+]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
@@ -69,11 +79,9 @@ st.set_page_config(
 # --- ESTILOS CSS ---
 st.markdown("""
     <style>
-    /* Ocultar flechas numéricas */
     div[data-testid="stNumberInput"] button { display: none !important; }
     div[data-testid="stNumberInput"] input { text-align: left; }
     
-    /* Header principal moderno */
     .hero-header {
         background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
         color: white;
@@ -94,18 +102,6 @@ st.markdown("""
         font-size: 0.95rem;
     }
 
-    /* Badges de estado */
-    .badge-wip {
-        background-color: #FEF3C7;
-        color: #D97706;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.8rem;
-        border: 1px solid #FCD34D;
-    }
-
-    /* Estilos para el sidebar */
     div[data-testid="stSidebar"] {
         background-color: #F8FAFC;
         border-right: 1px solid #E2E8F0;
@@ -177,7 +173,7 @@ def generar_pdf_oficial(
     lista_items, lista_trazabilidad, lista_productos,
     mat_transformado, retazos_aprovechables, perdida_no_aprovechable, total_procesado,
     pct_aprovechamiento_total, pct_perdida,
-    horas_corte, personas_corte, lista_confeccion, horas_confeccion, total_horas_social, total_personas_social,
+    lista_operaciones_pdf, lista_confeccion, total_horas_social, total_personas_social,
     co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
 ):
     kg_recibidos = sum([item["peso_total"] for item in lista_items])
@@ -409,49 +405,78 @@ def generar_pdf_oficial(
     elements.append(t_co2_box)
     elements.append(Spacer(1, 10))
 
-    # 7. IMPACTO SOCIAL
-    elements.append(Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
-    elements.append(Paragraph(f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{total_horas_social:.2f} horas de trabajo directo</b> distribuidas entre <b>{total_personas_social} participantes</b>.", cell_style))
-    elements.append(Spacer(1, 8))
+    # 7. IMPACTO SOCIAL DE CORTE Y LOGÍSTICA (EQUIPO)
+    elements.append(Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EQUIPO DE TRABAJO", h2_style))
+    elements.append(Paragraph(f"Participación del personal en el proceso de upcycling e integración social (Total Horas Generadas: <b>{total_horas_social:.2f} hrs</b>).", cell_style))
+    elements.append(Spacer(1, 6))
 
-    data_social_pdf = [[
-        Paragraph("Etapa / Producto", cell_bold),
-        Paragraph("Rol", cell_bold),
-        Paragraph("Encargado/a", cell_bold),
-        Paragraph("Cant.", cell_bold),
-        Paragraph("Tiempo unit. (hrs)", cell_bold),
-        Paragraph("Horas Totales", cell_bold)
+    elements.append(Paragraph("<b>Operaciones – Corte y Logística</b>", cell_bold))
+    data_ops_pdf = [[
+        Paragraph("Código proyecto", cell_bold), Paragraph("Rol", cell_bold), Paragraph("Nombre", cell_bold),
+        Paragraph("Días trabajados", cell_bold), Paragraph("Hora/día", cell_bold), Paragraph("Horas totales", cell_bold)
     ]]
 
-    data_social_pdf.append([
-        Paragraph("Área de Corte", cell_style), Paragraph("Cortador/a", cell_style),
-        Paragraph(f"{personas_corte} pers.", cell_style), Paragraph("-", cell_style),
-        Paragraph("-", cell_style), Paragraph(f"{horas_corte:.2f} hrs", cell_style)
-    ])
-
-    for c_item in lista_confeccion:
-        data_social_pdf.append([
-            Paragraph(c_item["producto"], cell_style), Paragraph(c_item["rol"], cell_style),
-            Paragraph(c_item["persona"], cell_style), Paragraph(str(c_item["cantidad"]), cell_style),
-            Paragraph(f"{c_item['tiempo_unitario']:.2f} hrs", cell_style), Paragraph(f"{c_item['horas_totales']:.2f} hrs", cell_style)
+    tot_hrs_ops = 0
+    for op in lista_operaciones_pdf:
+        tot_hrs_ops += op["horas_totales"]
+        data_ops_pdf.append([
+            Paragraph(codigo_proy, cell_style),
+            Paragraph(op["rol"], cell_style),
+            Paragraph(op["nombre"], cell_style),
+            Paragraph(str(op["dias"]), cell_style),
+            Paragraph(f"{op['horas_dia']:.1f}", cell_style),
+            Paragraph(f"{op['horas_totales']:.1f}", cell_style)
         ])
 
-    data_social_pdf.append([
-        Paragraph("<b>TOTAL GESTIÓN SOCIAL</b>", cell_bold), "", "", "", "",
-        Paragraph(f"<b>{total_horas_social:.2f} hrs</b>", cell_bold)
+    data_ops_pdf.append([
+        Paragraph("<b>SUBTOTAL CORTE Y LOGÍSTICA</b>", cell_bold), "", "", "", "",
+        Paragraph(f"<b>{tot_hrs_ops:.1f} hrs</b>", cell_bold)
     ])
 
-    t_soc = Table(data_social_pdf, colWidths=[120, 100, 110, 40, 80, 90])
-    t_soc.setStyle(TableStyle([
+    t_ops = Table(data_ops_pdf, colWidths=[100, 70, 160, 70, 70, 70])
+    t_ops.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
         ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('SPAN', (0, -1), (4, -1)),
         ('ALIGN', (3,0), (-1,-1), 'CENTER'),
         ('PADDING', (0,0), (-1,-1), 4),
     ]))
-    elements.append(t_soc)
+    elements.append(t_ops)
+    elements.append(Spacer(1, 10))
+
+    # CONFECCIÓN
+    if lista_confeccion:
+        elements.append(Paragraph("<b>Desglose del Personal de Confección</b>", cell_bold))
+        data_social_pdf = [[
+            Paragraph("Producto", cell_bold), Paragraph("Rol", cell_bold), Paragraph("Encargado/a", cell_bold),
+            Paragraph("Cant.", cell_bold), Paragraph("Tiempo unit. (hrs)", cell_bold), Paragraph("Horas Totales", cell_bold)
+        ]]
+
+        tot_hrs_conf = 0
+        for c_item in lista_confeccion:
+            tot_hrs_conf += c_item["horas_totales"]
+            data_social_pdf.append([
+                Paragraph(c_item["producto"], cell_style), Paragraph(c_item["rol"], cell_style),
+                Paragraph(c_item["persona"], cell_style), Paragraph(str(c_item["cantidad"]), cell_style),
+                Paragraph(f"{c_item['tiempo_unitario']:.2f} hrs", cell_style), Paragraph(f"{c_item['horas_totales']:.2f} hrs", cell_style)
+            ])
+
+        data_social_pdf.append([
+            Paragraph("<b>SUBTOTAL CONFECCIÓN</b>", cell_bold), "", "", "", "",
+            Paragraph(f"<b>{tot_hrs_conf:.2f} hrs</b>", cell_bold)
+        ])
+
+        t_soc = Table(data_social_pdf, colWidths=[120, 100, 110, 40, 80, 90])
+        t_soc.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
+            ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+            ('SPAN', (0, -1), (4, -1)),
+            ('ALIGN', (3,0), (-1,-1), 'CENTER'),
+            ('PADDING', (0,0), (-1,-1), 4),
+        ]))
+        elements.append(t_soc)
 
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
@@ -495,7 +520,6 @@ if not st.session_state.autenticado:
                     st.error("⚠️ Usuario o contraseña incorrectos.")
 
 else:
-    # --- Cargar lista de proyectos en proceso ---
     proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
 
     # --- BARRA LATERAL MODERNA ---
@@ -573,7 +597,7 @@ else:
             c1, c2, c3 = st.columns(3)
             cliente = c1.text_input("Cliente / Empresa", value=p_edit.get("cliente", ""))
             ruc = c2.text_input("RUC", value=p_edit.get("ruc", ""))
-            codigo_proy = c3.text_input("Código de Proyecto", value=p_edit.get("codigo", ""))
+            codigo_proy = c3.text_input("Código de Proyecto", value=p_edit.get("codigo", "MONDELEZ - JUN26"))
 
             c4, c5, c6 = st.columns(3)
             fechas_raw = p_edit.get("fecha", " - ").split(" - ")
@@ -644,13 +668,13 @@ else:
 
         st.write("")
 
-        # 3. TRAZABILIDAD (RESPONSABLES SELLADOS CON OPCIÓN A EDITAR)
+        # 3. TRAZABILIDAD
         with st.container(border=True):
             st.subheader("3. Trazabilidad del Proceso en Upcycling")
             etapas_fijas = [
-                {"etapa": "Clasificación", "fecha": datetime.date.today(), "resp_defecto": "Área de Logística", "peso": "0.00", "tipo": "Registro interno"},
+                {"etapa": "Clasificación", "fecha": datetime.date.today(), "resp_defecto": "Evelyn Prada Vizarreta", "peso": "0.00", "tipo": "Registro interno"},
                 {"etapa": "Lavado", "fecha": datetime.date.today(), "resp_defecto": "Lavandería", "peso": "0.00", "tipo": "Servicio Externo"},
-                {"etapa": "Corte", "fecha": datetime.date.today(), "resp_defecto": "Taller de corte", "peso": "0.00", "tipo": "Pesaje real"},
+                {"etapa": "Corte", "fecha": datetime.date.today(), "resp_defecto": "Taller de corte (5 integrantes)", "peso": "0.00", "tipo": "Pesaje real"},
                 {"etapa": "Confección", "fecha": datetime.date.today(), "resp_defecto": "Producción descentralizada", "peso": "0.00", "tipo": "Entrega / Recepción"},
             ]
             lista_trazabilidad = []
@@ -664,7 +688,6 @@ else:
                 e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
                 e_fec_val = c_fecha.date_input("Fecha", value=item_fijo["fecha"], format="DD/MM/YYYY", key=f"tr_fecha_{i}")
                 
-                # Control de Sellado / Edición para Responsables (Logística/Corte)
                 permitir_editar = c_edit_chk.checkbox("✏️ Editar", key=f"chk_edit_{i}")
                 e_res = c_resp.text_input(
                     "Responsable", 
@@ -805,27 +828,77 @@ else:
 
         st.write("")
 
-        # 7. IMPACTO SOCIAL Y EMPLEO GENERADO (CON IA INTEGRADORA DE TIEMPOS)
+        # 7. EQUIPO DE TRABAJO Y GENERACIÓN DE HORAS (NUEVO MODELO CORTE Y LOGÍSTICA FIJO)
         with st.container(border=True):
-            st.subheader("7. Impacto Social y Empleo Generado")
-
-            # --- CORTE ---
-            st.markdown("##### ✂️ A. Área de Corte")
-            col_c1, col_c2, col_c3 = st.columns([2, 2, 3])
+            st.subheader("7. Equipo de Trabajo y Generación de Horas")
+            st.markdown("**Participación del personal en el proceso de upcycling y estimación de horas generadas por actividad**")
             
-            # IA Estimadora para Corte (Aproximadamente 0.08 horas por prenda/producto)
-            sugerencia_horas_corte = round(total_piezas_ingresadas * 0.08, 2)
-            col_c3.info(f"🤖 **IA Sugiere:** ~{sugerencia_horas_corte} hrs (Basado en {total_piezas_ingresadas} piezas ingresadas)")
+            # IA ESTIMADORA PARA CORTE BASADA EN KG DE UPCYCLING
+            # Lógica Upcycling: Desarmar prendas, clasificar y trazar sobre textil reciclado requiere aprox. 0.35 horas de taller por cada kg ingresado.
+            dias_sugeridos_corte = max(1, int(peso_total_recibido / 30)) if peso_total_recibido > 0 else 2
+            horas_dia_sugeridas_corte = 8.5 if peso_total_recibido > 20 else 4.0
 
-            # Campo inicializado sin valores estáticos rígidos
-            horas_corte = col_c1.number_input("Horas Totales de Corte", min_value=0.0, value=0.0, step=0.5)
-            personas_corte = col_c2.number_input("Número de Personas en Corte", min_value=0, value=1, step=1)
+            st.info(
+                f"🤖 **Sugerencia de la IA (Upcycling Textil - {peso_total_recibido:.1f} kg recibidos):** "
+                f"Para este volumen de material, se estima un trabajo de corte de **{dias_sugeridos_corte} días** a **{horas_dia_sugeridas_corte} hrs/día** por operario. "
+                f"Para Logística se contemplan **2 a 3 días** (máximo 3 hrs/día de seguimiento)."
+            )
+
+            st.markdown("#### Operaciones – Corte y Logística")
+            
+            lista_operaciones = []
+            total_horas_ops = 0.0
+
+            # Encabezados de la Tabla
+            h_col1, h_col2, h_col3, h_col4, h_col5, h_col6, h_col7 = st.columns([1.5, 1, 2.5, 0.8, 1.2, 1.2, 1.2])
+            h_col1.markdown("**Código proyecto**")
+            h_col2.markdown("**Rol**")
+            h_col3.markdown("**Nombre**")
+            h_col4.markdown("**Editar**")
+            h_col5.markdown("**Días trabajados**")
+            h_col6.markdown("**Hora/día**")
+            h_col7.markdown("**Horas totales**")
+
+            st.write("---")
+
+            for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
+                c_cod, c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 1, 2.5, 0.8, 1.2, 1.2, 1.2])
+                
+                # Código
+                c_cod.text_input("Cod", value=codigo_proy, disabled=True, key=f"ops_cod_{idx}", label_visibility="collapsed")
+                
+                # Rol
+                rol_val = p_fijo["rol"]
+                c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
+                
+                # Nombre con checkbox para habilitar edición
+                editar_nom = c_chk.checkbox("✏️", key=f"ops_chk_{idx}")
+                nom_val = c_nom.text_input("Nombre", value=p_fijo["nombre"], disabled=not editar_nom, key=f"ops_nom_{idx}", label_visibility="collapsed")
+                
+                # Valores por defecto inteligentes
+                default_dias = 3 if rol_val == "Logística" else dias_sugeridos_corte
+                default_hdia = 3.0 if rol_val == "Logística" else horas_dia_sugeridas_corte
+
+                val_dias = c_dias.number_input("Días", min_value=0, value=int(default_dias), step=1, key=f"ops_dias_{idx}", label_visibility="collapsed")
+                val_hdia = c_hdia.number_input("Hrs/Día", min_value=0.0, value=float(default_hdia), step=0.5, key=f"ops_hdia_{idx}", label_visibility="collapsed")
+                
+                tot_hrs_pers = val_dias * val_hdia
+                c_tot.text_input("Total", value=f"{tot_hrs_pers:.1f}", disabled=True, key=f"ops_tot_{idx}", label_visibility="collapsed")
+
+                total_horas_ops += tot_hrs_pers
+                lista_operaciones.append({
+                    "rol": rol_val,
+                    "nombre": nom_val,
+                    "dias": val_dias,
+                    "horas_dia": val_hdia,
+                    "horas_totales": tot_hrs_pers
+                })
 
             st.write("---")
 
             # --- CONFECCIÓN ---
-            st.markdown("##### 🧵 B. Área de Confección (Desglose por Producto)")
-            st.caption("Asigne el rol, la persona encargada y el tiempo aproximado para cada producto registrado en la Sección 4.")
+            st.markdown("#### Confección – Artesanas y Taller")
+            st.caption("Asigne la persona encargada y el tiempo aproximado para cada producto final.")
 
             lista_confeccion = []
             horas_confeccion_total = 0.0
@@ -841,11 +914,10 @@ else:
                 c_rol, c_persona, c_ia, c_tiempo, c_tot = st.columns([2.5, 2.5, 2, 2, 2])
 
                 rol_sel = c_rol.selectbox("Rol Asignado", roles_disponibles, key=f"soc_rol_{idx}")
-                persona_nom = c_persona.text_input("Persona Encargada", value="", placeholder="Ej: María Ramos", key=f"soc_pers_{idx}")
+                persona_nom = c_persona.text_input("Persona Encargada", value="", placeholder="Ej: Maria Ramos", key=f"soc_pers_{idx}")
 
-                # Recomendador por IA para tiempos de confección
                 tiempo_ia = TIEMPOS_IA_CONFECCION.get(rol_sel, 0.5)
-                c_ia.info(f"🤖 IA Sugiere: **{tiempo_ia:.2f} hrs/unid** ({int(tiempo_ia*60)} min)")
+                c_ia.info(f"🤖 IA Sugiere: **{tiempo_ia:.2f} hrs/unid**")
 
                 tiempo_unitario = c_tiempo.number_input("Tiempo / Unidad (hrs)", min_value=0.0, value=float(tiempo_ia), step=0.05, key=f"soc_tunit_{idx}")
 
@@ -866,12 +938,12 @@ else:
                 })
 
             st.write("---")
-            total_horas_social = horas_corte + horas_confeccion_total
-            total_personas_social = personas_corte + len(personas_confeccion_set)
+            total_horas_social = total_horas_ops + horas_confeccion_total
+            total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(personas_confeccion_set)
 
             ms1, ms2, ms3 = st.columns(3)
-            ms1.metric("Horas Totales Corte", f"{horas_corte:.2f} hrs")
-            ms2.metric("Horas Totales Confección", f"{horas_confeccion_total:.2f} hrs")
+            ms1.metric("Horas Corte y Logística", f"{total_horas_ops:.1f} hrs", f"{len(PERSONAL_FIJO_OPERACIONES)} Personas")
+            ms2.metric("Horas Confección", f"{horas_confeccion_total:.2f} hrs", f"{len(personas_confeccion_set)} Artesanas")
             ms3.metric("🔥 TOTAL IMPACTO SOCIAL", f"{total_horas_social:.2f} hrs", f"{total_personas_social} Beneficiarios")
 
         st.write("")
@@ -915,8 +987,7 @@ else:
                 mat_transformado=mat_transformado, retazos_aprovechables=retazos_aprovechables,
                 perdida_no_aprovechable=perdida_no_aprovechable, total_procesado=total_procesado,
                 pct_aprovechamiento_total=pct_aprovechamiento_total, pct_perdida=pct_perdida,
-                horas_corte=horas_corte, personas_corte=personas_corte,
-                lista_confeccion=lista_confeccion, horas_confeccion=horas_confeccion_total,
+                lista_operaciones_pdf=lista_operaciones, lista_confeccion=lista_confeccion,
                 total_horas_social=total_horas_social, total_personas_social=total_personas_social,
                 co2_evitado_total=co2_evitado_total, emisiones_transporte=emisiones_transporte,
                 emisiones_lavado=emisiones_lavado, emisiones_corte=emisiones_corte, emisiones_bordado=emisiones_bordado
