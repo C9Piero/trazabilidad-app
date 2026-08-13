@@ -50,6 +50,15 @@ FACTORES_BORDADO = {
     "Complejo (10 min/pieza)": 0.041
 }
 
+# --- TIEMPOS BASE RECOMENDADOS POR IA (HORAS POR UNIDAD) ---
+TIEMPOS_IA_CONFECCION = {
+    "Costurera Principal": 0.75, # 45 min
+    "Remalladora": 0.40,          # 24 min
+    "Recubridora": 0.35,         # 21 min
+    "Acabados / Empaque": 0.20,  # 12 min
+    "Artesana / Manualidades": 1.20 # 1 hora 12 min
+}
+
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
     page_title="Pequeños Detalles - Sistema de Trazabilidad",
@@ -168,7 +177,7 @@ def generar_pdf_oficial(
     lista_items, lista_trazabilidad, lista_productos,
     mat_transformado, retazos_aprovechables, perdida_no_aprovechable, total_procesado,
     pct_aprovechamiento_total, pct_perdida,
-    horas_totales, cant_personas,
+    horas_corte, personas_corte, lista_confeccion, horas_confeccion, total_horas_social, total_personas_social,
     co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
 ):
     kg_recibidos = sum([item["peso_total"] for item in lista_items])
@@ -199,13 +208,13 @@ def generar_pdf_oficial(
             Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", card_title),
             Paragraph(f"<b>{pct_aprovechamiento_total:.2f}%</b>", card_title),
             Paragraph(f"<b>{co2_neto:.2f} kg</b>", card_title),
-            Paragraph(f"<b>{horas_totales:.2f} hrs</b>", card_title)
+            Paragraph(f"<b>{total_horas_social:.2f} hrs</b>", card_title)
         ],
         [
             Paragraph("MATERIAL RECIBIDO", card_sub),
             Paragraph("% APROVECHAMIENTO", card_sub),
             Paragraph("CO₂e NETO EVITADO", card_sub),
-            Paragraph(f"TRABAJO GENERADO ({cant_personas} PERS.)", card_sub)
+            Paragraph(f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_sub)
         ]
     ]
     t_cards = Table(cards_data, colWidths=[135, 135, 135, 135])
@@ -382,10 +391,6 @@ def generar_pdf_oficial(
         ('PADDING', (0,0), (-1,-1), 5),
     ]))
     elements.append(t_balance)
-    elements.append(Spacer(1, 6))
-
-    nota_style = ParagraphStyle('NotaBalance', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8, textColor=colors.HexColor('#334155'))
-    elements.append(Paragraph("<b>Nota:</b> El proceso presenta un alto nivel de aprovechamiento del material, donde los retazos generados son reincorporados como insumo en nuevos productos, reduciendo la generación de residuos.", nota_style))
     elements.append(Spacer(1, 15))
 
     # 6. BALANCE DE IMPACTO AMBIENTAL
@@ -404,39 +409,49 @@ def generar_pdf_oficial(
     elements.append(t_co2_box)
     elements.append(Spacer(1, 10))
 
-    interp_style = ParagraphStyle('Interp', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1E293B'), alignment=1)
-    elements.append(Paragraph(f"<b>Interpretación de resultados:</b><br/>El proceso de upcycling permitió evitar la emisión de <b>{co2_neto:.2f} kg de CO₂e</b> en comparación con la producción de material textil nuevo.", interp_style))
-    elements.append(Spacer(1, 10))
+    # 7. IMPACTO SOCIAL
+    elements.append(Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
+    elements.append(Paragraph(f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{total_horas_social:.2f} horas de trabajo directo</b> distribuidas entre <b>{total_personas_social} participantes</b>.", cell_style))
+    elements.append(Spacer(1, 8))
 
-    elements.append(Paragraph("<b>Desglose de emisiones del proceso (kg CO₂e)</b>", ParagraphStyle('SubSub', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#0F172A'), alignment=1)))
-    elements.append(Spacer(1, 4))
+    data_social_pdf = [[
+        Paragraph("Etapa / Producto", cell_bold),
+        Paragraph("Rol", cell_bold),
+        Paragraph("Encargado/a", cell_bold),
+        Paragraph("Cant.", cell_bold),
+        Paragraph("Tiempo unit. (hrs)", cell_bold),
+        Paragraph("Horas Totales", cell_bold)
+    ]]
 
-    data_emisiones = [
-        [Paragraph("<b>Etapa</b>", cell_bold), Paragraph("<b>Emisiones (kg CO₂e)</b>", cell_bold), Paragraph("<b>Participación (%)</b>", cell_bold)],
-        [Paragraph("Transporte", cell_style), Paragraph(f"{emisiones_transporte:.2f}", cell_style), Paragraph(f"{(emisiones_transporte/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
-        [Paragraph("Lavandería", cell_style), Paragraph(f"{emisiones_lavado:.2f}", cell_style), Paragraph(f"{(emisiones_lavado/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
-        [Paragraph("Corte", cell_style), Paragraph(f"{emisiones_corte:.2f}", cell_style), Paragraph(f"{(emisiones_corte/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
-        [Paragraph("Bordado", cell_style), Paragraph(f"{emisiones_bordado:.2f}", cell_style), Paragraph(f"{(emisiones_bordado/emisiones_proceso*100 if emisiones_proceso>0 else 0):.1f}%", cell_style)],
-        [Paragraph("<b>TOTAL</b>", cell_bold), Paragraph(f"<b>{emisiones_proceso:.2f}</b>", cell_bold), Paragraph("<b>100.0%</b>", cell_bold)],
-    ]
-    t_emisiones = Table(data_emisiones, colWidths=[240, 150, 150])
-    t_emisiones.setStyle(TableStyle([
+    data_social_pdf.append([
+        Paragraph("Área de Corte", cell_style), Paragraph("Cortador/a", cell_style),
+        Paragraph(f"{personas_corte} pers.", cell_style), Paragraph("-", cell_style),
+        Paragraph("-", cell_style), Paragraph(f"{horas_corte:.2f} hrs", cell_style)
+    ])
+
+    for c_item in lista_confeccion:
+        data_social_pdf.append([
+            Paragraph(c_item["producto"], cell_style), Paragraph(c_item["rol"], cell_style),
+            Paragraph(c_item["persona"], cell_style), Paragraph(str(c_item["cantidad"]), cell_style),
+            Paragraph(f"{c_item['tiempo_unitario']:.2f} hrs", cell_style), Paragraph(f"{c_item['horas_totales']:.2f} hrs", cell_style)
+        ])
+
+    data_social_pdf.append([
+        Paragraph("<b>TOTAL GESTIÓN SOCIAL</b>", cell_bold), "", "", "", "",
+        Paragraph(f"<b>{total_horas_social:.2f} hrs</b>", cell_bold)
+    ])
+
+    t_soc = Table(data_social_pdf, colWidths=[120, 100, 110, 40, 80, 90])
+    t_soc.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
         ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('ALIGN', (1,0), (-1,-1), 'CENTER'),
-        ('PADDING', (0,0), (-1,-1), 5),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('SPAN', (0, -1), (4, -1)),
+        ('ALIGN', (3,0), (-1,-1), 'CENTER'),
+        ('PADDING', (0,0), (-1,-1), 4),
     ]))
-    elements.append(t_emisiones)
-    elements.append(Spacer(1, 6))
-
-    nota_emision = ParagraphStyle('NotaEmi', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=7.5, textColor=colors.HexColor('#475569'), alignment=1)
-    elements.append(Paragraph("Nota: Las emisiones fueron estimadas considerando factores de emisión por tipo de proceso y transporte.<br/>Las emisiones generadas durante el proceso representaron una fracción menor frente al impacto positivo obtenido, evidenciando la eficiencia ambiental del modelo de reaprovechamiento.", nota_emision))
-    elements.append(Spacer(1, 15))
-
-    # 7. Impacto Social
-    elements.append(Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
-    elements.append(Paragraph(f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{horas_totales:.2f} horas de trabajo directo</b> distribuidas entre <b>{cant_personas} participantes</b>.", cell_style))
+    elements.append(t_soc)
 
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
@@ -673,7 +688,7 @@ else:
             st.subheader("4. Salida de Productos")
 
             if "num_prods" not in st.session_state:
-                st.session_state.num_prods = 3
+                st.session_state.num_prods = 2
 
             cp_btn1, cp_btn2, _ = st.columns([1, 1, 4])
             if cp_btn1.button("➕ Agregar Producto"):
@@ -699,7 +714,7 @@ else:
 
                 total_prod_unid += p_cant
                 lista_productos.append({
-                    "producto": p_nombre if p_nombre.strip() else f"Producto {i+1}",
+                    "producto": p_nombre.strip() if p_nombre.strip() else f"Producto {i+1}",
                     "cantidad": p_cant,
                     "foto": p_foto
                 })
@@ -737,9 +752,9 @@ else:
 
         st.write("")
 
-        # 6. CÁLCULO DE EMISIONES Y MÉTRICAS SOCIALES
+        # 6. CÁLCULO DE EMISIONES
         with st.container(border=True):
-            st.subheader("6. Balance de Emisiones e Impacto Social")
+            st.subheader("6. Balance de Emisiones (CO₂e)")
 
             st.markdown("##### 🚗 A. Cálculo de Transporte")
             ct1, ct2, ct3 = st.columns(3)
@@ -776,10 +791,70 @@ else:
 
             st.warning(f"🌱 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
 
-            st.markdown("##### 👥 D. Impacto Social")
-            m1, m2 = st.columns(2)
-            horas_totales = m1.number_input("Horas Generadas", min_value=0.0, value=0.0, step=0.5)
-            cant_personas = m2.number_input("Cantidad Personas Beneficiadas", min_value=0, value=0, step=1)
+        st.write("")
+
+        # 7. IMPACTO SOCIAL Y EMPLEO GENERADO
+        with st.container(border=True):
+            st.subheader("7. Impacto Social y Empleo Generado")
+
+            # --- CORTE ---
+            st.markdown("##### ✂️ A. Área de Corte")
+            col_c1, col_c2 = st.columns(2)
+            horas_corte = col_c1.number_input("Horas Totales de Corte", min_value=0.0, value=0.0, step=0.5)
+            personas_corte = col_c2.number_input("Número de Personas en Corte", min_value=0, value=1, step=1)
+
+            st.write("---")
+
+            # --- CONFECCIÓN ---
+            st.markdown("##### 🧵 B. Área de Confección (Desglose por Producto)")
+            st.caption("Asigne el rol, la persona encargada y el tiempo aproximado para cada producto registrado en la Sección 4.")
+
+            lista_confeccion = []
+            horas_confeccion_total = 0.0
+            personas_confeccion_set = set()
+
+            roles_disponibles = list(TIEMPOS_IA_CONFECCION.keys())
+
+            for idx, prod in enumerate(lista_productos):
+                p_nom = prod["producto"]
+                p_cant = prod["cantidad"]
+
+                st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad: {p_cant} unid)*")
+                c_rol, c_persona, c_ia, c_tiempo, c_tot = st.columns([2.5, 2.5, 2, 2, 2])
+
+                rol_sel = c_rol.selectbox("Rol Asignado", roles_disponibles, key=f"soc_rol_{idx}")
+                persona_nom = c_persona.text_input("Persona Encargada", value="", placeholder="Ej: María Ramos", key=f"soc_pers_{idx}")
+
+                # Recomendador por "IA / Estimación"
+                tiempo_ia = TIEMPOS_IA_CONFECCION.get(rol_sel, 0.5)
+                c_ia.info(f"🤖 IA Sugiere: **{tiempo_ia:.2f} hrs/unid** ({int(tiempo_ia*60)} min)")
+
+                tiempo_unitario = c_tiempo.number_input("Tiempo / Unidad (hrs)", min_value=0.0, value=float(tiempo_ia), step=0.05, key=f"soc_tunit_{idx}")
+
+                horas_producto = p_cant * tiempo_unitario
+                c_tot.metric("Horas Totales", f"{horas_producto:.2f} hrs")
+
+                horas_confeccion_total += horas_producto
+                if persona_nom.strip():
+                    personas_confeccion_set.add(persona_nom.strip())
+
+                lista_confeccion.append({
+                    "producto": p_nom,
+                    "cantidad": p_cant,
+                    "rol": rol_sel,
+                    "persona": persona_nom if persona_nom.strip() else "Por asignar",
+                    "tiempo_unitario": tiempo_unitario,
+                    "horas_totales": horas_producto
+                })
+
+            st.write("---")
+            total_horas_social = horas_corte + horas_confeccion_total
+            total_personas_social = personas_corte + len(personas_confeccion_set)
+
+            ms1, ms2, ms3 = st.columns(3)
+            ms1.metric("Horas Totales Corte", f"{horas_corte:.2f} hrs")
+            ms2.metric("Horas Totales Confección", f"{horas_confeccion_total:.2f} hrs")
+            ms3.metric("🔥 TOTAL IMPACTO SOCIAL", f"{total_horas_social:.2f} hrs", f"{total_personas_social} Beneficiarios")
 
         st.write("")
 
@@ -822,7 +897,9 @@ else:
                 mat_transformado=mat_transformado, retazos_aprovechables=retazos_aprovechables,
                 perdida_no_aprovechable=perdida_no_aprovechable, total_procesado=total_procesado,
                 pct_aprovechamiento_total=pct_aprovechamiento_total, pct_perdida=pct_perdida,
-                horas_totales=horas_totales, cant_personas=cant_personas,
+                horas_corte=horas_corte, personas_corte=personas_corte,
+                lista_confeccion=lista_confeccion, horas_confeccion=horas_confeccion_total,
+                total_horas_social=total_horas_social, total_personas_social=total_personas_social,
                 co2_evitado_total=co2_evitado_total, emisiones_transporte=emisiones_transporte,
                 emisiones_lavado=emisiones_lavado, emisiones_corte=emisiones_corte, emisiones_bordado=emisiones_bordado
             )
