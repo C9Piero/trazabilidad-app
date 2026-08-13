@@ -429,10 +429,12 @@ else:
         st.caption("Panel de Control Interno | 2026")
         st.write("---")
 
-        if st.button("✨ Nuevo Reporte PDF", use_container_width=True, type="primary" if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF" else "secondary"):
-            st.session_state.proyecto_editar = {}
-            st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
-            st.rerun()
+        opcion_menu = st.radio(
+            "Navegación",
+            ["➕ Nuevo Reporte PDF", "📊 Proyectos Guardados", "📈 Reporte Consolidado"],
+            index=["➕ Nuevo Reporte PDF", "📊 Proyectos Guardados", "📈 Reporte Consolidado"].index(st.session_state.pestaña_activa) if st.session_state.pestaña_activa in ["➕ Nuevo Reporte PDF", "📊 Proyectos Guardados", "📈 Reporte Consolidado"] else 0
+        )
+        st.session_state.pestaña_activa = opcion_menu
 
         st.markdown('<p class="sidebar-section-title">Proyectos Pendientes</p>', unsafe_allow_html=True)
         if proyectos_wip:
@@ -461,6 +463,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
+    # --- PESTAÑA 1: NUEVO REPORTE ---
     if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
@@ -615,7 +618,6 @@ else:
         with st.container(border=True):
             st.subheader("7. Impacto Social y Empleo Generado")
 
-            # TABLA 1: CORTE Y LOGÍSTICA
             st.markdown("##### 📦 Operaciones – Corte y Logística")
             st.caption("Personal recurrente/fijo de operaciones.")
 
@@ -650,7 +652,6 @@ else:
 
             st.write("---")
 
-            # TABLA 2: CONFECCIÓN Y ACABADO
             st.markdown("##### 🧵 Producción – Confección y Acabado")
             st.caption("Detalle de prendas producidas por personal específico.")
 
@@ -721,3 +722,18 @@ else:
                 mime="application/pdf",
                 use_container_width=True
             )
+
+    # --- PESTAÑA 2: PROYECTOS GUARDADOS ---
+    elif st.session_state.pestaña_activa == "📊 Proyectos Guardados":
+        st.subheader("📊 Historial de Proyectos Registrados")
+        todos_proyectos = cargar_proyectos()
+        if todos_proyectos:
+            df = pd.DataFrame(todos_proyectos)
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("No hay proyectos registrados aún.")
+
+    # --- PESTAÑA 3: REPORTES CONSOLIDADOS ---
+    elif st.session_state.pestaña_activa == "📈 Reporte Consolidado":
+        st.subheader("📈 Resumen Consolidado de Sostenibilidad")
+        st.write("Panel acumulativo de métricas de CO₂ e impacto social.")
