@@ -241,4 +241,197 @@ def generar_pdf_oficial(
     # 1. Ficha General
     elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
     data_ficha = [
-        [Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style), Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / {responsable}", cell_style)[...]
+        [Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style), Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / {responsable}", cell_style)],
+        [Paragraph("Nombre del Proyecto", cell_bold), Paragraph(proyecto_nom, cell_style), Paragraph("Periodo de Ejecución", cell_bold), Paragraph(f"{fe_inicio} al {fe_fin}", cell_style)],
+        [Paragraph("Tipo de Material", cell_bold), Paragraph(tipo_material, cell_style), Paragraph("Tipo de Valorización", cell_bold), Paragraph(valorizacion, cell_style)],
+        [Paragraph("Guía de Remisión", cell_bold), Paragraph(guia_remision, cell_style), Paragraph("Unidad de Medida", cell_bold), Paragraph(unidad_medida, cell_style)],
+        [Paragraph("Punto de Origen", cell_bold), Paragraph(origen, cell_style), Paragraph("Punto de Destino", cell_bold), Paragraph(destino, cell_style)],
+    ]
+    t_ficha = Table(data_ficha, colWidths=[100, 170, 100, 170])
+    t_ficha.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F8FAFC')),
+        ('BACKGROUND', (2,0), (2,-1), colors.HexColor('#F8FAFC')),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    elements.append(t_ficha)
+    elements.append(Spacer(1, 8))
+
+    def obtener_imagen_pdf(foto_file, width, height):
+        if foto_file is not None:
+            try:
+                foto_file.seek(0)
+                img_data = io.BytesIO(foto_file.read())
+                foto_file.seek(0)
+                return Image(img_data, width=width, height=height)
+            except Exception:
+                return Paragraph("Sin foto", cell_style)
+        return Paragraph("Sin foto", cell_style)
+
+    # 2. Ingreso de Material
+    elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
+    data_prendas_pdf = [[
+        Paragraph("Ítem", cell_bold), Paragraph("Tipo de Producto / Prenda", cell_bold),
+        Paragraph("Ingreso (unid)", cell_bold), Paragraph("Peso unit. (kg)", cell_bold),
+        Paragraph("Peso total (kg)", cell_bold), Paragraph("Evidencia", cell_bold)
+    ]]
+
+    total_unidades_ingreso = 0
+    for i, item in enumerate(lista_items, 1):
+        total_unidades_ingreso += item["unidades"]
+        img_cell = obtener_imagen_pdf(item["foto"], 45, 45)
+
+        data_prendas_pdf.append([
+            Paragraph(str(i), cell_style), Paragraph(item["descripcion"], cell_style),
+            Paragraph(str(item["unidades"]), cell_style), Paragraph(f"{item['peso_unitario']:.2f}", cell_style),
+            Paragraph(f"{item['peso_total']:.2f}", cell_style), img_cell
+        ])
+
+    data_prendas_pdf.append([
+        Paragraph("<b>TOTAL MATERIAL RECIBIDO</b>", cell_bold), "",
+        Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold), Paragraph("-", cell_bold),
+        Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold), Paragraph("-", cell_bold)
+    ])
+
+    t_prendas = Table(data_prendas_pdf, colWidths=[30, 180, 80, 75, 75, 100])
+    t_prendas.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('SPAN', (0, -1), (1, -1)),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (2,0), (4,-1), 'CENTER'),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    elements.append(t_prendas)
+    elements.append(Spacer(1, 8))
+
+    # 3. Trazabilidad
+    elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
+    data_traza_pdf = [[
+        Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold),
+        Paragraph("Responsable", cell_bold), Paragraph("Peso (kg)", cell_bold),
+        Paragraph("Tipo de Registro", cell_bold), Paragraph("Evidencia", cell_bold)
+    ]]
+
+    for t_item in lista_trazabilidad:
+        img_cell = obtener_imagen_pdf(t_item["foto"], 45, 35)
+
+        data_traza_pdf.append([
+            Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style),
+            Paragraph(t_item["responsable"], cell_style), Paragraph(f"{t_item['peso']:.2f}", cell_style),
+            Paragraph(t_item["tipo_registro"], cell_style), img_cell
+        ])
+
+    t_traza = Table(data_traza_pdf, colWidths=[90, 70, 130, 60, 100, 90])
+    t_traza.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (1,0), (3,-1), 'CENTER'),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    elements.append(t_traza)
+
+    elements.append(PageBreak())
+
+    # 4. SALIDA DE PRODUCTOS
+    elements.append(Paragraph("4. SALIDA DE PRODUCTOS", h2_style))
+    elements.append(Paragraph("Registro de productos obtenidos a partir del proceso de upcycling", sub_style))
+
+    data_prod_pdf = [[
+        Paragraph("Producto", cell_bold),
+        Paragraph("Cantidad (Unidades)", cell_bold),
+        Paragraph("Evidencia", cell_bold)
+    ]]
+
+    total_prod_unidades = 0
+    for p_item in lista_productos:
+        total_prod_unidades += p_item["cantidad"]
+        img_cell = obtener_imagen_pdf(p_item["foto"], 60, 60)
+
+        data_prod_pdf.append([
+            Paragraph(p_item["producto"], cell_style),
+            Paragraph(str(p_item["cantidad"]), cell_style),
+            img_cell
+        ])
+
+    data_prod_pdf.append([
+        Paragraph("<b>SUMA TOTAL</b>", cell_bold),
+        Paragraph(f"<b>{total_prod_unidades}</b>", cell_bold),
+        Paragraph("-", cell_bold)
+    ])
+
+    t_prod = Table(data_prod_pdf, colWidths=[240, 150, 150])
+    t_prod.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (1,0), (1,-1), 'CENTER'),
+        ('ALIGN', (2,0), (2,-1), 'CENTER'),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    elements.append(t_prod)
+    elements.append(Spacer(1, 15))
+
+    # 5. BALANCE DE MATERIAL
+    elements.append(Paragraph("5. BALANCE DE MATERIAL", h2_style))
+    elements.append(Paragraph("Resumen del flujo y aprovechamiento del material procesado", sub_style))
+
+    data_balance = [
+        [Paragraph("<b>Concepto</b>", cell_bold), Paragraph("<b>Cantidad (kg)</b>", cell_bold)],
+        [Paragraph("Material recibido", cell_style), Paragraph(f"{kg_recibidos:.2f}", cell_style)],
+        [Paragraph("Material transformado en productos", cell_style), Paragraph(f"{mat_transformado:.2f}", cell_style)],
+        [Paragraph("Retazos aprovechables", cell_style), Paragraph(f"{retazos_aprovechables:.2f}", cell_style)],
+        [Paragraph("Pérdida no aprovechable", cell_style), Paragraph(f"{perdida_no_aprovechable:.2f}", cell_style)],
+        [Paragraph("Total procesado", cell_style), Paragraph(f"{total_procesado:.2f}", cell_style)],
+        [Paragraph("% Aprovechamiento", cell_style), Paragraph(f"{pct_aprovechamiento_total:.2f} %", cell_style)],
+        [Paragraph("% Pérdida", cell_style), Paragraph(f"{pct_perdida:.2f} %", cell_style)],
+    ]
+
+    t_balance = Table(data_balance, colWidths=[300, 200])
+    t_balance.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F8FAFC')),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    elements.append(t_balance)
+    elements.append(Spacer(1, 12))
+
+    # 6. EMISIONES
+    elements.append(Paragraph("6. EMISIONES (kg CO2e)", h2_style))
+    data_emisiones = [
+        [Paragraph("Concepto", cell_bold), Paragraph("CO2e (kg)", cell_bold)],
+        [Paragraph("Emisiones transporte", cell_style), Paragraph(f"{emisiones_transporte:.2f}", cell_style)],
+        [Paragraph("Emisiones lavado", cell_style), Paragraph(f"{emisiones_lavado:.2f}", cell_style)],
+        [Paragraph("Emisiones corte", cell_style), Paragraph(f"{emisiones_corte:.2f}", cell_style)],
+        [Paragraph("Emisiones bordado", cell_style), Paragraph(f"{emisiones_bordado:.2f}", cell_style)],
+        [Paragraph("CO2e evitado (total)", cell_bold), Paragraph(f"{co2_evitado_total:.2f}", cell_bold)],
+        [Paragraph("CO2e neto", cell_bold), Paragraph(f"{co2_neto:.2f}", cell_bold)],
+    ]
+
+    t_emisiones = Table(data_emisiones, colWidths=[300, 200])
+    t_emisiones.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    elements.append(t_emisiones)
+    elements.append(Spacer(1, 12))
+
+    # Pie / Firma
+    elements.append(Paragraph("Documento generado por Pequeños Detalles", cell_style))
+    elements.append(Spacer(1, 6))
+    elements.append(Paragraph(f"Fecha de generación: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", cell_style))
+
+    # Construir PDF
+    try:
+        doc.build(elements, canvasmaker=ReporteCanvas)
+        buffer.seek(0)
+        return buffer.getvalue()
+    except Exception as e:
+        # En caso de error al generar PDF, devolver None para manejarlo fuera
+        return None
