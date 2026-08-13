@@ -700,8 +700,6 @@ else:
             # CONSOLIDADO SOCIAL
             personas_unic¡Entendido totalmente! El flujo estructurado por **Producto, Rol y Persona** le da mucha más precisión a la producción, permitiendo que varios artesanos participen en la confección o en el acabado de un mismo lote.
 
-Aquí tienes el código completo en **Python (usando Pandas)** que construye ambas tablas, calcula automáticamente las horas generadas y totales, y las muestra con el formato exacto de tus imágenes:
-
 ```python
 import pandas as pd
 
