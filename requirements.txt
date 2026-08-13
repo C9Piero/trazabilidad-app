@@ -3,3 +3,4 @@ pandas
 python-docx
 supabase
 reportlab
+pip install streamlit-option-menu
