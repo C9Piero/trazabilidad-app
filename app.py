@@ -39,14 +39,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- ESTILOS CSS DE ALTO NIVEL (UI MODERN Y COLORIDA) ---
+# --- ESTILOS CSS ---
 st.markdown("""
     <style>
     /* Ocultar flechas numéricas */
     div[data-testid="stNumberInput"] button { display: none !important; }
     div[data-testid="stNumberInput"] input { text-align: left; }
     
-    /* Header principal con gradiente vívido */
+    /* Header principal moderno */
     .hero-header {
         background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
         color: white;
@@ -76,15 +76,6 @@ st.markdown("""
         font-weight: 700;
         font-size: 0.8rem;
         border: 1px solid #FCD34D;
-    }
-    .badge-done {
-        background-color: #D1FAE5;
-        color: #059669;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.8rem;
-        border: 1px solid #6EE7B7;
     }
 
     /* Estilos para el sidebar */
@@ -165,10 +156,10 @@ if not st.session_state.autenticado:
                     st.error("⚠️ Usuario o contraseña incorrectos.")
 
 else:
-    # --- Cargar lista de proyectos en proceso para el menú lateral ---
+    # --- Cargar lista de proyectos en proceso ---
     proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
 
-    # --- BARRA LATERAL MODERNA Y DINÁMICA ---
+    # --- BARRA LATERAL MODERNA ---
     with st.sidebar:
         st.markdown("### 🧵 Pequeños Detalles")
         st.caption("Panel de Control Interno | 2026")
@@ -177,40 +168,33 @@ else:
         st.markdown('<p class="sidebar-section-title">Navegación</p>', unsafe_allow_html=True)
 
         if st.button("✨ Nuevo Reporte PDF", use_container_width=True, type="primary" if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF" else "secondary"):
+            st.session_state.proyecto_editar = {}
             st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
             st.rerun()
 
         st.markdown('<p class="sidebar-section-title">Proyectos Pendientes</p>', unsafe_allow_html=True)
         
-        # Desplegable interactivo debajo de Proyectos en Proceso
+        # LISTA DIRECTA DE BOTONES POR CADA PROYECTO EN PROCESO
         if proyectos_wip:
-            opciones_proyectos = ["-- Ver Todos ({}) --".format(len(proyectos_wip))] + [
-                f"{p.get('cliente', 'Sin cliente')} ({p.get('codigo', 'S/C')})" for p in proyectos_wip
-            ]
-            
-            proy_seleccionado = st.selectbox(
-                "⏳ Selecciona para continuar:",
-                options=opciones_proyectos,
-                index=0,
-                key="select_wip_sidebar"
-            )
-
-            # Si selecciona un proyecto específico del menú desplegable:
-            if proy_seleccionado and not proy_seleccionado.startswith("-- Ver Todos"):
-                idx_p = opciones_proyectos.index(proy_seleccionado) - 1
-                proyecto_elegido = proyectos_wip[idx_p]
+            for p in proyectos_wip:
+                cli_nombre = p.get('cliente', 'Sin Nombre')
+                cod_ref = p.get('codigo', '')
+                label_btn = f"🔸 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
                 
-                # Carga inmediata del proyecto al formulario
-                if st.session_state.proyecto_editar != proyecto_elegido:
-                    st.session_state.proyecto_editar = proyecto_elegido
+                # Resaltar botón si es el proyecto seleccionado en este momento
+                es_activo = st.session_state.proyecto_editar.get('id') == p.get('id') or st.session_state.proyecto_editar.get('codigo') == cod_ref
+                
+                if st.button(label_btn, key=f"side_proj_{p.get('id', cod_ref)}", use_container_width=True, type="primary" if es_activo else "secondary"):
+                    st.session_state.proyecto_editar = p
                     st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
                     st.rerun()
+
+            st.write("")
+            if st.button("📋 Ver Lista en Proceso", use_container_width=True):
+                st.session_state.pestaña_activa = "⏳ Proyectos en Proceso"
+                st.rerun()
         else:
             st.caption("🟢 No hay proyectos en borrador")
-
-        if st.button("📋 Ver Lista en Proceso", use_container_width=True, type="primary" if st.session_state.pestaña_activa == "⏳ Proyectos en Proceso" else "secondary"):
-            st.session_state.pestaña_activa = "⏳ Proyectos en Proceso"
-            st.rerun()
 
         st.markdown('<p class="sidebar-section-title">Analítica e Histórico</p>', unsafe_allow_html=True)
 
@@ -264,7 +248,7 @@ else:
 
         st.write("")
 
-        # BOTONES DE ACCIÓN PRINCIPALES CON ESTILO
+        # BOTONES DE ACCIÓN PRINCIPALES
         b_col1, b_col2 = st.columns(2)
 
         if b_col1.button("💾 Guardar Borrador (En Proceso)", use_container_width=True):
