@@ -13,64 +13,23 @@ from reportlab.pdfgen import canvas
 
 # --- FACTORES DE EMISIÓN DE MATERIALES (CO2 EVITADO) ---
 FACTORES_CO2 = {
-    "Banner": 9.5,
-    "Bata de laboratorio": 6.575,
-    "Bolsas": 8.0,
-    "Camisa": 6.575,
-    "Camisa algodón": 5.0,
-    "Camisa drill": 5.9,
-    "Camisa ignífuga": 5.35,
-    "Camisa jean / denim": 5.0,
-    "Camisaco": 5.0,
-    "Camisaco drill": 5.9,
-    "Camisaco drill con cinta": 6.25,
-    "Casaca": 6.575,
-    "Casaca drill": 5.9,
-    "Casaca polar": 6.0,
-    "Casaca polar con cinta reflectiva": 6.3,
-    "Casaca térmica": 6.1,
-    "Chaleco": 6.575,
-    "Chaleco con cinta": 6.925,
-    "Chaleco de seguridad": 9.75,
-    "Chaleco Fluorescente": 9.625,
-    "Chaleco polar": 6.0,
-    "Chaleco reversible": 9.5,
-    "Chompa": 7.1,
-    "Chompa con cinta reflectiva": 7.45,
-    "Chompa Jorge Chavez": 6.0,
-    "Chompa Jorge Chavez con cinta reflectiva": 6.3,
-    "Chompa polar": 6.0,
-    "Enterizo": 6.575,
-    "Gorro": 7.925,
-    "Impermeable": 9.425,
-    "Mameluco": 6.575,
-    "Mameluco acolchado": 5.825,
-    "Mameluco drill": 5.9,
-    "Mameluco jean reflectivo": 5.35,
-    "Merma": 6.575,
-    "Overol": 6.575,
-    "Pantalón": 6.575,
-    "Pantalón algodón": 5.0,
-    "Pantalón drill": 5.9,
-    "Pantalón drill con cinta": 6.25,
-    "Pantalón ignífugo": 5.35,
-    "Pantalón jean": 5.0,
-    "Pantalón jean / drill": 5.675,
-    "Pantalón jean con cinta reflectiva": 5.35,
-    "Pantalón polar": 6.0,
-    "Pantalón térmico": 6.0,
-    "Polera": 5.0,
-    "Polera polar": 6.0,
-    "Polo": 6.8,
-    "Polo algodón": 5.0,
-    "Polo con cinta reflectiva": 6.925,
-    "Polo manga corta": 6.8,
-    "Polo manga larga": 6.8,
-    "Polo manga larga con cinta reflectiva": 6.7,
-    "Polo piqué": 5.0,
-    "Short": 6.575,
-    "Toalla": 5.0,
-    "Otro": 6.575
+    "Banner": 9.5, "Bata de laboratorio": 6.575, "Bolsas": 8.0, "Camisa": 6.575,
+    "Camisa algodón": 5.0, "Camisa drill": 5.9, "Camisa ignífuga": 5.35, "Camisa jean / denim": 5.0,
+    "Camisaco": 5.0, "Camisaco drill": 5.9, "Camisaco drill con cinta": 6.25, "Casaca": 6.575,
+    "Casaca drill": 5.9, "Casaca polar": 6.0, "Casaca polar con cinta reflectiva": 6.3,
+    "Casaca térmica": 6.1, "Chaleco": 6.575, "Chaleco con cinta": 6.925, "Chaleco de seguridad": 9.75,
+    "Chaleco Fluorescente": 9.625, "Chaleco polar": 6.0, "Chaleco reversible": 9.5, "Chompa": 7.1,
+    "Chompa con cinta reflectiva": 7.45, "Chompa Jorge Chavez": 6.0,
+    "Chompa Jorge Chavez con cinta reflectiva": 6.3, "Chompa polar": 6.0, "Enterizo": 6.575,
+    "Gorro": 7.925, "Impermeable": 9.425, "Mameluco": 6.575, "Mameluco acolchado": 5.825,
+    "Mameluco drill": 5.9, "Mameluco jean reflectivo": 5.35, "Merma": 6.575, "Overol": 6.575,
+    "Pantalón": 6.575, "Pantalón algodón": 5.0, "Pantalón drill": 5.9, "Pantalón drill con cinta": 6.25,
+    "Pantalón ignífugo": 5.35, "Pantalón jean": 5.0, "Pantalón jean / drill": 5.675,
+    "Pantalón jean con cinta reflectiva": 5.35, "Pantalón polar": 6.0, "Pantalón térmico": 6.0,
+    "Polera": 5.0, "Polera polar": 6.0, "Polo": 6.8, "Polo algodón": 5.0,
+    "Polo con cinta reflectiva": 6.925, "Polo manga corta": 6.8, "Polo manga larga": 6.8,
+    "Polo manga larga con cinta reflectiva": 6.7, "Polo piqué": 5.0, "Short": 6.575,
+    "Toalla": 5.0, "Otro": 6.575
 }
 
 # --- FACTORES DE TRANSPORTE ---
@@ -94,7 +53,7 @@ FACTORES_BORDADO = {
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
     page_title="Control Interno - Pequeños Detalles",
-    page_icon="🌸",
+    page_icon="🧵",
     layout="wide"
 )
 
@@ -122,9 +81,12 @@ try:
 except Exception:
     st.error("Error al conectar con Supabase. Revisa las credenciales en Secrets.")
 
-def cargar_proyectos():
+def cargar_proyectos(estado=None):
     try:
-        response = supabase.table("proyectos").select("*").execute()
+        query = supabase.table("proyectos").select("*")
+        if estado:
+            query = query.eq("estado", estado)
+        response = query.execute()
         return response.data
     except Exception:
         return []
@@ -137,13 +99,13 @@ if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
 if not st.session_state.autenticado:
-    st.markdown("<h2 style='text-align: center;'>🌸 Pequeños Detalles Handmade Perú</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>🧵 Pequeños Detalles Handmade Perú</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center;'>Generador Oficial de Informes Técnicos</h4>", unsafe_allow_html=True)
     st.write("---")
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.subheader("🔐 Iniciar Sesión")
+        st.subheader("🔑 Iniciar Sesión")
         usuario_input = st.text_input("Usuario")
         password_input = st.text_input("Contraseña", type="password")
         
@@ -163,7 +125,7 @@ else:
         st.write("---")
         opcion_menu = st.radio(
             "Selecciona una opción:",
-            ["➕ Nuevo Reporte PDF", "📊 Dashboard 2026", "📁 Historial de Proyectos"]
+            ["➕ Nuevo Reporte PDF", "⏳ Proyectos en Proceso", "📊 Dashboard 2026", "📜 Historial Completo"]
         )
         st.write("---")
         if st.button("Cerrar Sesión", use_container_width=True):
@@ -493,28 +455,31 @@ else:
 
     # --- NAVEGACIÓN PRINCIPAL ---
     if opcion_menu == "➕ Nuevo Reporte PDF":
-        st.title("📄 Generador Oficial de Informe Técnico")
+        st.title("📋 Generador Oficial de Informe Técnico")
+
+        # Cargar valores si se seleccionó un borrador previo
+        proy_edit = st.session_state.get("proyecto_editar", {})
 
         # 1. FICHA
         st.subheader("1. Ficha del Proyecto")
         c1, c2, c3 = st.columns(3)
-        cliente = c1.text_input("Cliente / Empresa", value="")
-        ruc = c2.text_input("RUC", value="")
-        codigo_proy = c3.text_input("Código de Proyecto", value="")
+        cliente = c1.text_input("Cliente / Empresa", value=proy_edit.get("cliente", ""))
+        ruc = c2.text_input("RUC", value=proy_edit.get("ruc", ""))
+        codigo_proy = c3.text_input("Código de Proyecto", value=proy_edit.get("codigo", ""))
 
         c4, c5, c6 = st.columns(3)
-        proyecto_nom = c4.text_input("Nombre del Proyecto", value="")
-        fe_inicio = c5.text_input("Fecha Inicio", value="")
-        fe_fin = c6.text_input("Fecha Término", value="")
+        proyecto_nom = c4.text_input("Nombre del Proyecto", value=proy_edit.get("nombre", ""))
+        fe_inicio = c5.text_input("Fecha Inicio", value=proy_edit.get("fe_inicio", ""))
+        fe_fin = c6.text_input("Fecha Término", value=proy_edit.get("fe_fin", ""))
 
         c7, c8, c9 = st.columns(3)
-        responsable = c7.text_input("Responsable", value="")
-        area = c8.text_input("Área", value="")
-        guia_remision = c9.text_input("Nº Guía Remisión", value="")
+        responsable = c7.text_input("Responsable", value=proy_edit.get("responsable", ""))
+        area = c8.text_input("Área", value=proy_edit.get("area", ""))
+        guia_remision = c9.text_input("Nº Guía Remisión", value=proy_edit.get("guia_remision", ""))
 
         c10, c11 = st.columns(2)
-        origen = c10.text_input("Punto Origen", value="")
-        destino = c11.text_input("Punto Destino", value="")
+        origen = c10.text_input("Punto Origen", value=proy_edit.get("origen", ""))
+        destino = c11.text_input("Punto Destino", value=proy_edit.get("destino", ""))
 
         st.write("---")
 
@@ -562,7 +527,7 @@ else:
                 "co2_evitado": co2_item
             })
 
-        st.info(f"💡 **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
+        st.info(f"📦 **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
         st.write("---")
 
         # 3. TRAZABILIDAD
@@ -633,12 +598,12 @@ else:
                 "foto": p_foto
             })
 
-        st.success(f"📦 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
+        st.success(f"📊 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
         st.write("---")
 
         # 5. BALANCE DE MATERIAL
         st.subheader("5. Balance de Material")
-        st.info(f"📦 **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
+        st.info(f"📊 **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
 
         col_bm1, col_bm2 = st.columns(2)
         mat_transformado = col_bm1.number_input("Material transformado en productos (kg)", min_value=0.0, value=0.0, step=0.1)
@@ -667,7 +632,7 @@ else:
         st.subheader("6. Balance de Emisiones del Proceso e Impacto Social")
 
         # A. TRANSPORTE
-        st.markdown("##### 🚗 A. Cálculo de Transporte")
+        st.markdown("##### 🚚 A. Cálculo de Transporte")
         ct1, ct2, ct3 = st.columns(3)
         vehiculo_sel = ct1.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()))
         recorrido_tipo = ct2.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"])
@@ -679,7 +644,7 @@ else:
 
         st.caption(f"Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
 
-        # B. LAVANDERÍA Y CORTE (Automáticos desde Trazabilidad)
+        # B. LAVANDERÍA Y CORTE
         st.markdown("##### 🧼 B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
         emisiones_lavado = peso_lavado_auto * 0.30
         emisiones_corte = peso_corte_auto * 0.05
@@ -703,7 +668,7 @@ else:
         emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
         co2_neto = co2_evitado_total - emisiones_proceso
 
-        st.warning(f"🔥 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
+        st.warning(f"🍃 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
 
         st.markdown("##### 👥 D. Impacto Social")
         m1, m2 = st.columns(2)
@@ -712,10 +677,30 @@ else:
 
         st.write("---")
 
-        # BOTÓN GENERADOR
-        if st.button("🔥 Generar PDF Oficial y Guardar", type="primary", use_container_width=True):
+        # BOTONES DE ACCIÓN (GUARDAR BORRADOR VS FINALIZAR)
+        b_col1, b_col2 = st.columns(2)
+
+        if b_col1.button("💾 Guardar Borrador (En Proceso)", use_container_width=True):
             try:
-                supabase.table("proyectos").insert({
+                supabase.table("proyectos").upsert({
+                    "codigo": codigo_proy if codigo_proy else "PROY-PENDIENTE",
+                    "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
+                    "fecha": f"{fe_inicio} - {fe_fin}",
+                    "peso_recibido": peso_total_recibido,
+                    "peso_transformado": mat_transformado,
+                    "aprovechamiento": pct_aprovechamiento_total,
+                    "co2_neto": co2_neto,
+                    "horas_totales": horas_totales,
+                    "ruc": ruc,
+                    "estado": "EN_PROCESO"
+                }).execute()
+                st.success("💾 Guardado como 'Proyecto en Proceso'. Puedes continuarlo más tarde.")
+            except Exception as e:
+                st.error(f"Error al guardar borrador: {e}")
+
+        if b_col2.button("📑 Finalizar y Generar PDF Oficial", type="primary", use_container_width=True):
+            try:
+                supabase.table("proyectos").upsert({
                     "codigo": codigo_proy if codigo_proy else "SIN-CODIGO",
                     "cliente": cliente if cliente else "CLIENTE GENERAL",
                     "fecha": f"{fe_inicio} - {fe_fin}",
@@ -724,11 +709,12 @@ else:
                     "aprovechamiento": pct_aprovechamiento_total,
                     "co2_neto": co2_neto,
                     "horas_totales": horas_totales,
-                    "ruc": ruc
+                    "ruc": ruc,
+                    "estado": "COMPLETADO"
                 }).execute()
-                st.success("✅ Guardado correctamente en la base de datos.")
+                st.success("✅ Guardado correctamente como proyecto completado.")
             except Exception:
-                st.info("ℹ️ Generando PDF (el registro en BD ya existe, omitiendo duplicación).")
+                st.info("ℹ️ Registro finalizado en BD.")
 
             pdf_oficial = generar_pdf_oficial(
                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
@@ -748,21 +734,39 @@ else:
                 use_container_width=True
             )
 
+    # --- PESTAÑA PROYECTOS EN PROCESO ---
+    elif opcion_menu == "⏳ Proyectos en Proceso":
+        st.title("⏳ Proyectos en Proceso (Borradores)")
+        st.caption("Aquí figuran los lotes y entregas que aún están en curso en el taller.")
+
+        proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
+
+        if proyectos_wip:
+            for p in proyectos_wip:
+                with st.expander(f"📦 {p.get('cliente', 'Sin cliente')} — Código: {p.get('codigo', 'S/C')}"):
+                    st.write(f"**Material Ingresado:** {p.get('peso_recibido', 0)} kg")
+                    st.write(f"**Fechas:** {p.get('fecha', '-')}")
+                    if st.button(f"✏️ Continuar/Completar Registro", key=f"btn_{p.get('codigo')}"):
+                        st.session_state.proyecto_editar = p
+                        st.info("¡Proyecto cargado! Cambia al menú 'Nuevo Reporte PDF' para finalizarlo.")
+        else:
+            st.info("No hay proyectos pendientes en proceso actualmente.")
+
     elif opcion_menu == "📊 Dashboard 2026":
         st.title("📊 Dashboard Consolidado 2026")
-        lista_proyectos = cargar_proyectos()
+        lista_proyectos = cargar_proyectos(estado="COMPLETADO")
         if lista_proyectos:
             df = pd.DataFrame(lista_proyectos)
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("CO₂e Evitado Total", f"{df['co2_neto'].sum():.2f} kg")
             col2.metric("Textil Procesado", f"{df['peso_transformado'].sum():.2f} kg")
             col3.metric("Horas Generadas", f"{df['horas_totales'].sum():.1f} hrs")
-            col4.metric("Total Proyectos", len(df))
+            col4.metric("Total Proyectos Completados", len(df))
         else:
             st.info("Sin datos acumulados.")
 
-    elif opcion_menu == "📁 Historial de Proyectos":
-        st.title("📁 Historial de Proyectos")
+    elif opcion_menu == "📜 Historial Completo":
+        st.title("📜 Historial de Proyectos")
         lista_proyectos = cargar_proyectos()
         if lista_proyectos:
             st.dataframe(pd.DataFrame(lista_proyectos), use_container_width=True)
