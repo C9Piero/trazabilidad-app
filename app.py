@@ -11,6 +11,15 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
 
+# --- CATÁLOGO BASE DE PRODUCTOS HISTÓRICOS 2025 ---
+PRODUCTOS_CATALOGO_BASE = [
+    "Estrellas", "Cartuchera", "Cúbica", "Bolso", "Mochila", "Llavero",
+    "Monedero", "Canguro", "Tote bag", "Neceser", "Portalaptop", "Portacepillos",
+    "Pelota", "Portacubierto", "Juguete", "Cubo", "Corazones", "Peluche",
+    "Morral", "Portaútiles", "Portabotella", "Cama perrito", "Colets",
+    "Rombo", "Mandiles", "Lonchera", "➕ Otro (Escribir nuevo producto)"
+]
+
 # --- FACTORES DE EMISIÓN DE MATERIALES ---
 FACTORES_CO2 = {
     "Banner": 9.5, "Bata de laboratorio": 6.575, "Bolsas": 8.0, "Camisa": 6.575,
@@ -492,6 +501,10 @@ if "pestaña_activa" not in st.session_state:
 if "proyecto_editar" not in st.session_state:
     st.session_state.proyecto_editar = {}
 
+# Carga de Lista Dinámica de Productos
+if "catalogo_productos" not in st.session_state:
+    st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
+
 # --- LOGIN ---
 USUARIO_CORRECTO = "admin"
 PASSWORD_CORRECTO = "pequenos2026"
@@ -573,7 +586,7 @@ else:
             st.session_state.proyecto_editar = {}
             st.rerun()
 
-    # --- HEADER VÍVIDO PARA TODAS LAS PÁGINAS ---
+    # --- HEADER VÍVIDO ---
     st.markdown(f"""
         <div class="hero-header">
             <h1>🧵 Sistema de Gestión de Informes Técnicos</h1>
@@ -718,7 +731,7 @@ else:
 
         st.write("")
 
-        # 4. SALIDA DE PRODUCTOS
+        # 4. SALIDA DE PRODUCTOS (CON LISTA DESPLEGABLE DINÁMICA + OTRO)
         with st.container(border=True):
             st.subheader("4. Salida de Productos")
 
@@ -738,10 +751,28 @@ else:
 
             for i in range(st.session_state.num_prods):
                 st.markdown(f"**Producto {i+1}**")
-                col_pnom, col_pcant, col_pfoto = st.columns([4, 2, 4])
+                col_psel, col_pnom_nuevo, col_pcant, col_pfoto = st.columns([3, 2.5, 1.5, 3])
 
-                p_nombre = col_pnom.text_input("Producto", value="", key=f"prod_nom_{i}")
-                p_cant = col_pcant.number_input("Cantidad (Unidad)", min_value=0, value=0, key=f"prod_cant_{i}")
+                # Lista Desplegable
+                prod_seleccionado = col_psel.selectbox(
+                    "Seleccionar Producto Base",
+                    st.session_state.catalogo_productos,
+                    key=f"prod_sel_{i}"
+                )
+
+                # Si el usuario elige "Otro", se habilita un cuadro de texto
+                if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
+                    nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto", key=f"prod_nuevo_txt_{i}")
+                    nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
+                    
+                    # Se agrega automáticamente al catálogo en memoria para futuras selecciones
+                    if nuevo_nombre.strip() and nuevo_nombre.strip() not in st.session_state.catalogo_productos:
+                        st.session_state.catalogo_productos.insert(-1, nuevo_nombre.strip())
+                else:
+                    col_pnom_nuevo.text_input("Producto", value=prod_seleccionado, disabled=True, key=f"prod_dis_{i}")
+                    nombre_final = prod_seleccionado
+
+                p_cant = col_pcant.number_input("Cantidad (Unid.)", min_value=0, value=0, key=f"prod_cant_{i}")
                 p_foto = col_pfoto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}")
 
                 if p_foto is not None:
@@ -749,7 +780,7 @@ else:
 
                 total_prod_unid += p_cant
                 lista_productos.append({
-                    "producto": p_nombre.strip() if p_nombre.strip() else f"Producto {i+1}",
+                    "producto": nombre_final,
                     "cantidad": p_cant,
                     "foto": p_foto
                 })
@@ -828,13 +859,11 @@ else:
 
         st.write("")
 
-        # 7. EQUIPO DE TRABAJO Y GENERACIÓN DE HORAS (NUEVO MODELO CORTE Y LOGÍSTICA FIJO)
+        # 7. EQUIPO DE TRABAJO Y GENERACIÓN DE HORAS
         with st.container(border=True):
             st.subheader("7. Equipo de Trabajo y Generación de Horas")
             st.markdown("**Participación del personal en el proceso de upcycling y estimación de horas generadas por actividad**")
             
-            # IA ESTIMADORA PARA CORTE BASADA EN KG DE UPCYCLING
-            # Lógica Upcycling: Desarmar prendas, clasificar y trazar sobre textil reciclado requiere aprox. 0.35 horas de taller por cada kg ingresado.
             dias_sugeridos_corte = max(1, int(peso_total_recibido / 30)) if peso_total_recibido > 0 else 2
             horas_dia_sugeridas_corte = 8.5 if peso_total_recibido > 20 else 4.0
 
@@ -864,18 +893,13 @@ else:
             for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
                 c_cod, c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 1, 2.5, 0.8, 1.2, 1.2, 1.2])
                 
-                # Código
                 c_cod.text_input("Cod", value=codigo_proy, disabled=True, key=f"ops_cod_{idx}", label_visibility="collapsed")
-                
-                # Rol
                 rol_val = p_fijo["rol"]
                 c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
                 
-                # Nombre con checkbox para habilitar edición
                 editar_nom = c_chk.checkbox("✏️", key=f"ops_chk_{idx}")
                 nom_val = c_nom.text_input("Nombre", value=p_fijo["nombre"], disabled=not editar_nom, key=f"ops_nom_{idx}", label_visibility="collapsed")
                 
-                # Valores por defecto inteligentes
                 default_dias = 3 if rol_val == "Logística" else dias_sugeridos_corte
                 default_hdia = 3.0 if rol_val == "Logística" else horas_dia_sugeridas_corte
 
