@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
 
-# Importaciones para ReportLab
+# Importaciones para ReportLab (PDF)
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
@@ -42,11 +42,9 @@ st.set_page_config(
 # --- ESTILOS CSS ---
 st.markdown("""
     <style>
-    /* Ocultar flechas numéricas */
     div[data-testid="stNumberInput"] button { display: none !important; }
     div[data-testid="stNumberInput"] input { text-align: left; }
     
-    /* Header principal moderno */
     .hero-header {
         background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
         color: white;
@@ -67,7 +65,6 @@ st.markdown("""
         font-size: 0.95rem;
     }
 
-    /* Badges de estado */
     .badge-wip {
         background-color: #FEF3C7;
         color: #D97706;
@@ -78,7 +75,6 @@ st.markdown("""
         border: 1px solid #FCD34D;
     }
 
-    /* Estilos para el sidebar */
     div[data-testid="stSidebar"] {
         background-color: #F8FAFC;
         border-right: 1px solid #E2E8F0;
@@ -156,10 +152,9 @@ if not st.session_state.autenticado:
                     st.error("⚠️ Usuario o contraseña incorrectos.")
 
 else:
-    # --- Cargar lista de proyectos en proceso ---
     proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
 
-    # --- BARRA LATERAL MODERNA ---
+    # --- BARRA LATERAL ---
     with st.sidebar:
         st.markdown("### 🧵 Pequeños Detalles")
         st.caption("Panel de Control Interno | 2026")
@@ -174,14 +169,12 @@ else:
 
         st.markdown('<p class="sidebar-section-title">Proyectos Pendientes</p>', unsafe_allow_html=True)
         
-        # LISTA DIRECTA DE BOTONES POR CADA PROYECTO EN PROCESO
         if proyectos_wip:
             for p in proyectos_wip:
                 cli_nombre = p.get('cliente', 'Sin Nombre')
                 cod_ref = p.get('codigo', '')
                 label_btn = f"🔸 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
                 
-                # Resaltar botón si es el proyecto seleccionado en este momento
                 es_activo = st.session_state.proyecto_editar.get('id') == p.get('id') or st.session_state.proyecto_editar.get('codigo') == cod_ref
                 
                 if st.button(label_btn, key=f"side_proj_{p.get('id', cod_ref)}", use_container_width=True, type="primary" if es_activo else "secondary"):
@@ -212,7 +205,7 @@ else:
             st.session_state.proyecto_editar = {}
             st.rerun()
 
-    # --- HEADER VÍVIDO PARA TODAS LAS PÁGINAS ---
+    # --- HEADER VÍVIDO ---
     st.markdown(f"""
         <div class="hero-header">
             <h1>🧵 Sistema de Gestión de Informes Técnicos</h1>
@@ -220,7 +213,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-    # --- PESTAÑA: NUEVO / EDITAR REPORTE ---
+    # --- PESTAÑA: NUEVO / EDITAR REPORTE (CON TODAS LAS SECCIONES) ---
     if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
         
@@ -230,6 +223,7 @@ else:
                 st.session_state.proyecto_editar = {}
                 st.rerun()
 
+        # 1. FICHA DEL PROYECTO
         with st.container(border=True):
             st.subheader("1. Ficha del Proyecto")
             c1, c2, c3 = st.columns(3)
@@ -248,37 +242,123 @@ else:
 
         st.write("")
 
+        # 2. RESIDUOS / MATERIALES RECIBIDOS (TABLA DINÁMICA)
+        with st.container(border=True):
+            st.subheader("2. Residuos Textil / Materiales Recibidos")
+            
+            # Cargar items previos si existen
+            items_def = p_edit.get("items_residuos", [
+                {"prenda": "Camisa drill", "unidades": 10, "peso_unitario": 0.5, "factor_emision": 5.9}
+            ])
+            
+            df_residuos_edit = pd.DataFrame(items_def)
+            
+            edited_residuos = st.data_editor(
+                df_residuos_edit,
+                num_rows="dynamic",
+                use_container_width=True,
+                column_config={
+                    "prenda": st.column_config.SelectboxColumn("Tipo de Prenda/Material", options=list(FACTORES_CO2.keys()), required=True),
+                    "unidades": st.column_config.NumberColumn("Unidades", min_value=1, step=1, required=True),
+                    "peso_unitario": st.column_config.NumberColumn("Peso Unitario (kg)", min_value=0.01, step=0.05, format="%.2f kg"),
+                    "factor_emision": st.column_config.NumberColumn("Factor CO2 (kgCO2e/kg)", min_value=0.0, format="%.2f")
+                },
+                key="editor_residuos"
+            )
+
+        st.write("")
+
+        # 3. PRODUCTOS ELABORADOS / ENTREGABLES
+        with st.container(border=True):
+            st.subheader("3. Productos Elaborados (Upcycling / Regalos Corporativos)")
+            
+            items_prod_def = p_edit.get("items_productos", [
+                {"producto": "Cartuchera Textil", "unidades": 15, "material_usado": "Camisa drill reutilizada"}
+            ])
+            
+            df_productos_edit = pd.DataFrame(items_prod_def)
+            
+            edited_productos = st.data_editor(
+                df_productos_edit,
+                num_rows="dynamic",
+                use_container_width=True,
+                column_config={
+                    "producto": st.column_config.TextColumn("Nombre del Producto Final", required=True),
+                    "unidades": st.column_config.NumberColumn("Unidades Producidas", min_value=1, step=1, required=True),
+                    "material_usado": st.column_config.TextColumn("Material Base Reutilizado")
+                },
+                key="editor_productos"
+            )
+
+        st.write("")
+
+        # 4. IMPACTO AMBIENTAL Y SOCIAL (CÁLCULOS AUTOMÁTICOS)
+        with st.container(border=True):
+            st.subheader("4. Resumen de Impacto Ambiental y Social")
+            
+            # CÁLCULOS
+            peso_total = 0.0
+            co2_evitado = 0.0
+            
+            for index, row in edited_residuos.iterrows():
+                try:
+                    u = float(row.get("unidades", 0))
+                    p = float(row.get("peso_unitario", 0))
+                    f = float(row.get("factor_emision", 5.0))
+                    
+                    peso_item = u * p
+                    co2_item = peso_item * f
+                    
+                    peso_total += peso_item
+                    co2_evitado += co2_item
+                except Exception:
+                    pass
+
+            c_imp1, c_imp2, c_imp3 = st.columns(3)
+            c_imp1.metric("⚖️ Total Material Revalorizado", f"{peso_total:.2f} kg")
+            c_imp2.metric("🌱 CO2 Evitado Estimado", f"{co2_evitado:.2f} kgCO2e")
+            
+            horas_trabajo = c_imp3.number_input("👭 Horas de Trabajo Artesanal", value=int(p_edit.get("horas_trabajo", 40)), min_value=0)
+
+            observaciones = st.text_area("Notas / Observaciones del Proyecto", value=p_edit.get("observaciones", "Proyecto realizado bajo estándares de economía circular y comercio justo."))
+
+        st.write("")
+
         # BOTONES DE ACCIÓN PRINCIPALES
         b_col1, b_col2 = st.columns(2)
 
+        datos_a_guardar = {
+            "codigo": codigo_proy if codigo_proy else "PROY-PENDIENTE",
+            "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
+            "ruc": ruc,
+            "nombre": proyecto_nom,
+            "fecha": f"{fe_inicio} - {fe_fin}",
+            "items_residuos": edited_residuos.to_dict(orient="records"),
+            "items_productos": edited_productos.to_dict(orient="records"),
+            "peso_total": peso_total,
+            "co2_evitado": co2_evitado,
+            "horas_trabajo": horas_trabajo,
+            "observaciones": observaciones
+        }
+
         if b_col1.button("💾 Guardar Borrador (En Proceso)", use_container_width=True):
             try:
-                supabase.table("proyectos").upsert({
-                    "codigo": codigo_proy if codigo_proy else "PROY-PENDIENTE",
-                    "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
-                    "fecha": f"{fe_inicio} - {fe_fin}",
-                    "ruc": ruc,
-                    "estado": "EN_PROCESO"
-                }).execute()
+                datos_a_guardar["estado"] = "EN_PROCESO"
+                supabase.table("proyectos").upsert(datos_a_guardar).execute()
                 st.success("💾 ¡Guardado con éxito como Borrador!")
                 st.rerun()
             except Exception as e:
-                st.error(f"Error al guardar: {e}")
+                st.error(f"Error al guardar borrador: {e}")
 
         if b_col2.button("📑 Finalizar y Completar Proyecto", type="primary", use_container_width=True):
             try:
-                supabase.table("proyectos").upsert({
-                    "codigo": codigo_proy if codigo_proy else "SIN-CODIGO",
-                    "cliente": cliente if cliente else "CLIENTE GENERAL",
-                    "fecha": f"{fe_inicio} - {fe_fin}",
-                    "ruc": ruc,
-                    "estado": "COMPLETADO"
-                }).execute()
+                datos_a_guardar["estado"] = "COMPLETADO"
+                supabase.table("proyectos").upsert(datos_a_guardar).execute()
                 st.session_state.proyecto_editar = {}
                 st.balloons()
                 st.success("🎉 ¡Proyecto completado con éxito!")
             except Exception as e:
-                st.info("ℹ️ Guardado.")
+                st.error(f"Error al finalizar proyecto: {e}")
 
     # --- PESTAÑA: PROYECTOS EN PROCESO ---
     elif st.session_state.pestaña_activa == "⏳ Proyectos en Proceso":
