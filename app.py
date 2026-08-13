@@ -57,15 +57,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- ESTILO CSS CUSTOM ---
+# Estilos CSS opcionales
 st.markdown("""
     <style>
-    div[data-testid="stNumberInput"] button {
-        display: none !important;
-    }
-    div[data-testid="stNumberInput"] input {
-        text-align: left;
-    }
+    div[data-testid="stNumberInput"] button { display: none !important; }
+    div[data-testid="stNumberInput"] input { text-align: left; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -91,12 +87,19 @@ def cargar_proyectos(estado=None):
     except Exception:
         return []
 
-# --- 3. SISTEMA DE LOGIN ---
-USUARIO_CORRECTO = "admin"
-PASSWORD_CORRECTO = "pequenos2026"
-
+# --- ESTADOS DE SESIÓN INICIALES ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
+
+if "menu_opcion" not in st.session_state:
+    st.session_state.menu_opcion = "➕ Nuevo Reporte PDF"
+
+if "proyecto_editar" not in st.session_state:
+    st.session_state.proyecto_editar = {}
+
+# --- 3. LOGIN ---
+USUARIO_CORRECTO = "admin"
+PASSWORD_CORRECTO = "pequenos2026"
 
 if not st.session_state.autenticado:
     st.markdown("<h2 style='text-align: center;'>🧵 Pequeños Detalles Handmade Perú</h2>", unsafe_allow_html=True)
@@ -123,16 +126,26 @@ else:
         st.title("Pequeños Detalles")
         st.write("👤 **Usuario:** Admin")
         st.write("---")
+
+        opciones_disponibles = ["➕ Nuevo Reporte PDF", "⏳ Proyectos en Proceso", "📊 Dashboard 2026", "📜 Historial Completo"]
+        
+        # Sincronización con session_state para permitir redirección directa
+        idx = opciones_disponibles.index(st.session_state.menu_opcion) if st.session_state.menu_opcion in opciones_disponibles else 0
+        
         opcion_menu = st.radio(
             "Selecciona una opción:",
-            ["➕ Nuevo Reporte PDF", "⏳ Proyectos en Proceso", "📊 Dashboard 2026", "📜 Historial Completo"]
+            opciones_disponibles,
+            index=idx,
+            key="radio_menu"
         )
+        st.session_state.menu_opcion = opcion_menu
+
         st.write("---")
         if st.button("Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False
             st.rerun()
 
-    # --- CANVAS PARA PIE DE PÁGINA Y HEADER EN EL PDF ---
+    # --- CANVAS REPORTE PDF ---
     class ReporteCanvas(canvas.Canvas):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -157,7 +170,7 @@ else:
             self.drawRightString(576, 20, f"Página {self._pageNumber}")
             self.restoreState()
 
-    # --- GENERADOR DEL PDF OFICIAL ---
+    # --- GENERADOR PDF ---
     def generar_pdf_oficial(
         cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
         tipo_material, valorizacion, unidad_medida, guia_remision, origen, destino,
@@ -185,11 +198,9 @@ else:
 
         elements = []
 
-        # Encabezado
         elements.append(Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style))
         elements.append(Paragraph(f"Medición de Impacto Ambiental, Trazabilidad y Gestión Social de Upcycling<br/><b>CÓDIGO: {codigo_proy}</b>", sub_style))
 
-        # Tarjetas Métricas
         cards_data = [
             [
                 Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", card_title),
@@ -215,7 +226,6 @@ else:
         elements.append(t_cards)
         elements.append(Spacer(1, 8))
 
-        # 1. Ficha General
         elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
         data_ficha = [
             [Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style), Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / {responsable}", cell_style)],
@@ -234,7 +244,6 @@ else:
         elements.append(t_ficha)
         elements.append(Spacer(1, 8))
 
-        # 2. Ingreso de Material
         elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
         data_prendas_pdf = [[
             Paragraph("Ítem", cell_bold), Paragraph("Tipo de Producto / Prenda", cell_bold),
@@ -280,7 +289,6 @@ else:
         elements.append(t_prendas)
         elements.append(Spacer(1, 8))
 
-        # 3. Trazabilidad
         elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
         data_traza_pdf = [[
             Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold),
@@ -317,7 +325,6 @@ else:
 
         elements.append(PageBreak())
 
-        # 4. SALIDA DE PRODUCTOS
         elements.append(Paragraph("4. SALIDA DE PRODUCTOS", h2_style))
         elements.append(Paragraph("Registro de productos obtenidos a partir del proceso de upcycling", sub_style))
 
@@ -365,7 +372,6 @@ else:
         elements.append(t_prod)
         elements.append(Spacer(1, 15))
 
-        # 5. BALANCE DE MATERIAL
         elements.append(Paragraph("5. BALANCE DE MATERIAL", h2_style))
         elements.append(Paragraph("Resumen del flujo y aprovechamiento del material procesado", sub_style))
 
@@ -397,7 +403,6 @@ else:
         elements.append(Paragraph("<b>Nota:</b> El proceso presenta un alto nivel de aprovechamiento del material, donde los retazos generados son reincorporados como insumo en nuevos productos, reduciendo la generación de residuos.", nota_style))
         elements.append(Spacer(1, 15))
 
-        # 6. BALANCE DE IMPACTO AMBIENTAL
         elements.append(Paragraph("6. RESUMEN DE IMPACTO AMBIENTAL DEL PROYECTO (CO₂e)", h2_style))
         data_co2_box = [
             [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Ambiental Neto</b>", card_sub)],
@@ -413,12 +418,10 @@ else:
         elements.append(t_co2_box)
         elements.append(Spacer(1, 10))
 
-        # Interpretación
         interp_style = ParagraphStyle('Interp', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1E293B'), alignment=1)
         elements.append(Paragraph(f"<b>Interpretación de resultados:</b><br/>El proceso de upcycling permitió evitar la emisión de <b>{co2_neto:.2f} kg de CO₂e</b> en comparación con la producción de material textil nuevo.", interp_style))
         elements.append(Spacer(1, 10))
 
-        # Desglose de Emisiones
         elements.append(Paragraph("<b>Desglose de emisiones del proceso (kg CO₂e)</b>", ParagraphStyle('SubSub', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#0F172A'), alignment=1)))
         elements.append(Spacer(1, 4))
 
@@ -445,7 +448,6 @@ else:
         elements.append(Paragraph("Nota: Las emisiones fueron estimadas considerando factores de emisión por tipo de proceso y transporte.<br/>Las emisiones generadas durante el proceso representaron una fracción menor frente al impacto positivo obtenido, evidenciando la eficiencia ambiental del modelo de reaprovechamiento.", nota_emision))
         elements.append(Spacer(1, 15))
 
-        # 7. Impacto Social
         elements.append(Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
         elements.append(Paragraph(f"El proyecto permitió la inclusión laboral de artesanas y personal de taller, acumulando un total de <b>{horas_totales:.2f} horas de trabajo directo</b> distribuidas entre <b>{cant_personas} participantes</b>.", cell_style))
 
@@ -453,37 +455,48 @@ else:
         buffer.seek(0)
         return buffer
 
-    # --- NAVEGACIÓN PRINCIPAL ---
-    if opcion_menu == "➕ Nuevo Reporte PDF":
-        st.title("📋 Generador Oficial de Informe Técnico")
+    # --- PESTAÑA: NUEVO / CONTINUAR PROYECTO ---
+    if st.session_state.menu_opcion == "➕ Nuevo Reporte PDF":
+        
+        # Cargar valores guardados si se proviene de un borrador
+        p_edit = st.session_state.proyecto_editar
+        
+        if p_edit:
+            st.info(f"✏️ **Editando Proyecto en Proceso:** {p_edit.get('cliente', '')} (Código: {p_edit.get('codigo', '')})")
+            if st.button("❌ Cancelar edición y limpiar formulario"):
+                st.session_state.proyecto_editar = {}
+                st.rerun()
 
-        # Cargar valores si se seleccionó un borrador previo
-        proy_edit = st.session_state.get("proyecto_editar", {})
+        st.title("📋 Registro e Informe Técnico de Proyecto")
 
         # 1. FICHA
         st.subheader("1. Ficha del Proyecto")
         c1, c2, c3 = st.columns(3)
-        cliente = c1.text_input("Cliente / Empresa", value=proy_edit.get("cliente", ""))
-        ruc = c2.text_input("RUC", value=proy_edit.get("ruc", ""))
-        codigo_proy = c3.text_input("Código de Proyecto", value=proy_edit.get("codigo", ""))
+        cliente = c1.text_input("Cliente / Empresa", value=p_edit.get("cliente", ""))
+        ruc = c2.text_input("RUC", value=p_edit.get("ruc", ""))
+        codigo_proy = c3.text_input("Código de Proyecto", value=p_edit.get("codigo", ""))
 
         c4, c5, c6 = st.columns(3)
-        proyecto_nom = c4.text_input("Nombre del Proyecto", value=proy_edit.get("nombre", ""))
-        fe_inicio = c5.text_input("Fecha Inicio", value=proy_edit.get("fe_inicio", ""))
-        fe_fin = c6.text_input("Fecha Término", value=proy_edit.get("fe_fin", ""))
+        fechas_raw = p_edit.get("fecha", " - ").split(" - ")
+        f_ini_val = fechas_raw[0] if len(fechas_raw) > 0 else ""
+        f_fin_val = fechas_raw[1] if len(fechas_raw) > 1 else ""
+
+        proyecto_nom = c4.text_input("Nombre del Proyecto", value=p_edit.get("nombre", f"Upcycling {cliente}"))
+        fe_inicio = c5.text_input("Fecha Inicio", value=f_ini_val)
+        fe_fin = c6.text_input("Fecha Término", value=f_fin_val)
 
         c7, c8, c9 = st.columns(3)
-        responsable = c7.text_input("Responsable", value=proy_edit.get("responsable", ""))
-        area = c8.text_input("Área", value=proy_edit.get("area", ""))
-        guia_remision = c9.text_input("Nº Guía Remisión", value=proy_edit.get("guia_remision", ""))
+        responsable = c7.text_input("Responsable", value=p_edit.get("responsable", ""))
+        area = c8.text_input("Área", value=p_edit.get("area", ""))
+        guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia_remision", ""))
 
         c10, c11 = st.columns(2)
-        origen = c10.text_input("Punto Origen", value=proy_edit.get("origen", ""))
-        destino = c11.text_input("Punto Destino", value=proy_edit.get("destino", ""))
+        origen = c10.text_input("Punto Origen", value=p_edit.get("origen", ""))
+        destino = c11.text_input("Punto Destino", value=p_edit.get("destino", ""))
 
         st.write("---")
 
-        # 2. INGRESO DE MATERIAL (CON MENÚ DESPLEGABLE)
+        # 2. INGRESO DE MATERIAL
         st.subheader("2. Ingreso de Material")
         if "num_items" not in st.session_state:
             st.session_state.num_items = 2
@@ -499,7 +512,6 @@ else:
         lista_items = []
         peso_total_recibido = 0.0
         co2_evitado_total = 0.0
-
         opciones_prendas = sorted(list(FACTORES_CO2.keys()))
 
         for i in range(st.session_state.num_items):
@@ -519,13 +531,13 @@ else:
 
             peso_total_recibido += p_total
             lista_items.append({
-                "descripcion": desc,
-                "unidades": unid,
-                "peso_unitario": peso_u,
-                "peso_total": p_total,
-                "foto": foto,
-                "co2_evitado": co2_item
+                "descripcion": desc, "unidades": unid, "peso_unitario": peso_u,
+                "peso_total": p_total, "foto": foto, "co2_evitado": co2_item
             })
+
+        # Si el borrador ya traía peso recibido grabado previamente
+        if peso_total_recibido == 0 and p_edit.get("peso_recibido"):
+            peso_total_recibido = float(p_edit.get("peso_recibido", 0))
 
         st.info(f"📦 **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
         st.write("---")
@@ -553,7 +565,7 @@ else:
                 e_pes_num = float(e_pes_str)
             except ValueError:
                 e_pes_num = 0.0
-            
+
             if item_fijo["etapa"] == "Lavado":
                 peso_lavado_auto = e_pes_num
             elif item_fijo["etapa"] == "Corte":
@@ -567,10 +579,9 @@ else:
         st.write("---")
 
         # 4. SALIDA DE PRODUCTOS
-        st.subheader("4. Salida de Productos (Nombre, Cantidad y Foto)")
-
+        st.subheader("4. Salida de Productos")
         if "num_prods" not in st.session_state:
-            st.session_state.num_prods = 3
+            st.session_state.num_prods = 2
 
         cp_btn1, cp_btn2, _ = st.columns([1, 1, 4])
         if cp_btn1.button("➕ Agregar Producto"):
@@ -603,10 +614,10 @@ else:
 
         # 5. BALANCE DE MATERIAL
         st.subheader("5. Balance de Material")
-        st.info(f"📊 **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
-
         col_bm1, col_bm2 = st.columns(2)
-        mat_transformado = col_bm1.number_input("Material transformado en productos (kg)", min_value=0.0, value=0.0, step=0.1)
+        
+        val_trans = float(p_edit.get("peso_transformado", 0.0))
+        mat_transformado = col_bm1.number_input("Material transformado en productos (kg)", min_value=0.0, value=val_trans, step=0.1)
         retazos_aprovechables = col_bm2.number_input("Retazos aprovechables (kg)", min_value=0.0, value=0.0, step=0.1)
 
         col_bm3, _ = st.columns([1, 1])
@@ -628,11 +639,10 @@ else:
         ind3.metric("% Pérdida", f"{pct_perdida:.2f}%")
         st.write("---")
 
-        # 6. CÁLCULO DE EMISIONES Y MÉTRICAS SOCIALES
+        # 6. CÁLCULO DE EMISIONES Y SOCIAL
         st.subheader("6. Balance de Emisiones del Proceso e Impacto Social")
 
-        # A. TRANSPORTE
-        st.markdown("##### 🚚 A. Cálculo de Transporte")
+        st.markdown("##### 🚚 A. Transporte")
         ct1, ct2, ct3 = st.columns(3)
         vehiculo_sel = ct1.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()))
         recorrido_tipo = ct2.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"])
@@ -642,42 +652,32 @@ else:
         mult_recorrido = 2.0 if "2" in recorrido_tipo else 1.0
         emisiones_transporte = distancia_km * mult_recorrido * factor_veh["consumo"] * factor_veh["factor"]
 
-        st.caption(f"Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
-
-        # B. LAVANDERÍA Y CORTE
-        st.markdown("##### 🧼 B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
+        st.markdown("##### 🧼 B. Lavandería y Corte")
         emisiones_lavado = peso_lavado_auto * 0.30
         emisiones_corte = peso_corte_auto * 0.05
 
-        clav, ccort = st.columns(2)
-        clav.info(f"**Lavandería ({peso_lavado_auto:.2f} kg):** {emisiones_lavado:.2f} kg CO₂e *(Factor: 0.30)*")
-        ccort.info(f"**Corte ({peso_corte_auto:.2f} kg):** {emisiones_corte:.2f} kg CO₂e *(Factor: 0.05)*")
-
-        # C. BORDADO
-        st.markdown("##### 🪡 C. Cálculo de Bordado")
+        st.markdown("##### 🪡 C. Bordado")
         cb1, cb2 = st.columns(2)
-        cant_prendas_bordado = cb1.number_input("Cantidad de prendas que requieren bordado", min_value=0, value=0, step=1)
-        tipo_diseno_bordado = cb2.selectbox("Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()))
+        cant_prendas_bordado = cb1.number_input("Cantidad de prendas con bordado", min_value=0, value=0, step=1)
+        tipo_diseno_bordado = cb2.selectbox("Diseño / Complejidad", list(FACTORES_BORDADO.keys()))
 
         factor_bordado = FACTORES_BORDADO[tipo_diseno_bordado]
         emisiones_bordado = cant_prendas_bordado * factor_bordado
 
-        st.caption(f"Emisión de Bordado estimada: **{emisiones_bordado:.2f} kg CO₂e**")
-
-        # RESUMEN EMISIONES
         emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
         co2_neto = co2_evitado_total - emisiones_proceso
 
-        st.warning(f"🍃 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
+        st.warning(f"🍃 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **CO₂e Neto Evitado:** {co2_neto:.2f} kg CO₂e")
 
         st.markdown("##### 👥 D. Impacto Social")
         m1, m2 = st.columns(2)
-        horas_totales = m1.number_input("Horas Generadas", min_value=0.0, value=0.0, step=0.5)
-        cant_personas = m2.number_input("Cantidad Personas Beneficiadas", min_value=0, value=0, step=1)
+        val_hrs = float(p_edit.get("horas_totales", 0.0))
+        horas_totales = m1.number_input("Horas Generadas", min_value=0.0, value=val_hrs, step=0.5)
+        cant_personas = m2.number_input("Personas Beneficiadas", min_value=0, value=0, step=1)
 
         st.write("---")
 
-        # BOTONES DE ACCIÓN (GUARDAR BORRADOR VS FINALIZAR)
+        # ACCIONES DE GUARDADO
         b_col1, b_col2 = st.columns(2)
 
         if b_col1.button("💾 Guardar Borrador (En Proceso)", use_container_width=True):
@@ -694,7 +694,7 @@ else:
                     "ruc": ruc,
                     "estado": "EN_PROCESO"
                 }).execute()
-                st.success("💾 Guardado como 'Proyecto en Proceso'. Puedes continuarlo más tarde.")
+                st.success("💾 Guardado como 'Proyecto en Proceso'.")
             except Exception as e:
                 st.error(f"Error al guardar borrador: {e}")
 
@@ -712,9 +712,10 @@ else:
                     "ruc": ruc,
                     "estado": "COMPLETADO"
                 }).execute()
-                st.success("✅ Guardado correctamente como proyecto completado.")
-            except Exception:
-                st.info("ℹ️ Registro finalizado en BD.")
+                st.session_state.proyecto_editar = {}
+                st.success("✅ Guardado como Proyecto COMPLETADO.")
+            except Exception as e:
+                st.info("ℹ️ Guardado parcial finalizado.")
 
             pdf_oficial = generar_pdf_oficial(
                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
@@ -734,25 +735,38 @@ else:
                 use_container_width=True
             )
 
-    # --- PESTAÑA PROYECTOS EN PROCESO ---
-    elif opcion_menu == "⏳ Proyectos en Proceso":
+    # --- PESTAÑA: PROYECTOS EN PROCESO ---
+    elif st.session_state.menu_opcion == "⏳ Proyectos en Proceso":
         st.title("⏳ Proyectos en Proceso (Borradores)")
-        st.caption("Aquí figuran los lotes y entregas que aún están en curso en el taller.")
+        st.caption("Selecciona un proyecto de la lista inferior para abrirlo directamente y continuar con su llenado.")
+        st.write("---")
 
         proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
 
         if proyectos_wip:
-            for p in proyectos_wip:
-                with st.expander(f"📦 {p.get('cliente', 'Sin cliente')} — Código: {p.get('codigo', 'S/C')}"):
-                    st.write(f"**Material Ingresado:** {p.get('peso_recibido', 0)} kg")
-                    st.write(f"**Fechas:** {p.get('fecha', '-')}")
-                    if st.button(f"✏️ Continuar/Completar Registro", key=f"btn_{p.get('codigo')}"):
-                        st.session_state.proyecto_editar = p
-                        st.info("¡Proyecto cargado! Cambia al menú 'Nuevo Reporte PDF' para finalizarlo.")
+            st.subheader("📑 Referencias de Proyectos Pendientes")
+            
+            for idx_p, p in enumerate(proyectos_wip):
+                cod_ref = p.get('codigo', 'SIN-CODIGO')
+                cli_ref = p.get('cliente', 'CLIENTE SIN NOMBRE')
+                
+                with st.container(border=True):
+                    col_info, col_btn = st.columns([3, 1])
+                    with col_info:
+                        st.markdown(f"### 🏢 **{cli_ref}**")
+                        st.caption(f"📌 **Código de Referencia:** `{cod_ref}` | ⚖️ **Peso Recibido:** {p.get('peso_recibido', 0)} kg | 📅 **Fechas:** {p.get('fecha', '-')}")
+                    
+                    with col_btn:
+                        # Al presionar, guarda los datos en el session_state y redirige a la pestaña del formulario
+                        if st.button(f"✏️ Continuar / Editar", key=f"btn_edit_{cod_ref}_{idx_p}", use_container_width=True, type="primary"):
+                            st.session_state.proyecto_editar = p
+                            st.session_state.menu_opcion = "➕ Nuevo Reporte PDF"
+                            st.rerun()
         else:
-            st.info("No hay proyectos pendientes en proceso actualmente.")
+            st.info("No hay proyectos pendientes en proceso actualmente en la base de datos.")
 
-    elif opcion_menu == "📊 Dashboard 2026":
+    # --- DASHBOARD Y HISTORIAL ---
+    elif st.session_state.menu_opcion == "📊 Dashboard 2026":
         st.title("📊 Dashboard Consolidado 2026")
         lista_proyectos = cargar_proyectos(estado="COMPLETADO")
         if lista_proyectos:
@@ -765,7 +779,7 @@ else:
         else:
             st.info("Sin datos acumulados.")
 
-    elif opcion_menu == "📜 Historial Completo":
+    elif st.session_state.menu_opcion == "📜 Historial Completo":
         st.title("📜 Historial de Proyectos")
         lista_proyectos = cargar_proyectos()
         if lista_proyectos:
