@@ -612,6 +612,7 @@ else:
             lista_items = []
             peso_total_recibido = 0.0
             co2_evitado_total = 0.0
+            total_piezas_ingresadas = 0
             opciones_prendas = sorted(list(FACTORES_CO2.keys()))
 
             for i in range(st.session_state.num_items):
@@ -632,6 +633,7 @@ else:
                 co2_item = p_total * factor
                 co2_evitado_total += co2_item
                 peso_total_recibido += p_total
+                total_piezas_ingresadas += unid
 
                 lista_items.append({
                     "descripcion": desc, "unidades": unid, "peso_unitario": peso_u,
@@ -642,14 +644,14 @@ else:
 
         st.write("")
 
-        # 3. TRAZABILIDAD
+        # 3. TRAZABILIDAD (RESPONSABLES SELLADOS CON OPCIÓN A EDITAR)
         with st.container(border=True):
             st.subheader("3. Trazabilidad del Proceso en Upcycling")
             etapas_fijas = [
-                {"etapa": "Clasificación", "fecha": datetime.date.today(), "resp": "Área de Logística", "peso": "0.00", "tipo": "Registro interno"},
-                {"etapa": "Lavado", "fecha": datetime.date.today(), "resp": "Lavandería", "peso": "0.00", "tipo": "Servicio Externo"},
-                {"etapa": "Corte", "fecha": datetime.date.today(), "resp": "Taller de corte", "peso": "0.00", "tipo": "Pesaje real"},
-                {"etapa": "Confección", "fecha": datetime.date.today(), "resp": "Producción descentralizada", "peso": "0.00", "tipo": "Entrega / Recepción"},
+                {"etapa": "Clasificación", "fecha": datetime.date.today(), "resp_defecto": "Área de Logística", "peso": "0.00", "tipo": "Registro interno"},
+                {"etapa": "Lavado", "fecha": datetime.date.today(), "resp_defecto": "Lavandería", "peso": "0.00", "tipo": "Servicio Externo"},
+                {"etapa": "Corte", "fecha": datetime.date.today(), "resp_defecto": "Taller de corte", "peso": "0.00", "tipo": "Pesaje real"},
+                {"etapa": "Confección", "fecha": datetime.date.today(), "resp_defecto": "Producción descentralizada", "peso": "0.00", "tipo": "Entrega / Recepción"},
             ]
             lista_trazabilidad = []
             peso_lavado_auto = 0.0
@@ -657,10 +659,20 @@ else:
 
             for i, item_fijo in enumerate(etapas_fijas):
                 st.markdown(f"**Etapa {i+1}**")
-                c_etapa, c_fecha, c_resp, c_peso, c_tipo, c_foto = st.columns([2, 1.8, 2, 1.5, 2, 2.5])
+                c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = st.columns([1.5, 1.5, 2, 1, 1.2, 1.8, 2])
+                
                 e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
                 e_fec_val = c_fecha.date_input("Fecha", value=item_fijo["fecha"], format="DD/MM/YYYY", key=f"tr_fecha_{i}")
-                e_res = c_resp.text_input("Responsable", value=item_fijo["resp"], disabled=True, key=f"tr_resp_{i}")
+                
+                # Control de Sellado / Edición para Responsables (Logística/Corte)
+                permitir_editar = c_edit_chk.checkbox("✏️ Editar", key=f"chk_edit_{i}")
+                e_res = c_resp.text_input(
+                    "Responsable", 
+                    value=item_fijo["resp_defecto"], 
+                    disabled=not permitir_editar, 
+                    key=f"tr_resp_{i}"
+                )
+
                 e_pes_str = c_peso.text_input("Peso (kg)", value=item_fijo["peso"], key=f"tr_peso_{i}")
                 
                 try:
@@ -793,13 +805,19 @@ else:
 
         st.write("")
 
-        # 7. IMPACTO SOCIAL Y EMPLEO GENERADO
+        # 7. IMPACTO SOCIAL Y EMPLEO GENERADO (CON IA INTEGRADORA DE TIEMPOS)
         with st.container(border=True):
             st.subheader("7. Impacto Social y Empleo Generado")
 
             # --- CORTE ---
             st.markdown("##### ✂️ A. Área de Corte")
-            col_c1, col_c2 = st.columns(2)
+            col_c1, col_c2, col_c3 = st.columns([2, 2, 3])
+            
+            # IA Estimadora para Corte (Aproximadamente 0.08 horas por prenda/producto)
+            sugerencia_horas_corte = round(total_piezas_ingresadas * 0.08, 2)
+            col_c3.info(f"🤖 **IA Sugiere:** ~{sugerencia_horas_corte} hrs (Basado en {total_piezas_ingresadas} piezas ingresadas)")
+
+            # Campo inicializado sin valores estáticos rígidos
             horas_corte = col_c1.number_input("Horas Totales de Corte", min_value=0.0, value=0.0, step=0.5)
             personas_corte = col_c2.number_input("Número de Personas en Corte", min_value=0, value=1, step=1)
 
@@ -825,7 +843,7 @@ else:
                 rol_sel = c_rol.selectbox("Rol Asignado", roles_disponibles, key=f"soc_rol_{idx}")
                 persona_nom = c_persona.text_input("Persona Encargada", value="", placeholder="Ej: María Ramos", key=f"soc_pers_{idx}")
 
-                # Recomendador por "IA / Estimación"
+                # Recomendador por IA para tiempos de confección
                 tiempo_ia = TIEMPOS_IA_CONFECCION.get(rol_sel, 0.5)
                 c_ia.info(f"🤖 IA Sugiere: **{tiempo_ia:.2f} hrs/unid** ({int(tiempo_ia*60)} min)")
 
