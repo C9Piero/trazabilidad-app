@@ -129,14 +129,17 @@ else:
 
         opciones_disponibles = ["➕ Nuevo Reporte PDF", "⏳ Proyectos en Proceso", "📊 Dashboard 2026", "📜 Historial Completo"]
         
-        # Sincronización con session_state para permitir redirección directa
-        idx = opciones_disponibles.index(st.session_state.menu_opcion) if st.session_state.menu_opcion in opciones_disponibles else 0
+        # Calculamos el índice según la variable del sistema para redirigir bien
+        if st.session_state.menu_opcion in opciones_disponibles:
+            idx_actual = opciones_disponibles.index(st.session_state.menu_opcion)
+        else:
+            idx_actual = 0
         
+        # Aquí eliminamos el 'key="radio_menu"' para que funcione el clic de redirección
         opcion_menu = st.radio(
             "Selecciona una opción:",
             opciones_disponibles,
-            index=idx,
-            key="radio_menu"
+            index=idx_actual
         )
         st.session_state.menu_opcion = opcion_menu
 
