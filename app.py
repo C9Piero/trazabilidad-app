@@ -54,8 +54,8 @@ FACTORES_BORDADO = {
 EQUIPO_CORTE_LOGISTICA_PREDETERMINADO = [
     {"rol": "Corte", "nombre": "Maria Isabel Estrada Sandoval", "dias": 2, "horas_dia": 8.5},
     {"rol": "Corte", "nombre": "Genaro Jara García", "dias": 2, "horas_dia": 8.5},
-    {"rol": "Corte", "nombre": "Luciana Jara estrada", "dias": 2, "horas_dia": 8.5},
-    {"rol": "Corte", "nombre": "Felicita Sandoval vilchez", "dias": 2, "horas_dia": 8.5},
+    {"rol": "Corte", "nombre": "Luciana Jara Estrada", "dias": 2, "horas_dia": 8.5},
+    {"rol": "Corte", "nombre": "Felicita Sandoval Vilchez", "dias": 2, "horas_dia": 8.5},
     {"rol": "Corte", "nombre": "Nicolle Estrada", "dias": 2, "horas_dia": 8.5},
     {"rol": "Logística", "nombre": "Evelyn Prada Vizarreta", "dias": 3, "horas_dia": 3.0},
 ]
@@ -167,6 +167,7 @@ def generar_pdf_oficial(
     elements.append(Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style))
     elements.append(Paragraph(f"Medición de Impacto Ambiental, Trazabilidad y Gestión Social de Upcycling<br/><b>CÓDIGO: {codigo_proy}</b>", sub_style))
 
+    # Tarjetas Métricas
     cards_data = [
         [
             Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", card_title),
@@ -192,6 +193,7 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 8))
 
+    # 1. Ficha General
     elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
     data_ficha = [
         [Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style), Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / {responsable}", cell_style)],
@@ -221,6 +223,7 @@ def generar_pdf_oficial(
                 return Paragraph("Sin foto", cell_style)
         return Paragraph("Sin foto", cell_style)
 
+    # 2. Ingreso Material
     elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
     data_prendas_pdf = [[
         Paragraph("Ítem", cell_bold), Paragraph("Tipo de Producto / Prenda", cell_bold),
@@ -258,6 +261,7 @@ def generar_pdf_oficial(
     elements.append(t_prendas)
     elements.append(Spacer(1, 8))
 
+    # 3. Trazabilidad
     elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
     data_traza_pdf = [[
         Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold),
@@ -286,6 +290,7 @@ def generar_pdf_oficial(
 
     elements.append(PageBreak())
 
+    # 4. SALIDA
     elements.append(Paragraph("4. SALIDA DE PRODUCTOS", h2_style))
     data_prod_pdf = [[Paragraph("Producto", cell_bold), Paragraph("Cantidad (Unidades)", cell_bold), Paragraph("Evidencia", cell_bold)]]
     total_prod_unidades = 0
@@ -307,6 +312,7 @@ def generar_pdf_oficial(
     elements.append(t_prod)
     elements.append(Spacer(1, 10))
 
+    # 5. BALANCE MATERIAL
     elements.append(Paragraph("5. BALANCE DE MATERIAL", h2_style))
     data_balance = [
         [Paragraph("<b>Concepto</b>", cell_bold), Paragraph("<b>Cantidad (kg)</b>", cell_bold)],
@@ -330,6 +336,7 @@ def generar_pdf_oficial(
     elements.append(t_balance)
     elements.append(Spacer(1, 10))
 
+    # 6. IMPACTO AMBIENTAL
     elements.append(Paragraph("6. RESUMEN DE IMPACTO AMBIENTAL (CO₂e)", h2_style))
     data_co2_box = [
         [Paragraph("<b>(+) CO₂ Evitado por Upcycling</b>", card_sub), Paragraph("<b>(-) Emisiones del Proceso</b>", card_sub), Paragraph("<b>(=) Impacto Ambiental Neto</b>", card_sub)],
@@ -345,8 +352,10 @@ def generar_pdf_oficial(
     elements.append(t_co2_box)
     elements.append(Spacer(1, 10))
 
+    # 7. IMPACTO SOCIAL Y EMPLEO
     elements.append(Paragraph("7. IMPACTO SOCIAL Y EMPLEO GENERADO", h2_style))
     
+    # 7.1 Operaciones - Corte y Logística
     elements.append(Paragraph("<b>Operaciones – Corte y Logística</b>", cell_bold))
     data_corte_pdf = [[Paragraph("Rol", cell_bold), Paragraph("Nombre", cell_bold), Paragraph("Días trabajados", cell_bold), Paragraph("Hora/día", cell_bold), Paragraph("Horas totales", cell_bold)]]
     for row in lista_corte_logistica:
@@ -365,6 +374,7 @@ def generar_pdf_oficial(
     elements.append(t_corte)
     elements.append(Spacer(1, 8))
 
+    # 7.2 Producción - Confección
     elements.append(Paragraph("<b>Producción – Confección y Acabado</b>", cell_bold))
     data_conf_pdf = [[Paragraph("Rol", cell_bold), Paragraph("Producto", cell_bold), Paragraph("Nombre", cell_bold), Paragraph("Cantidad", cell_bold), Paragraph("Tiempo por unidad (h)", cell_bold), Paragraph("Horas generadas", cell_bold)]]
     for row in lista_confeccion:
@@ -429,12 +439,10 @@ else:
         st.caption("Panel de Control Interno | 2026")
         st.write("---")
 
-        opcion_menu = st.radio(
-            "Navegación",
-            ["➕ Nuevo Reporte PDF", "📊 Proyectos Guardados", "📈 Reporte Consolidado"],
-            index=["➕ Nuevo Reporte PDF", "📊 Proyectos Guardados", "📈 Reporte Consolidado"].index(st.session_state.pestaña_activa) if st.session_state.pestaña_activa in ["➕ Nuevo Reporte PDF", "📊 Proyectos Guardados", "📈 Reporte Consolidado"] else 0
-        )
-        st.session_state.pestaña_activa = opcion_menu
+        if st.button("✨ Nuevo Reporte PDF", use_container_width=True, type="primary" if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF" else "secondary"):
+            st.session_state.proyecto_editar = {}
+            st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
+            st.rerun()
 
         st.markdown('<p class="sidebar-section-title">Proyectos Pendientes</p>', unsafe_allow_html=True)
         if proyectos_wip:
@@ -463,7 +471,6 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-    # --- PESTAÑA 1: NUEVO REPORTE ---
     if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
@@ -618,6 +625,7 @@ else:
         with st.container(border=True):
             st.subheader("7. Impacto Social y Empleo Generado")
 
+            # TABLA 1: CORTE Y LOGÍSTICA
             st.markdown("##### 📦 Operaciones – Corte y Logística")
             st.caption("Personal recurrente/fijo de operaciones.")
 
@@ -625,10 +633,10 @@ else:
                 st.session_state.num_corte_log = len(EQUIPO_CORTE_LOGISTICA_PREDETERMINADO)
 
             btn_cl1, btn_cl2, _ = st.columns([1, 1, 4])
-            if btn_cl1.button("➕ Agregar Persona Operaciones"):
+            if btn_cl1.button("➕ Agregar Persona"):
                 st.session_state.num_corte_log += 1
                 st.rerun()
-            if btn_cl2.button("➖ Quitar Persona Operaciones") and st.session_state.num_corte_log > 1:
+            if btn_cl2.button("➖ Quitar Persona") and st.session_state.num_corte_log > 1:
                 st.session_state.num_corte_log -= 1
                 st.rerun()
 
@@ -652,6 +660,7 @@ else:
 
             st.write("---")
 
+            # TABLA 2: CONFECCIÓN Y ACABADO
             st.markdown("##### 🧵 Producción – Confección y Acabado")
             st.caption("Detalle de prendas producidas por personal específico.")
 
@@ -689,51 +698,67 @@ else:
                 lista_confeccion.append({"rol": rol_c, "producto": prod_c, "nombre": nom_c, "cantidad": cant_c, "tiempo_unitario": tunit_c, "horas_generadas": hgen_c})
 
             # CONSOLIDADO SOCIAL
-            personas_unicas = set(
-                [x["nombre"].strip() for x in lista_corte_logistica if x["nombre"].strip()] +
-                [x["nombre"].strip() for x in lista_confeccion if x["nombre"].strip()]
-            )
-            total_personas_social = len(personas_unicas)
-            total_horas_social = total_horas_corte_log + total_horas_conf
+            personas_unic¡Entendido totalmente! El flujo estructurado por **Producto, Rol y Persona** le da mucha más precisión a la producción, permitiendo que varios artesanos participen en la confección o en el acabado de un mismo lote.
 
-            st.write("---")
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Horas Operaciones (Corte/Logística)", f"{total_horas_corte_log:.1f} h")
-            m2.metric("Horas Producción (Confección/Acabado)", f"{total_horas_conf:.1f} h")
-            m3.metric("Total Horas Sociales Generadas", f"{total_horas_social:.1f} h", delta=f"{total_personas_social} personas")
+Aquí tienes el código completo en **Python (usando Pandas)** que construye ambas tablas, calcula automáticamente las horas generadas y totales, y las muestra con el formato exacto de tus imágenes:
 
-        # GENERACIÓN DEL REPORTE
-        st.write("---")
-        if st.button("📄 Generar Informe Técnico PDF", type="primary", use_container_width=True):
-            pdf_bytes = generar_pdf_oficial(
-                cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
-                "Prendas de vestir / Textiles", "Upcycling (Reciclaje Textil)", "Piezas / Kilogramos", guia_remision, origen, destino,
-                lista_items, lista_trazabilidad, lista_productos,
-                mat_transformado, retazos_aprovechables, perdida_no_aprovechable, total_procesado,
-                pct_aprovechamiento_total, pct_perdida,
-                lista_corte_logistica, lista_confeccion, total_horas_corte_log, total_horas_conf, total_horas_social, total_personas_social,
-                co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado
-            )
-            st.success("✅ Informe PDF generado correctamente.")
-            st.download_button(
-                label="📥 Descargar Reporte en PDF",
-                data=pdf_bytes,
-                file_name=f"Informe_Tecnico_{codigo_proy or 'PD'}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
+```python
+import pandas as pd
 
-    # --- PESTAÑA 2: PROYECTOS GUARDADOS ---
-    elif st.session_state.pestaña_activa == "📊 Proyectos Guardados":
-        st.subheader("📊 Historial de Proyectos Registrados")
-        todos_proyectos = cargar_proyectos()
-        if todos_proyectos:
-            df = pd.DataFrame(todos_proyectos)
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("No hay proyectos registrados aún.")
+# ==========================================
+# 1. PRODUCCIÓN – CONFECCIÓN Y ACABADO
+# ==========================================
 
-    # --- PESTAÑA 3: REPORTES CONSOLIDADOS ---
-    elif st.session_state.pestaña_activa == "📈 Reporte Consolidado":
-        st.subheader("📈 Resumen Consolidado de Sostenibilidad")
-        st.write("Panel acumulativo de métricas de CO₂ e impacto social.")
+datos_confeccion = [
+    {"Rol": "Confección", "Producto": "Estuche Voyager", "Nombre": "Lucia", "Cantidad": 135, "Tiempo por unidad (h)": 0.25},
+    {"Rol": "Confección", "Producto": "Monederos", "Nombre": "Janneth", "Cantidad": 300, "Tiempo por unidad (h)": 0.08},
+    {"Rol": "Confección", "Producto": "Monederos", "Nombre": "Celinda Gutierrez", "Cantidad": 12, "Tiempo por unidad (h)": 0.10},
+    {"Rol": "Confección", "Producto": "Monedero Circular", "Nombre": "Celinda Gutierrez", "Cantidad": 96, "Tiempo por unidad (h)": 0.13},
+    {"Rol": "Confección", "Producto": "Monedero Circular", "Nombre": "Gathy Perez Ortiz", "Cantidad": 216, "Tiempo por unidad (h)": 0.12},
+    {"Rol": "Confección", "Producto": "Camita Perro S", "Nombre": "Raquel", "Cantidad": 49, "Tiempo por unidad (h)": 0.13},
+    {"Rol": "Acabado",    "Producto": "Camita Perro S", "Nombre": "Genoveva Vizarreta", "Cantidad": 1, "Tiempo por unidad (h)": 0.17},
+    {"Rol": "Acabado",    "Producto": "Camita Perro S", "Nombre": "Carmen Bejarano", "Cantidad": 21, "Tiempo por unidad (h)": 0.13},
+    {"Rol": "Acabado",    "Producto": "Camita Perro S", "Nombre": "Carmen Vizarreta", "Cantidad": 27, "Tiempo por unidad (h)": 0.13},
+    {"Rol": "Confección", "Producto": "Camita Perro XL", "Nombre": "Dixie Hidalgo", "Cantidad": 26, "Tiempo por unidad (h)": 0.58},
+    {"Rol": "Confección", "Producto": "Camita Perro XL", "Nombre": "Carmen Vizarreta", "Cantidad": 25, "Tiempo por unidad (h)": 0.58},
+    {"Rol": "Confección", "Producto": "Lonchera Rectangular", "Nombre": "Guadalupe Guerra", "Cantidad": 70, "Tiempo por unidad (h)": 0.42},
+]
+
+df_confeccion = pd.DataFrame(datos_confeccion)
+
+# Cálculo automático de horas generadas
+df_confeccion["Horas generadas"] = (
+    df_confeccion["Cantidad"] * df_confeccion["Tiempo por unidad (h)"]
+).round(1)
+
+
+# ==========================================
+# 2. OPERACIONES – CORTE Y LOGÍSTICA
+# ==========================================
+
+datos_operaciones = [
+    {"Rol": "Corte", "Nombre": "Maria Isabel Estrada Sandoval", "Días trabajados": 2, "Hora/día": 8.5},
+    {"Rol": "Corte", "Nombre": "Genaro Jara García", "Días trabajados": 2, "Hora/día": 8.5},
+    {"Rol": "Corte", "Nombre": "Luciana Jara estrada", "Días trabajados": 2, "Hora/día": 8.5},
+    {"Rol": "Corte", "Nombre": "Felicita Sandoval vilchez", "Días trabajados": 2, "Hora/día": 8.5},
+    {"Rol": "Corte", "Nombre": "Nicolle Estrada", "Días trabajados": 2, "Hora/día": 8.5},
+    {"Rol": "Logística", "Nombre": "Evelyn Prada Vizarreta", "Días trabajados": 3, "Hora/día": 3.0},
+]
+
+df_operaciones = pd.DataFrame(datos_operaciones)
+
+# Cálculo automático de horas totales
+df_operaciones["Horas totales"] = (
+    df_operaciones["Días trabajados"] * df_operaciones["Hora/día"]
+).round(1)
+
+
+# ==========================================
+# RESULTADOS
+# ==========================================
+
+print("=== Producción – Confección ===")
+print(df_confeccion.to_string(index=False))
+
+print("\n=== Operaciones – Corte y Logística ===")
+print(df_operaciones.to_string(index=False))
