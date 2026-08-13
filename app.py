@@ -421,7 +421,7 @@ def generar_pdf_oficial(
 
     elements.append(Paragraph("<b>Operaciones – Corte y Logística</b>", cell_bold))
     data_ops_pdf = [[
-        Paragraph("Código proyecto", cell_bold), Paragraph("Rol", cell_bold), Paragraph("Nombre", cell_bold),
+        Paragraph("Rol", cell_bold), Paragraph("Nombre", cell_bold),
         Paragraph("Días trabajados", cell_bold), Paragraph("Hora/día", cell_bold), Paragraph("Horas totales", cell_bold)
     ]]
 
@@ -429,7 +429,6 @@ def generar_pdf_oficial(
     for op in lista_operaciones_pdf:
         tot_hrs_ops += op["horas_totales"]
         data_ops_pdf.append([
-            Paragraph(codigo_proy, cell_style),
             Paragraph(op["rol"], cell_style),
             Paragraph(op["nombre"], cell_style),
             Paragraph(str(op["dias"]), cell_style),
@@ -438,17 +437,17 @@ def generar_pdf_oficial(
         ])
 
     data_ops_pdf.append([
-        Paragraph("<b>SUBTOTAL CORTE Y LOGÍSTICA</b>", cell_bold), "", "", "", "",
+        Paragraph("<b>SUBTOTAL CORTE Y LOGÍSTICA</b>", cell_bold), "", "", "",
         Paragraph(f"<b>{tot_hrs_ops:.1f} hrs</b>", cell_bold)
     ])
 
-    t_ops = Table(data_ops_pdf, colWidths=[100, 70, 160, 70, 70, 70])
+    t_ops = Table(data_ops_pdf, colWidths=[100, 200, 80, 80, 80])
     t_ops.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F5D0FE')),
         ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#F1F5F9')),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('SPAN', (0, -1), (4, -1)),
-        ('ALIGN', (3,0), (-1,-1), 'CENTER'),
+        ('SPAN', (0, -1), (3, -1)),
+        ('ALIGN', (2,0), (-1,-1), 'CENTER'),
         ('PADDING', (0,0), (-1,-1), 4),
     ]))
     elements.append(t_ops)
@@ -610,14 +609,16 @@ else:
             c1, c2, c3 = st.columns(3)
             cliente = c1.text_input("Cliente / Empresa", value=p_edit.get("cliente", ""))
             ruc = c2.text_input("RUC", value=p_edit.get("ruc", ""))
-            codigo_proy = c3.text_input("Código de Proyecto", value=p_edit.get("codigo", "MONDELEZ - JUN26"))
+            
+            # CAMBIO APLICADO: Valor por defecto vacío en lugar de MONDELEZ
+            codigo_proy = c3.text_input("Código de Proyecto", value=p_edit.get("codigo", ""))
 
             c4, c5, c6 = st.columns(3)
             fechas_raw = p_edit.get("fecha", " - ").split(" - ")
             f_ini_val = fechas_raw[0] if len(fechas_raw) > 0 else ""
             f_fin_val = fechas_raw[1] if len(fechas_raw) > 1 else ""
 
-            proyecto_nom = c4.text_input("Nombre del Proyecto", value=p_edit.get("nombre", f"Upcycling {cliente}"))
+            proyecto_nom = c4.text_input("Nombre del Proyecto", value=p_edit.get("nombre", f"Upcycling {cliente}" if cliente else "Upcycling"))
             fe_inicio = c5.text_input("Fecha Inicio", value=f_ini_val)
             fe_fin = c6.text_input("Fecha Término", value=f_fin_val)
 
@@ -862,44 +863,39 @@ else:
         # 7. EQUIPO DE TRABAJO Y GENERACIÓN DE HORAS
         with st.container(border=True):
             st.subheader("7. Equipo de Trabajo y Generación de Horas")
-            st.markdown("**Participación del personal en el proceso de upcycling y estimación de horas generadas por actividad**")
-            
+            st.markdown("**Participación del personal en el proceso de upcycling y horas trabajadas por actividad**")
+
+            # CÁLCULO DE VALORES AUTOMÁTICOS SEGÚN VOLUMEN DE MATERIAL
             dias_sugeridos_corte = max(1, int(peso_total_recibido / 30)) if peso_total_recibido > 0 else 2
             horas_dia_sugeridas_corte = 8.5 if peso_total_recibido > 20 else 4.0
-
-            st.info(
-                f"🤖 **Sugerencia de la IA (Upcycling Textil - {peso_total_recibido:.1f} kg recibidos):** "
-                f"Para este volumen de material, se estima un trabajo de corte de **{dias_sugeridos_corte} días** a **{horas_dia_sugeridas_corte} hrs/día** por operario. "
-                f"Para Logística se contemplan **2 a 3 días** (máximo 3 hrs/día de seguimiento)."
-            )
 
             st.markdown("#### Operaciones – Corte y Logística")
             
             lista_operaciones = []
             total_horas_ops = 0.0
 
-            # Encabezados de la Tabla
-            h_col1, h_col2, h_col3, h_col4, h_col5, h_col6, h_col7 = st.columns([1.5, 1, 2.5, 0.8, 1.2, 1.2, 1.2])
-            h_col1.markdown("**Código proyecto**")
-            h_col2.markdown("**Rol**")
-            h_col3.markdown("**Nombre**")
-            h_col4.markdown("**Editar**")
-            h_col5.markdown("**Días trabajados**")
-            h_col6.markdown("**Hora/día**")
-            h_col7.markdown("**Horas totales**")
+            # CAMBIO APLICADO: Eliminada la columna "Código proyecto" del encabezado
+            h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
+            h_col1.markdown("**Rol**")
+            h_col2.markdown("**Nombre**")
+            h_col3.markdown("**Editar**")
+            h_col4.markdown("**Días trabajados**")
+            h_col5.markdown("**Hora/día**")
+            h_col6.markdown("**Horas totales**")
 
             st.write("---")
 
             for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
-                c_cod, c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 1, 2.5, 0.8, 1.2, 1.2, 1.2])
+                # CAMBIO APLICADO: Eliminado el input de Código proyecto de la fila
+                c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
                 
-                c_cod.text_input("Cod", value=codigo_proy, disabled=True, key=f"ops_cod_{idx}", label_visibility="collapsed")
                 rol_val = p_fijo["rol"]
                 c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
                 
                 editar_nom = c_chk.checkbox("✏️", key=f"ops_chk_{idx}")
                 nom_val = c_nom.text_input("Nombre", value=p_fijo["nombre"], disabled=not editar_nom, key=f"ops_nom_{idx}", label_visibility="collapsed")
                 
+                # Carga automática directa de valores asignados por la lógica de IA
                 default_dias = 3 if rol_val == "Logística" else dias_sugeridos_corte
                 default_hdia = 3.0 if rol_val == "Logística" else horas_dia_sugeridas_corte
 
@@ -935,14 +931,13 @@ else:
                 p_cant = prod["cantidad"]
 
                 st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad: {p_cant} unid)*")
-                c_rol, c_persona, c_ia, c_tiempo, c_tot = st.columns([2.5, 2.5, 2, 2, 2])
+                c_rol, c_persona, c_tiempo, c_tot = st.columns([2.5, 2.5, 2, 2])
 
                 rol_sel = c_rol.selectbox("Rol Asignado", roles_disponibles, key=f"soc_rol_{idx}")
                 persona_nom = c_persona.text_input("Persona Encargada", value="", placeholder="Ej: Maria Ramos", key=f"soc_pers_{idx}")
 
+                # CAMBIO APLICADO: El tiempo asignado por defecto toma automáticamente la constante de la IA
                 tiempo_ia = TIEMPOS_IA_CONFECCION.get(rol_sel, 0.5)
-                c_ia.info(f"🤖 IA Sugiere: **{tiempo_ia:.2f} hrs/unid**")
-
                 tiempo_unitario = c_tiempo.number_input("Tiempo / Unidad (hrs)", min_value=0.0, value=float(tiempo_ia), step=0.05, key=f"soc_tunit_{idx}")
 
                 horas_producto = p_cant * tiempo_unitario
