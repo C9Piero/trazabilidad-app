@@ -98,14 +98,42 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- ESTILO CSS CUSTOM ---
+# --- ESTILO CSS MEJORADO PARA INTERFAZ ---
 st.markdown("""
     <style>
+    /* Ocultar spinners de number input */
     div[data-testid="stNumberInput"] button {
         display: none !important;
     }
     div[data-testid="stNumberInput"] input {
         text-align: left;
+    }
+    
+    /* Fondo y contenedores */
+    .stApp {
+        background-color: #F8FAFC;
+    }
+    .custom-card {
+        background-color: #FFFFFF;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        margin-bottom: 20px;
+        border: 1px solid #E2E8F0;
+    }
+    .section-header {
+        color: #4C1D95;
+        font-weight: 700;
+        border-bottom: 2px solid #DDD6FE;
+        padding-bottom: 8px;
+        margin-bottom: 15px;
+    }
+    .metric-container {
+        background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%);
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        border: 1px solid #C084FC;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -137,28 +165,30 @@ if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
 if not st.session_state.autenticado:
-    st.markdown("<h2 style='text-align: center;'>🧵 Pequeños Detalles Handmade Perú</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='text-align: center;'>Generador Oficial de Informes Técnicos</h4>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #4C1D95;'>🧵 Pequeños Detalles Handmade Perú</h2>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center; color: #6B21A8;'>Generador Oficial de Informes Técnicos</h4>", unsafe_allow_html=True)
     st.write("---")
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
         st.subheader("🔑 Iniciar Sesión")
         usuario_input = st.text_input("Usuario")
         password_input = st.text_input("Contraseña", type="password")
         
-        if st.button("Ingresar al Sistema", use_container_width=True):
+        if st.button("Ingresar al Sistema", use_container_width=True, type="primary"):
             if usuario_input == USUARIO_CORRECTO and password_input == PASSWORD_CORRECTO:
                 st.session_state.autenticado = True
                 st.success("¡Bienvenido/a!")
                 st.rerun()
             else:
                 st.error("⚠️ Usuario o contraseña incorrectos.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     # --- MENÚ LATERAL ---
     with st.sidebar:
-        st.title("Pequeños Detalles")
+        st.markdown("### 🧵 Pequeños Detalles")
         st.write("👤 **Usuario:** Admin")
         st.write("---")
         opcion_menu = st.radio(
@@ -272,6 +302,18 @@ else:
         elements.append(t_ficha)
         elements.append(Spacer(1, 8))
 
+        # Helper seguro para cargar imágenes
+        def obtener_imagen_pdf(foto_file, width, height):
+            if foto_file is not None:
+                try:
+                    foto_file.seek(0)
+                    img_data = io.BytesIO(foto_file.read())
+                    foto_file.seek(0)
+                    return Image(img_data, width=width, height=height)
+                except Exception:
+                    return Paragraph("Sin foto", cell_style)
+            return Paragraph("Sin foto", cell_style)
+
         # 2. Ingreso de Material
         elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
         data_prendas_pdf = [[
@@ -283,15 +325,7 @@ else:
         total_unidades_ingreso = 0
         for i, item in enumerate(lista_items, 1):
             total_unidades_ingreso += item["unidades"]
-            if item["foto"]:
-                try:
-                    img_data = io.BytesIO(item["foto"].read())
-                    item["foto"].seek(0)
-                    img_cell = Image(img_data, width=45, height=45)
-                except Exception:
-                    img_cell = Paragraph("Sin foto", cell_style)
-            else:
-                img_cell = Paragraph("Sin foto", cell_style)
+            img_cell = obtener_imagen_pdf(item["foto"], 45, 45)
 
             data_prendas_pdf.append([
                 Paragraph(str(i), cell_style), Paragraph(item["descripcion"], cell_style),
@@ -327,15 +361,7 @@ else:
         ]]
 
         for t_item in lista_trazabilidad:
-            if t_item["foto"]:
-                try:
-                    img_data = io.BytesIO(t_item["foto"].read())
-                    t_item["foto"].seek(0)
-                    img_cell = Image(img_data, width=45, height=35)
-                except Exception:
-                    img_cell = Paragraph("Sin foto", cell_style)
-            else:
-                img_cell = Paragraph("Sin foto", cell_style)
+            img_cell = obtener_imagen_pdf(t_item["foto"], 45, 35)
 
             data_traza_pdf.append([
                 Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style),
@@ -368,15 +394,7 @@ else:
         total_prod_unidades = 0
         for p_item in lista_productos:
             total_prod_unidades += p_item["cantidad"]
-            if p_item["foto"]:
-                try:
-                    img_data = io.BytesIO(p_item["foto"].read())
-                    p_item["foto"].seek(0)
-                    img_cell = Image(img_data, width=70, height=70)
-                except Exception:
-                    img_cell = Paragraph("Sin foto", cell_style)
-            else:
-                img_cell = Paragraph("Sin foto", cell_style)
+            img_cell = obtener_imagen_pdf(p_item["foto"], 60, 60)
 
             data_prod_pdf.append([
                 Paragraph(p_item["producto"], cell_style),
@@ -451,12 +469,10 @@ else:
         elements.append(t_co2_box)
         elements.append(Spacer(1, 10))
 
-        # Interpretación
         interp_style = ParagraphStyle('Interp', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1E293B'), alignment=1)
         elements.append(Paragraph(f"<b>Interpretación de resultados:</b><br/>El proceso de upcycling permitió evitar la emisión de <b>{co2_neto:.2f} kg de CO₂e</b> en comparación con la producción de material textil nuevo.", interp_style))
         elements.append(Spacer(1, 10))
 
-        # Desglose de Emisiones
         elements.append(Paragraph("<b>Desglose de emisiones del proceso (kg CO₂e)</b>", ParagraphStyle('SubSub', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#0F172A'), alignment=1)))
         elements.append(Spacer(1, 4))
 
@@ -493,10 +509,11 @@ else:
 
     # --- NAVEGACIÓN PRINCIPAL ---
     if opcion_menu == "➕ Nuevo Reporte PDF":
-        st.title("📝 Generador Oficial de Informe Técnico")
+        st.markdown("<h2 style='color: #4C1D95;'>📝 Generador Oficial de Informe Técnico</h2>", unsafe_allow_html=True)
 
         # 1. FICHA
-        st.subheader("1. Ficha del Proyecto")
+        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+        st.markdown("<h4 class='section-header'>1. Ficha General del Proyecto</h4>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         cliente = c1.text_input("Cliente / Empresa", value="")
         ruc = c2.text_input("RUC", value="")
@@ -515,26 +532,25 @@ else:
         c10, c11 = st.columns(2)
         origen = c10.text_input("Punto Origen", value="")
         destino = c11.text_input("Punto Destino", value="")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        st.write("---")
-
-        # 2. INGRESO DE MATERIAL (CON MENÚ DESPLEGABLE)
-        st.subheader("2. Ingreso de Material")
+        # 2. INGRESO DE MATERIAL
+        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+        st.markdown("<h4 class='section-header'>2. Ingreso de Material</h4>", unsafe_allow_html=True)
         if "num_items" not in st.session_state:
             st.session_state.num_items = 2
 
         col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-        if col_btn1.button("➕ Agregar Ítem Material"):
+        if col_btn1.button("➕ Agregar Ítem"):
             st.session_state.num_items += 1
             st.rerun()
-        if col_btn2.button("➖ Quitar Ítem Material") and st.session_state.num_items > 1:
+        if col_btn2.button("➖ Quitar Ítem") and st.session_state.num_items > 1:
             st.session_state.num_items -= 1
             st.rerun()
 
         lista_items = []
         peso_total_recibido = 0.0
         co2_evitado_total = 0.0
-
         opciones_prendas = sorted(list(FACTORES_CO2.keys()))
 
         for i in range(st.session_state.num_items):
@@ -548,25 +564,25 @@ else:
             col_tot.text_input("Peso Total", value=f"{p_total:.2f} kg", disabled=True, key=f"tot_{i}")
             foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
 
+            if foto is not None:
+                col_foto.image(foto, width=80)
+
             factor = FACTORES_CO2.get(desc, 6.575)
             co2_item = p_total * factor
             co2_evitado_total += co2_item
-
             peso_total_recibido += p_total
+
             lista_items.append({
-                "descripcion": desc,
-                "unidades": unid,
-                "peso_unitario": peso_u,
-                "peso_total": p_total,
-                "foto": foto,
-                "co2_evitado": co2_item
+                "descripcion": desc, "unidades": unid, "peso_unitario": peso_u,
+                "peso_total": p_total, "foto": foto, "co2_evitado": co2_item
             })
 
         st.info(f"📦 **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
-        st.write("---")
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # 3. TRAZABILIDAD
-        st.subheader("3. Trazabilidad del Proceso en Upcycling")
+        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+        st.markdown("<h4 class='section-header'>3. Trazabilidad del Proceso en Upcycling</h4>", unsafe_allow_html=True)
         etapas_fijas = [
             {"etapa": "Clasificación", "fecha": datetime.date.today(), "resp": "Área de Logística", "peso": "0.00", "tipo": "Registro interno"},
             {"etapa": "Lavado", "fecha": datetime.date.today(), "resp": "Lavandería", "peso": "0.00", "tipo": "Servicio Externo"},
@@ -584,6 +600,7 @@ else:
             e_fec_val = c_fecha.date_input("Fecha", value=item_fijo["fecha"], format="DD/MM/YYYY", key=f"tr_fecha_{i}")
             e_res = c_resp.text_input("Responsable", value=item_fijo["resp"], disabled=True, key=f"tr_resp_{i}")
             e_pes_str = c_peso.text_input("Peso (kg)", value=item_fijo["peso"], key=f"tr_peso_{i}")
+            
             try:
                 e_pes_num = float(e_pes_str)
             except ValueError:
@@ -597,12 +614,16 @@ else:
             e_tip = c_tipo.text_input("Tipo Registro", value=item_fijo["tipo"], disabled=True, key=f"tr_tipo_{i}")
             e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
 
+            if e_fot is not None:
+                c_foto.image(e_fot, width=70)
+
             lista_trazabilidad.append({"etapa": e_nom, "fecha": e_fec_val.strftime("%d/%m/%Y"), "responsable": e_res, "peso": e_pes_num, "tipo_registro": e_tip, "foto": e_fot})
 
-        st.write("---")
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # 4. SALIDA DE PRODUCTOS
-        st.subheader("4. Salida de Productos (Nombre, Cantidad y Foto)")
+        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+        st.markdown("<h4 class='section-header'>4. Salida de Productos</h4>", unsafe_allow_html=True)
 
         if "num_prods" not in st.session_state:
             st.session_state.num_prods = 3
@@ -626,6 +647,9 @@ else:
             p_cant = col_pcant.number_input("Cantidad (Unidad)", min_value=0, value=0, key=f"prod_cant_{i}")
             p_foto = col_pfoto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}")
 
+            if p_foto is not None:
+                col_pfoto.image(p_foto, width=80)
+
             total_prod_unid += p_cant
             lista_productos.append({
                 "producto": p_nombre if p_nombre.strip() else f"Producto {i+1}",
@@ -634,10 +658,11 @@ else:
             })
 
         st.success(f"🛍️ **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
-        st.write("---")
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # 5. BALANCE DE MATERIAL
-        st.subheader("5. Balance de Material")
+        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+        st.markdown("<h4 class='section-header'>5. Balance de Material</h4>", unsafe_allow_html=True)
         st.info(f"⚖️ **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
 
         col_bm1, col_bm2 = st.columns(2)
@@ -661,10 +686,11 @@ else:
         ind1.metric("Total Procesado", f"{total_procesado:.2f} kg")
         ind2.metric("% Aprovechamiento Total", f"{pct_aprovechamiento_total:.2f}%")
         ind3.metric("% Pérdida", f"{pct_perdida:.2f}%")
-        st.write("---")
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # 6. CÁLCULO DE EMISIONES Y MÉTRICAS SOCIALES
-        st.subheader("6. Balance de Emisiones del Proceso e Impacto Social")
+        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+        st.markdown("<h4 class='section-header'>6. Balance de Emisiones e Impacto Social</h4>", unsafe_allow_html=True)
 
         # A. TRANSPORTE
         st.markdown("##### 🚗 A. Cálculo de Transporte")
@@ -679,7 +705,7 @@ else:
 
         st.caption(f"Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
 
-        # B. LAVANDERÍA Y CORTE (Automáticos desde Trazabilidad)
+        # B. LAVANDERÍA Y CORTE
         st.markdown("##### 🧺 B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
         emisiones_lavado = peso_lavado_auto * 0.30
         emisiones_corte = peso_corte_auto * 0.05
@@ -710,7 +736,7 @@ else:
         horas_totales = m1.number_input("Horas Generadas", min_value=0.0, value=0.0, step=0.5)
         cant_personas = m2.number_input("Cantidad Personas Beneficiadas", min_value=0, value=0, step=1)
 
-        st.write("---")
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # BOTÓN GENERADOR
         if st.button("📄 Generar PDF Oficial y Guardar", type="primary", use_container_width=True):
@@ -749,7 +775,7 @@ else:
             )
 
     elif opcion_menu == "📊 Dashboard 2026":
-        st.title("📊 Dashboard Consolidado 2026")
+        st.markdown("<h2 style='color: #4C1D95;'>📊 Dashboard Consolidado 2026</h2>", unsafe_allow_html=True)
         lista_proyectos = cargar_proyectos()
         if lista_proyectos:
             df = pd.DataFrame(lista_proyectos)
@@ -762,7 +788,7 @@ else:
             st.info("Sin datos acumulados.")
 
     elif opcion_menu == "📜 Historial de Proyectos":
-        st.title("📜 Historial de Proyectos")
+        st.markdown("<h2 style='color: #4C1D95;'>📜 Historial de Proyectos</h2>", unsafe_allow_html=True)
         lista_proyectos = cargar_proyectos()
         if lista_proyectos:
             st.dataframe(pd.DataFrame(lista_proyectos), use_container_width=True)
