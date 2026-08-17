@@ -1640,7 +1640,7 @@ else:
             st.markdown("#### Confección y Acabado – Asignación de Personal")
             st.caption(
                 "Seleccione el rol correspondiente (Confección o Acabado) para cada persona "
-                "y agregue o quite participantes según sea necesario."
+                "y agregue o quite participantes según sea necesario. El acabado se calcula automáticamente al 20% del tiempo de confección."
             )
 
             lista_confeccion = []
@@ -1651,12 +1651,12 @@ else:
                 p_nom = prod["producto"]
                 p_cant = prod["cantidad"]
 
-                # CÁLCULO DINÁMICO CORREGIDO SEGÚN EL PRODUCTO SELECCIONADO
-                tiempo_sugerido_ia = estimar_tiempo_unidad(p_nom)
+                # CÁLCULO BASE DE LA IA SEGÚN EL PRODUCTO SELECCIONADO
+                tiempo_base_ia = estimar_tiempo_unidad(p_nom)
 
                 st.markdown(
                     f"**🧵  Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
-                    f"| Estimación IA: {tiempo_sugerido_ia:.2f} hrs/unid)*"
+                    f"| Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*"
                 )
 
                 key_num_pers = f"num_pers_prod_{idx}"
@@ -1679,7 +1679,6 @@ else:
                         [2, 2.5, 1.5, 2, 2]
                     )
 
-                    # CORRECCIÓN DE ROL: "Acabado" EN LUGAR DE "Acabado y Empaque"
                     rol_sel = c_rol.selectbox(
                         "Rol",
                         ["Confección", "Acabado"],
@@ -1703,13 +1702,23 @@ else:
                         key=f"soc_cant_{idx}_{p_idx}",
                     )
 
-                    tiempo_unitario = c_tiempo.number_input(
-                        "Tiempo/Unid (hrs)",
-                        min_value=0.0,
-                        value=float(tiempo_sugerido_ia),
-                        step=0.05,
-                        key=f"soc_tunit_{idx}_{p_idx}_{p_nom}",
-                    )
+                    # AUTOMATIZACIÓN: SI ES ACABADO, TOMA EL 20% DEL TIEMPO DE CONFECCIÓN
+                    if rol_sel == "Acabado":
+                        tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
+                        c_tiempo.text_input(
+                            "Tiempo/Unid (hrs) [Acabado 20%]",
+                            value=f"{tiempo_unitario:.3f} hrs",
+                            disabled=True,
+                            key=f"soc_tunit_calc_{idx}_{p_idx}",
+                        )
+                    else:
+                        tiempo_unitario = c_tiempo.number_input(
+                            "Tiempo/Unid (hrs)",
+                            min_value=0.0,
+                            value=float(tiempo_base_ia),
+                            step=0.05,
+                            key=f"soc_tunit_{idx}_{p_idx}_{p_nom}",
+                        )
 
                     horas_persona = cant_asig * tiempo_unitario
                     c_tot.metric("Subtotal Horas", f"{horas_persona:.2f} hrs")
