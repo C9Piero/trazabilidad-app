@@ -209,7 +209,6 @@ st.markdown(
     div[data-testid="stNumberInput"] button { display: none !important; }
     div[data-testid="stNumberInput"] input { text-align: left; }
 
-    /* --- Header principal --- */
     .hero-header {
         background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-700) 50%, var(--brand-500) 100%);
         color: white;
@@ -230,7 +229,6 @@ st.markdown(
         font-size: 0.95rem;
     }
 
-    /* --- Sidebar --- */
     div[data-testid="stSidebar"] {
         background-color: var(--surface);
         border-right: 1px solid var(--border);
@@ -246,7 +244,6 @@ st.markdown(
         margin-bottom: 8px;
     }
 
-    /* --- Tarjetas (st.container(border=True)) --- */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: var(--radius) !important;
         border: 1px solid var(--border) !important;
@@ -257,7 +254,6 @@ st.markdown(
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
     }
 
-    /* --- Botones --- */
     div[data-testid="stButton"] button, div[data-testid="stDownloadButton"] button {
         border-radius: 10px;
         font-weight: 600;
@@ -273,7 +269,6 @@ st.markdown(
         border: none;
     }
 
-    /* --- Métricas --- */
     div[data-testid="stMetric"] {
         background-color: var(--surface);
         border: 1px solid var(--border);
@@ -282,14 +277,12 @@ st.markdown(
     }
     div[data-testid="stMetricLabel"] { color: var(--ink-muted); }
 
-    /* --- Inputs --- */
     div[data-testid="stTextInput"] input,
     div[data-testid="stNumberInput"] input,
     div[data-testid="stSelectbox"] div[data-baseweb="select"] {
         border-radius: 8px !important;
     }
 
-    /* --- Scrollbar --- */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; }
     ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
@@ -480,7 +473,6 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # Encabezado PDF
     elements.append(Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style))
     elements.append(
         Paragraph(
@@ -490,7 +482,6 @@ def generar_pdf_oficial(
         )
     )
 
-    # Tarjetas Métricas PDF
     cards_data = [
         [
             Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", card_title),
@@ -518,7 +509,6 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 8))
 
-    # 1. Ficha General
     elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
     data_ficha = [
         [
@@ -575,7 +565,6 @@ def generar_pdf_oficial(
                 return Paragraph("Sin foto", cell_style)
         return Paragraph("Sin foto", cell_style)
 
-    # 2. Ingreso de Material
     elements.append(
         Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style)
     )
@@ -626,7 +615,6 @@ def generar_pdf_oficial(
     elements.append(t_prendas)
     elements.append(Spacer(1, 8))
 
-    # 3. Trazabilidad
     elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
     data_traza_pdf = [[
         Paragraph("Etapa", cell_bold),
@@ -663,7 +651,6 @@ def generar_pdf_oficial(
 
     elements.append(PageBreak())
 
-    # 4. SALIDA DE PRODUCTOS
     elements.append(Paragraph("4. SALIDA DE PRODUCTOS", h2_style))
     elements.append(
         Paragraph(
@@ -710,7 +697,6 @@ def generar_pdf_oficial(
     elements.append(t_prod)
     elements.append(Spacer(1, 15))
 
-    # 5. BALANCE DE MATERIAL
     elements.append(Paragraph("5. BALANCE DE MATERIAL", h2_style))
     elements.append(
         Paragraph(
@@ -772,7 +758,6 @@ def generar_pdf_oficial(
     elements.append(t_balance)
     elements.append(Spacer(1, 15))
 
-    # 6. BALANCE DE IMPACTO AMBIENTAL
     elements.append(
         Paragraph("6. RESUMEN DE IMPACTO AMBIENTAL DEL PROYECTO (CO₂e)", h2_style)
     )
@@ -800,7 +785,6 @@ def generar_pdf_oficial(
     elements.append(t_co2_box)
     elements.append(Spacer(1, 10))
 
-    # 7. IMPACTO SOCIAL
     elements.append(
         Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EQUIPO DE TRABAJO", h2_style)
     )
@@ -856,7 +840,6 @@ def generar_pdf_oficial(
     elements.append(t_ops)
     elements.append(Spacer(1, 10))
 
-    # CONFECCIÓN Y ACABADO
     if lista_confeccion:
         elements.append(
             Paragraph(
@@ -924,7 +907,6 @@ if "proyecto_editar" not in st.session_state:
 if "catalogo_productos" not in st.session_state:
     st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
 
-# --- LOGIN ---
 try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
@@ -971,7 +953,6 @@ if not st.session_state.autenticado:
 else:
     proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
 
-    # --- BARRA LATERAL ---
     with st.sidebar:
         st.markdown("### ♻️ Pequeños Detalles")
         st.caption("Panel de Control Interno | 2026")
@@ -1064,7 +1045,6 @@ else:
             st.session_state.proyecto_editar = {}
             st.rerun()
 
-    # --- HEADER VÍVIDO ---
     st.markdown(
         f"""
         <div class="hero-header">
@@ -1075,7 +1055,6 @@ else:
         unsafe_allow_html=True,
     )
 
-    # --- PESTAÑA: NUEVO / EDITAR REPORTE ---
     if st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
@@ -1088,7 +1067,6 @@ else:
                 st.session_state.proyecto_editar = {}
                 st.rerun()
 
-        # 1. FICHA
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
             c1, c2, c3 = st.columns(3)
@@ -1141,7 +1119,6 @@ else:
 
         st.write("")
 
-        # 2. INGRESO DE MATERIAL
         with st.container(border=True):
             st.subheader("2. Ingreso de Material")
             if "num_items" not in st.session_state:
@@ -1217,7 +1194,6 @@ else:
 
         st.write("")
 
-        # 3. TRAZABILIDAD
         with st.container(border=True):
             st.subheader("3. Trazabilidad del Proceso en Upcycling")
             etapas_fijas = [
@@ -1319,7 +1295,7 @@ else:
 
         st.write("")
 
-        # 4. SALIDA DE PRODUCTOS
+        # 4. SALIDA DE PRODUCTOS (CORREGIDO)
         with st.container(border=True):
             st.subheader("4. Salida de Productos")
 
@@ -1368,11 +1344,12 @@ else:
                     ):
                         st.session_state.catalogo_productos.insert(-1, nuevo_nombre.strip())
                 else:
+                    # CORREGIDO: Ahora muestra correctamente la selección actual del usuario en lugar de un texto estático
                     col_pnom_nuevo.text_input(
                         "Producto",
                         value=prod_seleccionado,
                         disabled=True,
-                        key=f"prod_dis_{i}",
+                        key=f"prod_dis_{i}_{prod_seleccionado}",
                     )
                     nombre_final = prod_seleccionado
 
@@ -1398,7 +1375,6 @@ else:
 
         st.write("")
 
-        # 5. BALANCE DE MATERIAL
         with st.container(border=True):
             st.subheader("5. Balance de Material")
             st.info(
@@ -1444,7 +1420,6 @@ else:
 
         st.write("")
 
-        # 6. CÁLCULO DE EMISIONES
         with st.container(border=True):
             st.subheader("6. Balance de Emisiones (CO₂e)")
 
@@ -1525,7 +1500,6 @@ else:
 
         st.write("")
 
-        # 7. EQUIPO DE TRABAJO Y GENERACIÓN DE HORAS
         with st.container(border=True):
             st.subheader("7. Equipo de Trabajo y Generación de Horas")
             st.markdown(
@@ -1533,7 +1507,6 @@ else:
                 " trabajadas por actividad**"
             )
 
-            # CÁLCULO DINÁMICO REACTIVO (CORTE Y LOGÍSTICA)
             if peso_total_recibido <= 10:
                 dias_calc_corte, hdia_calc_corte = 1, 3.0
                 dias_calc_log, hdia_calc_log = 1, 2.0
@@ -1636,7 +1609,6 @@ else:
 
             st.write("---")
 
-            # --- CONFECCIÓN Y ACABADO UNIFICADO ---
             st.markdown("#### Confección y Acabado – Asignación de Personal")
             st.caption(
                 "Seleccione el rol correspondiente (Confección o Acabado) para cada persona "
@@ -1651,7 +1623,6 @@ else:
                 p_nom = prod["producto"]
                 p_cant = prod["cantidad"]
 
-                # CÁLCULO BASE DE LA IA SEGÚN EL PRODUCTO SELECCIONADO
                 tiempo_base_ia = estimar_tiempo_unidad(p_nom)
 
                 st.markdown(
@@ -1702,7 +1673,6 @@ else:
                         key=f"soc_cant_{idx}_{p_idx}",
                     )
 
-                    # AUTOMATIZACIÓN: SI ES ACABADO, TOMA EL 20% DEL TIEMPO DE CONFECCIÓN
                     if rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
                         c_tiempo.text_input(
@@ -1785,7 +1755,6 @@ else:
                 )
             return errores
 
-        # BOTONES DE ACCIÓN Y GENERACIÓN
         b_col1, b_col2 = st.columns(2)
 
         if b_col1.button(
@@ -1900,7 +1869,6 @@ else:
                     use_container_width=True,
                 )
 
-    # --- PESTAÑA: PROYECTOS EN PROCESO ---
     elif st.session_state.pestaña_activa == "📋  Proyectos en Proceso":
         st.subheader("📋  Proyectos Guardados en Borrador (En Proceso)")
         proyectos_lista = cargar_proyectos(estado="EN_PROCESO")
@@ -1929,7 +1897,6 @@ else:
         else:
             st.info("No hay proyectos pendientes o guardados en proceso.")
 
-    # --- PESTAÑA: DASHBOARD 2026 ---
     elif st.session_state.pestaña_activa == "📊  Dashboard 2026":
         st.subheader("📊  Indicadores Globales de Sostenibilidad 2026")
 
@@ -1945,7 +1912,6 @@ else:
             " informes terminados en la base de datos."
         )
 
-    # --- PESTAÑA: HISTORIAL COMPLETO ---
     elif st.session_state.pestaña_activa == "📜  Historial Completo":
         st.subheader("📜  Histórico de Proyectos Finalizados")
         proyectos_completados = cargar_proyectos(estado="COMPLETADO")
