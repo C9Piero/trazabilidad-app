@@ -17,7 +17,7 @@ from reportlab.platypus import (
 from supabase import Client, create_client
 import streamlit as st
 
-# --- CATÁLOGO BASE DE PRODUCTOS HISTÓRICOS 2025 ---
+# --- CATÁLOGO BASE DE PRODUCTOS HISTÓRICOS ---
 PRODUCTOS_CATALOGO_BASE = [
     "Estrellas",
     "Cartuchera",
@@ -47,6 +47,45 @@ PRODUCTOS_CATALOGO_BASE = [
     "Lonchera",
     "➕  Otro (Escribir nuevo producto)",
 ]
+
+# --- MATRIZ DE TIEMPOS ESTIMADOS SEGÚN TIPO Y COMPLEJIDAD DEL PRODUCTO (en horas/unidad) ---
+TIEMPOS_ESTIMADOS_PRODUCTO = {
+    "Mochila": 2.50,
+    "Bolso": 1.50,
+    "Tote bag": 0.80,
+    "Portalaptop": 1.20,
+    "Canguro": 1.10,
+    "Neceser": 0.70,
+    "Lonchera": 1.00,
+    "Cartuchera": 0.50,
+    "Morral": 1.20,
+    "Mandiles": 0.60,
+    "Cama perrito": 1.80,
+    "Peluche": 1.50,
+    "Pelota": 0.80,
+    "Estrellas": 0.35,
+    "Corazones": 0.35,
+    "Rombo": 0.35,
+    "Cúbica": 0.60,
+    "Cubo": 0.50,
+    "Llavero": 0.20,
+    "Monedero": 0.30,
+    "Portacepillos": 0.25,
+    "Portacubierto": 0.25,
+    "Portaútiles": 0.40,
+    "Portabotella": 0.45,
+    "Colets": 0.15,
+    "Juguete": 0.75,
+}
+
+
+def estimar_tiempo_unidad(nombre_producto: str) -> float:
+  """Retorna el tiempo estimado (horas/unidad) según el tipo de producto."""
+  for prod_key, tiempo in TIEMPOS_ESTIMADOS_PRODUCTO.items():
+    if prod_key.lower() in nombre_producto.lower():
+      return tiempo
+  return 0.75  # Tiempo base por defecto para productos no mapeados
+
 
 # --- FACTORES DE EMISIÓN DE MATERIALES ---
 FACTORES_CO2 = {
@@ -127,10 +166,6 @@ FACTORES_BORDADO = {
     "Medio (9 min/pieza)": 0.037,
     "Complejo (10 min/pieza)": 0.041,
 }
-
-# --- TIEMPOS BASE RECOMENDADOS POR IA PARA CONFECCIÓN ---
-# CAMBIO APLICADO: Reducido a Confección y Acabado únicamente
-TIEMPOS_IA_CONFECCION = {"Confección": 0.75, "Acabado": 0.20}
 
 # --- PERSONAL FIJO DE OPERACIONES (CORTE Y LOGÍSTICA) ---
 PERSONAL_FIJO_OPERACIONES = [
@@ -697,7 +732,7 @@ def generar_pdf_oficial(
   elements.append(t_co2_box)
   elements.append(Spacer(1, 10))
 
-  # 7. IMPACTO SOCIAL DE CORTE Y LOGÍSTICA (EQUIPO)
+  # 7. IMPACTO SOCIAL
   elements.append(
       Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EQUIPO DE TRABAJO", h2_style)
   )
@@ -753,14 +788,16 @@ def generar_pdf_oficial(
   elements.append(t_ops)
   elements.append(Spacer(1, 10))
 
-  # CONFECCIÓN
+  # CONFECCIÓN Y ACABADO
   if lista_confeccion:
     elements.append(
-        Paragraph("<b>Desglose del Personal de Confección</b>", cell_bold)
+        Paragraph(
+            "<b>Desglose del Personal de Confección y Acabado</b>", cell_bold
+        )
     )
     data_social_pdf = [[
         Paragraph("Producto", cell_bold),
-        Paragraph("Rol", cell_bold),
+        Paragraph("Rol Operativo", cell_bold),
         Paragraph("Encargado/a", cell_bold),
         Paragraph("Cant.", cell_bold),
         Paragraph("Tiempo unit. (hrs)", cell_bold),
@@ -780,7 +817,7 @@ def generar_pdf_oficial(
       ])
 
     data_social_pdf.append([
-        Paragraph("<b>SUBTOTAL CONFECCIÓN</b>", cell_bold),
+        Paragraph("<b>SUBTOTAL CONFECCIÓN Y ACABADO</b>", cell_bold),
         "",
         "",
         "",
@@ -816,7 +853,6 @@ if "pestaña_activa" not in st.session_state:
 if "proyecto_editar" not in st.session_state:
   st.session_state.proyecto_editar = {}
 
-# Carga de Lista Dinámica de Productos
 if "catalogo_productos" not in st.session_state:
   st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
 
@@ -858,7 +894,7 @@ if not st.session_state.autenticado:
 else:
   proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
 
-  # --- BARRA LATERAL MODERNA ---
+  # --- BARRA LATERAL ---
   with st.sidebar:
     st.markdown("### 🌸  Pequeños Detalles")
     st.caption("Panel de Control Interno | 2026")
@@ -988,14 +1024,12 @@ else:
       )
 
       c4, c5, c6 = st.columns(3)
-
-      # CAMBIO APLICADO: Tipo de Proyecto como Selectbox
       opciones_tipo_proyecto = [
           "Upcycling",
           "Producción desde cero",
           "Cambio de logo",
-          "Banner",
           "Mixto",
+          "Banner",
       ]
       tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
       idx_tipo = (
@@ -1208,7 +1242,7 @@ else:
 
     st.write("")
 
-    # 4. SALIDA DE PRODUCTOS (CON LISTA DESPLEGABLE DINÁMICA + OTRO)
+    # 4. SALIDA DE PRODUCTOS
     with st.container(border=True):
       st.subheader("4. Salida de Productos")
 
@@ -1235,14 +1269,12 @@ else:
             [3, 2.5, 1.5, 3]
         )
 
-        # Lista Desplegable
         prod_seleccionado = col_psel.selectbox(
             "Seleccionar Producto Base",
             st.session_state.catalogo_productos,
             key=f"prod_sel_{i}",
         )
 
-        # Si el usuario elige "Otro", se habilita un cuadro de texto
         if prod_seleccionado == "➕  Otro (Escribir nuevo producto)":
           nuevo_nombre = col_pnom_nuevo.text_input(
               "Escriba el Nuevo Producto", key=f"prod_nuevo_txt_{i}"
@@ -1253,7 +1285,6 @@ else:
               else f"Producto {i+1}"
           )
 
-          # Se agrega automáticamente al catálogo en memoria
           if (
               nuevo_nombre.strip()
               and nuevo_nombre.strip() not in st.session_state.catalogo_productos
@@ -1516,67 +1547,101 @@ else:
 
       st.write("---")
 
-      # --- CONFECCIÓN ---
-      st.markdown("#### Confección – Artesanas y Taller")
+      # --- CONFECCIÓN Y ACABADO (EXCLUSIVO) ---
+      st.markdown("#### Confección y Acabado – Artesanas y Taller")
       st.caption(
-          "Asigne la persona encargada y el tiempo aproximado para cada"
-          " producto final."
+          "El tiempo unitario se estima automáticamente según el tipo de"
+          " producto. Puede asignar varias personas por cada producto para"
+          " Confección o Acabado."
       )
 
       lista_confeccion = []
       horas_confeccion_total = 0.0
       personas_confeccion_set = set()
 
-      # Carga únicamente Confección y Acabado
-      roles_disponibles = list(TIEMPOS_IA_CONFECCION.keys())
-
       for idx, prod in enumerate(lista_productos):
         p_nom = prod["producto"]
         p_cant = prod["cantidad"]
 
+        # Tiempo estimado por la IA según el tipo de producto
+        tiempo_sugerido_ia = estimar_tiempo_unidad(p_nom)
+
         st.markdown(
-            f"**📦  Producto {idx+1}: {p_nom}** *(Cantidad: {p_cant} unid)*"
-        )
-        c_rol, c_persona, c_tiempo, c_tot = st.columns([2.5, 2.5, 2, 2])
-
-        rol_sel = c_rol.selectbox(
-            "Rol Asignado", roles_disponibles, key=f"soc_rol_{idx}"
-        )
-        persona_nom = c_persona.text_input(
-            "Persona Encargada",
-            value="",
-            placeholder="Ej: Maria Ramos",
-            key=f"soc_pers_{idx}",
+            f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid"
+            f" | Estimación IA: {tiempo_sugerido_ia:.2f} hrs/unid)*"
         )
 
-        tiempo_ia = TIEMPOS_IA_CONFECCION.get(rol_sel, 0.5)
-        tiempo_unitario = c_tiempo.number_input(
-            "Tiempo / Unidad (hrs)",
-            min_value=0.0,
-            value=float(tiempo_ia),
-            step=0.05,
-            key=f"soc_tunit_{idx}",
-        )
+        key_num_pers = f"num_pers_prod_{idx}"
+        if key_num_pers not in st.session_state:
+          st.session_state[key_num_pers] = 1
 
-        horas_producto = p_cant * tiempo_unitario
-        c_tot.metric("Horas Totales", f"{horas_producto:.2f} hrs")
+        col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
+        if col_b1.button("➕ Persona", key=f"add_pers_{idx}"):
+          st.session_state[key_num_pers] += 1
+          st.rerun()
+        if (
+            col_b2.button("➖ Quitar", key=f"del_pers_{idx}")
+            and st.session_state[key_num_pers] > 1
+        ):
+          st.session_state[key_num_pers] -= 1
+          st.rerun()
 
-        horas_confeccion_total += horas_producto
-        if persona_nom.strip():
-          personas_confeccion_set.add(persona_nom.strip())
+        for p_idx in range(st.session_state[key_num_pers]):
+          c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns(
+              [2, 2.5, 1.5, 2, 2]
+          )
 
-        lista_confeccion.append({
-            "producto": p_nom,
-            "cantidad": p_cant,
-            "rol": rol_sel,
-            "persona": persona_nom.strip()
-            if persona_nom.strip()
-            else "Por asignar",
-            "tiempo_unitario": tiempo_unitario,
-            "horas_totales": horas_producto,
-        })
+          # ROLES EXCLUSIVOS DE LA SECCIÓN (SIN CORTE)
+          rol_sel = c_rol.selectbox(
+              "Rol Operativo",
+              ["Confección", "Acabado"],
+              key=f"soc_rol_{idx}_{p_idx}",
+          )
+          persona_nom = c_persona.text_input(
+              "Persona Encargada",
+              placeholder=f"Encargado/a {p_idx+1}",
+              key=f"soc_pers_{idx}_{p_idx}",
+          )
 
-      st.write("---")
+          cant_sugerida = max(
+              1, int(p_cant / st.session_state[key_num_pers])
+          ) if p_cant > 0 else 0
+          cant_asig = c_cant_asig.number_input(
+              "Unid. Asignadas",
+              min_value=0,
+              max_value=p_cant,
+              value=cant_sugerida,
+              key=f"soc_cant_{idx}_{p_idx}",
+          )
+
+          tiempo_unitario = c_tiempo.number_input(
+              "Tiempo/Unid (hrs)",
+              min_value=0.0,
+              value=float(tiempo_sugerido_ia),
+              step=0.05,
+              key=f"soc_tunit_{idx}_{p_idx}",
+          )
+
+          horas_persona = cant_asig * tiempo_unitario
+          c_tot.metric("Subtotal Horas", f"{horas_persona:.2f} hrs")
+
+          horas_confeccion_total += horas_persona
+          if persona_nom.strip():
+            personas_confeccion_set.add(persona_nom.strip())
+
+          lista_confeccion.append({
+              "producto": p_nom,
+              "cantidad": cant_asig,
+              "rol": rol_sel,
+              "persona": (
+                  persona_nom.strip() if persona_nom.strip() else "Por asignar"
+              ),
+              "tiempo_unitario": tiempo_unitario,
+              "horas_totales": horas_persona,
+          })
+
+        st.write("---")
+
       total_horas_social = total_horas_ops + horas_confeccion_total
       total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(
           personas_confeccion_set
@@ -1589,7 +1654,7 @@ else:
           f"{len(PERSONAL_FIJO_OPERACIONES)} Personas",
       )
       ms2.metric(
-          "Horas Confección",
+          "Horas Confección y Acabado",
           f"{horas_confeccion_total:.2f} hrs",
           f"{len(personas_confeccion_set)} Artesanas",
       )
