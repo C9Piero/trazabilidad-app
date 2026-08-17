@@ -84,7 +84,7 @@ def estimar_tiempo_unidad(nombre_producto: str) -> float:
     for prod_key, tiempo in TIEMPOS_ESTIMADOS_PRODUCTO.items():
         if prod_key.lower() in nombre_producto.lower():
             return tiempo
-    return 0.75  # Tiempo base por defecto para productos no mapeados
+    return 0.75
 
 
 # --- FACTORES DE EMISIÓN DE MATERIALES ---
@@ -1499,6 +1499,7 @@ else:
                     3.0 if rol_val == "Logística" else horas_dia_sugeridas_corte
                 )
 
+                # DÍAS Y HORAS DINÁMICAS VINCULADAS AL SESSION STATE Y REFLEJADAS
                 val_dias = c_dias.number_input(
                     "Días",
                     min_value=0,
@@ -1536,7 +1537,7 @@ else:
 
             st.write("---")
 
-            # --- CONFECCIÓN Y ACABADO (EXCLUSIVO) ---
+            # --- CONFECCIÓN Y ACABADO ---
             st.markdown("#### Confección y Acabado – Artesanas y Taller")
             st.caption(
                 "El tiempo unitario se estima automáticamente según el tipo de"
@@ -1552,7 +1553,6 @@ else:
                 p_nom = prod["producto"]
                 p_cant = prod["cantidad"]
 
-                # Tiempo estimado por la IA según el tipo de producto
                 tiempo_sugerido_ia = estimar_tiempo_unidad(p_nom)
 
                 st.markdown(
@@ -1580,7 +1580,6 @@ else:
                         [2, 2.5, 1.5, 2, 2]
                     )
 
-                    # ROLES EXCLUSIVOS DE LA SECCIÓN (SIN CORTE)
                     rol_sel = c_rol.selectbox(
                         "Rol Operativo",
                         ["Confección", "Acabado"],
