@@ -748,11 +748,11 @@ def generar_pdf_oficial(
     for op in lista_operaciones_pdf:
         tot_hrs_ops += op["horas_totales"]
         data_ops_pdf.append([
-            Paragraph(op["rol"], cell_style),
-            Paragraph(op["nombre"], cell_style),
+            Paragraph(str(op["rol"]), cell_style),
+            Paragraph(str(op["nombre"]), cell_style),
             Paragraph(str(op["dias"]), cell_style),
-            Paragraph(f"{op['horas_dia']:.1f}", cell_style),
-            Paragraph(f"{op['horas_totales']:.1f}", cell_style),
+            Paragraph(f"{op['horas_dia']:.2f}", cell_style),
+            Paragraph(f"{op['horas_totales']:.2f}", cell_style),
         ])
 
     data_ops_pdf.append([
@@ -760,7 +760,7 @@ def generar_pdf_oficial(
         "",
         "",
         "",
-        Paragraph(f"<b>{tot_hrs_ops:.1f} hrs</b>", cell_bold),
+        Paragraph(f"<b>{tot_hrs_ops:.2f} hrs</b>", cell_bold),
     ])
 
     t_ops = Table(data_ops_pdf, colWidths=[100, 200, 80, 80, 80])
@@ -1447,10 +1447,19 @@ else:
                 " trabajadas por actividad**"
             )
 
-            dias_sugeridos_corte = (
-                max(1, int(peso_total_recibido / 30)) if peso_total_recibido > 0 else 2
-            )
-            horas_dia_sugeridas_corte = 8.5 if peso_total_recibido > 20 else 4.0
+            # CÁLCULO DINÁMICO REACTIVO EN BASE AL MATERIAL INGRESADO EN EL PASO 2
+            if peso_total_recibido <= 0:
+                dias_calc_corte = 1
+                hdia_calc_corte = 2.0
+            elif peso_total_recibido <= 20:
+                dias_calc_corte = 2
+                hdia_calc_corte = 4.0
+            elif peso_total_recibido <= 50:
+                dias_calc_corte = 3
+                hdia_calc_corte = 6.0
+            else:
+                dias_calc_corte = max(3, int(peso_total_recibido / 20))
+                hdia_calc_corte = 8.0
 
             st.markdown("#### Operaciones – Corte y Logística")
 
@@ -1494,33 +1503,31 @@ else:
                     label_visibility="collapsed",
                 )
 
-                default_dias = 3 if rol_val == "Logística" else dias_sugeridos_corte
-                default_hdia = (
-                    3.0 if rol_val == "Logística" else horas_dia_sugeridas_corte
-                )
+                # ASIGNACIÓN DINÁMICA DE DÍAS Y HORAS SEGÚN EL MATERIAL RECIBIDO
+                val_dias_defecto = 3 if rol_val == "Logística" else dias_calc_corte
+                val_hdia_defecto = 3.0 if rol_val == "Logística" else hdia_calc_corte
 
-                # DÍAS Y HORAS DINÁMICAS VINCULADAS AL SESSION STATE Y REFLEJADAS
                 val_dias = c_dias.number_input(
                     "Días",
                     min_value=0,
-                    value=int(default_dias),
+                    value=int(val_dias_defecto),
                     step=1,
-                    key=f"ops_dias_{idx}",
+                    key=f"ops_dias_dyn_{idx}_{val_dias_defecto}",
                     label_visibility="collapsed",
                 )
                 val_hdia = c_hdia.number_input(
                     "Hrs/Día",
                     min_value=0.0,
-                    value=float(default_hdia),
+                    value=float(val_hdia_defecto),
                     step=0.5,
-                    key=f"ops_hdia_{idx}",
+                    key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}",
                     label_visibility="collapsed",
                 )
 
                 tot_hrs_pers = val_dias * val_hdia
                 c_tot.text_input(
                     "Total",
-                    value=f"{tot_hrs_pers:.1f}",
+                    value=f"{tot_hrs_pers:.2f}",
                     disabled=True,
                     key=f"ops_tot_{idx}",
                     label_visibility="collapsed",
@@ -1638,7 +1645,7 @@ else:
             ms1, ms2, ms3 = st.columns(3)
             ms1.metric(
                 "Horas Corte y Logística",
-                f"{total_horas_ops:.1f} hrs",
+                f"{total_horas_ops:.2f} hrs",
                 f"{len(PERSONAL_FIJO_OPERACIONES)} Personas",
             )
             ms2.metric(
