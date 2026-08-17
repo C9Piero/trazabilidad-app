@@ -321,9 +321,7 @@ except Exception as e:
 
 
 def cargar_proyectos(estado=None):
-    """Carga proyectos desde Supabase. Muestra una advertencia visible si
-    falla en vez de fallar en silencio, para no ocultar problemas de
-    conexión."""
+    """Carga proyectos desde Supabase."""
     try:
         query = supabase.table("proyectos").select("*")
         if estado:
@@ -916,7 +914,7 @@ if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
 if "pestaña_activa" not in st.session_state:
-    st.session_state.pestaña_activa = "➕    Nuevo Reporte PDF"
+    st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
 
 if "proyecto_editar" not in st.session_state:
     st.session_state.proyecto_editar = {}
@@ -925,9 +923,6 @@ if "catalogo_productos" not in st.session_state:
     st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
 
 # --- LOGIN ---
-# Las credenciales NUNCA deben vivir en el código fuente (quien tenga acceso
-# al repositorio las vería en texto plano). Se leen desde st.secrets, igual
-# que las credenciales de Supabase.
 try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
@@ -954,7 +949,7 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.subheader("🔐 Iniciar Sesión")
+            st.subheader("🔑 Iniciar Sesión")
             usuario_input = st.text_input("Usuario")
             password_input = st.text_input("Contraseña", type="password")
 
@@ -969,7 +964,7 @@ if not st.session_state.autenticado:
                     st.success("¡Bienvenido/a!")
                     st.rerun()
                 else:
-                    st.error("⚠️    Usuario o contraseña incorrectos.")
+                    st.error("⚠️ Usuario o contraseña incorrectos.")
 
 else:
     proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
@@ -986,16 +981,16 @@ else:
         )
 
         if st.button(
-            "✨    Nuevo Reporte PDF",
+            "✨ Nuevo Reporte PDF",
             use_container_width=True,
             type=(
                 "primary"
-                if st.session_state.pestaña_activa == "➕    Nuevo Reporte PDF"
+                if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF"
                 else "secondary"
             ),
         ):
             st.session_state.proyecto_editar = {}
-            st.session_state.pestaña_activa = "➕    Nuevo Reporte PDF"
+            st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
             st.rerun()
 
         st.markdown(
@@ -1007,7 +1002,7 @@ else:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
                 cod_ref = p.get("codigo", "")
-                label_btn = f"📁 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
+                label_btn = f"📌 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
 
                 es_activo = st.session_state.proyecto_editar.get(
                     "id"
@@ -1022,12 +1017,12 @@ else:
                     type="primary" if es_activo else "secondary",
                 ):
                     st.session_state.proyecto_editar = p
-                    st.session_state.pestaña_activa = "➕    Nuevo Reporte PDF"
+                    st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
                     st.rerun()
 
             st.write("")
-            if st.button("📋 Ver Lista en Proceso", use_container_width=True):
-                st.session_state.pestaña_activa = "📋 Proyectos en Proceso"
+            if st.button("📂 Ver Lista en Proceso", use_container_width=True):
+                st.session_state.pestaña_activa = "📂 Proyectos en Proceso"
                 st.rerun()
         else:
             st.caption("📭 No hay proyectos en borrador")
@@ -1050,15 +1045,15 @@ else:
             st.rerun()
 
         if st.button(
-            "🗂️ Historial Completo",
+            "📜 Historial Completo",
             use_container_width=True,
             type=(
                 "primary"
-                if st.session_state.pestaña_activa == "🗂️ Historial Completo"
+                if st.session_state.pestaña_activa == "📜 Historial Completo"
                 else "secondary"
             ),
         ):
-            st.session_state.pestaña_activa = "🗂️ Historial Completo"
+            st.session_state.pestaña_activa = "📜 Historial Completo"
             st.rerun()
 
         st.write("---")
@@ -1071,7 +1066,7 @@ else:
     st.markdown(
         f"""
         <div class="hero-header">
-            <h1>📄 Sistema de Gestión de Informes Técnicos</h1>
+            <h1>📋 Sistema de Gestión de Informes Técnicos</h1>
             <p>Sección Activa: <b>{st.session_state.pestaña_activa}</b></p>
         </div>
     """,
@@ -1079,7 +1074,7 @@ else:
     )
 
     # --- PESTAÑA: NUEVO / EDITAR REPORTE ---
-    if st.session_state.pestaña_activa == "➕    Nuevo Reporte PDF":
+    if st.session_state.pestaña_activa == "➕ Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
         if p_edit:
@@ -1087,7 +1082,7 @@ else:
                 "✏️ **Modo Edición Activo:** Modificando borrador de"
                 f" **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
             )
-            if st.button("❌    Descartar selección y limpiar formulario"):
+            if st.button("❌ Descartar selección y limpiar formulario"):
                 st.session_state.proyecto_editar = {}
                 st.rerun()
 
@@ -1151,11 +1146,11 @@ else:
                 st.session_state.num_items = 2
 
             col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-            if col_btn1.button("➕    Agregar Ítem"):
+            if col_btn1.button("➕ Agregar Ítem"):
                 st.session_state.num_items += 1
                 st.rerun()
             if (
-                col_btn2.button("➖    Quitar Ítem")
+                col_btn2.button("➖ Quitar Ítem")
                 and st.session_state.num_items > 1
             ):
                 st.session_state.num_items -= 1
@@ -1213,7 +1208,7 @@ else:
                 })
 
             st.info(
-                f"⚖️    **Total Material Recibido:** {peso_total_recibido:.2f} kg |"
+                f"⚖️ **Total Material Recibido:** {peso_total_recibido:.2f} kg |"
                 " **CO₂ Evitado Calculado:**"
                 f" {co2_evitado_total:.2f} kg CO₂e"
             )
@@ -1330,11 +1325,11 @@ else:
                 st.session_state.num_prods = 2
 
             cp_btn1, cp_btn2, _ = st.columns([1, 1, 4])
-            if cp_btn1.button("➕    Agregar Producto"):
+            if cp_btn1.button("➕ Agregar Producto"):
                 st.session_state.num_prods += 1
                 st.rerun()
             if (
-                cp_btn2.button("➖    Quitar Producto")
+                cp_btn2.button("➖ Quitar Producto")
                 and st.session_state.num_prods > 1
             ):
                 st.session_state.num_prods -= 1
@@ -1355,7 +1350,7 @@ else:
                     key=f"prod_sel_{i}",
                 )
 
-                if prod_seleccionado == "➕    Otro (Escribir nuevo producto)":
+                if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
                     nuevo_nombre = col_pnom_nuevo.text_input(
                         "Escriba el Nuevo Producto", key=f"prod_nuevo_txt_{i}"
                     )
@@ -1395,7 +1390,7 @@ else:
                 )
 
             st.success(
-                "🧮 **Suma Total de Productos Obtenidos:**"
+                "📦 **Suma Total de Productos Obtenidos:**"
                 f" {total_prod_unid} unidades"
             )
 
@@ -1405,7 +1400,7 @@ else:
         with st.container(border=True):
             st.subheader("5. Balance de Material")
             st.info(
-                "⚖️    **Material Recibido (calculado automáticamente):**"
+                "⚖️ **Material Recibido (calculado automáticamente):**"
                 f" {peso_total_recibido:.2f} kg"
             )
 
@@ -1495,7 +1490,7 @@ else:
                 " *(Factor: 0.05)*"
             )
 
-            st.markdown("##### 🧵 C. Cálculo de Bordado")
+            st.markdown("##### 🪡 C. Cálculo de Bordado")
             cb1, cb2 = st.columns(2)
             cant_prendas_bordado = cb1.number_input(
                 "Cantidad de prendas que requieren bordado",
@@ -1523,7 +1518,7 @@ else:
             co2_neto = co2_evitado_total - emisiones_proceso
 
             st.warning(
-                "🌍 **Total Emisiones del Proceso:**"
+                "🌱 **Total Emisiones del Proceso:**"
                 f" {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto"
                 f" Evitado:** {co2_neto:.2f} kg CO₂e"
             )
@@ -1538,7 +1533,6 @@ else:
                 " trabajadas por actividad**"
             )
 
-            # CÁLCULO DINÁMICO REACTIVO (CORTE Y LOGÍSTICA)
             if peso_total_recibido <= 10:
                 dias_calc_corte, hdia_calc_corte = 1, 3.0
                 dias_calc_log, hdia_calc_log = 1, 2.0
@@ -1586,7 +1580,7 @@ else:
                 )
 
                 editar_nom = c_chk.checkbox(
-                    "✅ ", key=f"ops_chk_{idx}", label_visibility="collapsed"
+                    "✅", key=f"ops_chk_{idx}", label_visibility="collapsed"
                 )
                 nom_val = c_nom.text_input(
                     "Nombre",
@@ -1596,7 +1590,6 @@ else:
                     label_visibility="collapsed",
                 )
 
-                # ASIGNACIÓN SEGÚN EL ROL
                 if rol_val == "Logística":
                     val_dias_defecto = dias_calc_log
                     val_hdia_defecto = hdia_calc_log
@@ -1642,7 +1635,7 @@ else:
 
             st.write("---")
 
-          # --- CONFECCIÓN Y ACABADO UNIFICADO ---
+            # --- CONFECCIÓN Y ACABADO UNIFICADO ---
             st.markdown("#### Confección y Acabado – Asignación de Personal")
             st.caption(
                 "Seleccione el rol correspondiente (Confección o Acabado) para cada persona "
@@ -1660,7 +1653,7 @@ else:
                 tiempo_sugerido_ia = estimar_tiempo_unidad(p_nom)
 
                 st.markdown(
-                    f"**🛍️ Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
+                    f"**🧵 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
                     f"| Estimación IA: {tiempo_sugerido_ia:.2f} hrs/unid)*"
                 )
 
@@ -1758,9 +1751,6 @@ else:
         st.write("")
 
         def _validar_borrador(cliente_val, codigo_val):
-            """Validación ligera: un borrador puede estar incompleto, pero
-            necesita al menos cliente o código para poder identificarlo
-            después."""
             errores = []
             if not cliente_val.strip() and not codigo_val.strip():
                 errores.append(
@@ -1770,9 +1760,6 @@ else:
             return errores
 
         def _validar_informe_final(cliente_val, ruc_val, items_val):
-            """Validación estricta antes de emitir el informe oficial: estos
-            campos son los que aparecen impresos en el PDF y no deberían
-            quedar vacíos o con datos placeholder en un documento final."""
             errores = []
             if not cliente_val.strip():
                 errores.append("El campo **Cliente** es obligatorio.")
@@ -1890,7 +1877,7 @@ else:
                 if guardado_ok:
                     st.success("✅ ¡Informe Técnico Generado Exitosamente!")
                 st.download_button(
-                    label="⬇️ DESCARGAR INFORME TÉCNICO EN PDF",
+                    label="📥 DESCARGAR INFORME TÉCNICO EN PDF",
                     data=pdf_buffer,
                     file_name=(
                         "Informe_Trazabilidad_"
@@ -1901,8 +1888,8 @@ else:
                 )
 
     # --- PESTAÑA: PROYECTOS EN PROCESO ---
-    elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
-        st.subheader("📋 Proyectos Guardados en Borrador (En Proceso)")
+    elif st.session_state.pestaña_activa == "📂 Proyectos en Proceso":
+        st.subheader("📂 Proyectos Guardados en Borrador (En Proceso)")
         proyectos_lista = cargar_proyectos(estado="EN_PROCESO")
 
         if proyectos_lista:
@@ -1921,10 +1908,10 @@ else:
             )
 
             if col_btn.button(
-                "📂 Cargar Borrador", type="primary", use_container_width=True
+                "✏️ Cargar Borrador", type="primary", use_container_width=True
             ):
                 st.session_state.proyecto_editar = opciones_proy[seleccionado]
-                st.session_state.pestaña_activa = "➕    Nuevo Reporte PDF"
+                st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
                 st.rerun()
         else:
             st.info("No hay proyectos pendientes o guardados en proceso.")
@@ -1946,8 +1933,8 @@ else:
         )
 
     # --- PESTAÑA: HISTORIAL COMPLETO ---
-    elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
-        st.subheader("🗂️ Histórico de Proyectos Finalizados")
+    elif st.session_state.pestaña_activa == "📜 Historial Completo":
+        st.subheader("📜 Histórico de Proyectos Finalizados")
         proyectos_completados = cargar_proyectos(estado="COMPLETADO")
 
         if proyectos_completados:
