@@ -1642,10 +1642,9 @@ else:
 
             st.write("---")
 
-           # --- CONFECCIÓN Y ACABADO ---
+          # --- CONFECCIÓN Y ACABADO UNIFICADO ---
             st.markdown("#### Confección y Acabado – Asignación de Personal")
             st.caption(
-                "El tiempo unitario se estima automáticamente según el tipo de producto. "
                 "Seleccione el rol correspondiente (Confección o Acabado) para cada persona "
                 "y agregue o quite participantes según sea necesario."
             )
@@ -1687,7 +1686,7 @@ else:
 
                     rol_sel = c_rol.selectbox(
                         "Rol",
-                        ["Confección", "Acabados"],
+                        ["Confección", "Acabado y Empaque"],
                         key=f"soc_rol_{idx}_{p_idx}",
                     )
                     persona_nom = c_persona.text_input(
@@ -1729,64 +1728,6 @@ else:
                         "persona": (
                             persona_nom.strip() if persona_nom.strip() else "Por asignar"
                         ),
-                        "tiempo_unitario": tiempo_unitario,
-                        "horas_totales": horas_persona,
-                    })
-
-                st.write("---")
-
-                # --- 2. BLOQUE DE ACABADO ---
-                st.markdown("##### ✨ Acabado y Empaque")
-                key_acab = f"num_pers_acab_{idx}"
-                if key_acab not in st.session_state:
-                    st.session_state[key_acab] = 1
-
-                a_b1, a_b2, _ = st.columns([1.5, 1.5, 5])
-                if a_b1.button("➕ Personal Acabado", key=f"add_acab_{idx}"):
-                    st.session_state[key_acab] += 1
-                    st.rerun()
-                if a_b2.button("➖ Quitar", key=f"del_acab_{idx}") and st.session_state[key_acab] > 1:
-                    st.session_state[key_acab] -= 1
-                    st.rerun()
-
-                for a_idx in range(st.session_state[key_acab]):
-                    c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([3, 2, 2, 2])
-
-                    persona_nom = c_persona.text_input(
-                        "Persona Encargada",
-                        placeholder=f"Encargado/a {a_idx+1}",
-                        key=f"acab_pers_{idx}_{a_idx}",
-                    )
-                    cant_sugerida = max(1, int(p_cant / st.session_state[key_acab])) if p_cant > 0 else 0
-                    cant_asig = c_cant_asig.number_input(
-                        "Unid. Asignadas",
-                        min_value=0,
-                        max_value=p_cant,
-                        value=cant_sugerida,
-                        key=f"acab_cant_{idx}_{a_idx}",
-                    )
-                    # El acabado por defecto suele requerir menor tiempo que la confección (ej. 20%)
-                    tiempo_acabado_defecto = round(tiempo_sugerido_ia * 0.20, 2)
-                    tiempo_unitario = c_tiempo.number_input(
-                        "Tiempo/Unid (hrs)",
-                        min_value=0.0,
-                        value=float(tiempo_acabado_defecto),
-                        step=0.05,
-                        key=f"acab_tunit_{idx}_{a_idx}",
-                    )
-
-                    horas_persona = cant_asig * tiempo_unitario
-                    c_tot.metric("Subtotal Horas", f"{horas_persona:.2f} hrs")
-
-                    horas_confeccion_total += horas_persona
-                    if persona_nom.strip():
-                        personas_confeccion_set.add(persona_nom.strip())
-
-                    lista_confeccion.append({
-                        "producto": p_nom,
-                        "cantidad": cant_asig,
-                        "rol": "Acabado",
-                        "persona": persona_nom.strip() if persona_nom.strip() else "Por asignar",
                         "tiempo_unitario": tiempo_unitario,
                         "horas_totales": horas_persona,
                     })
