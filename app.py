@@ -610,7 +610,6 @@ else:
             cliente = c1.text_input("Cliente / Empresa", value=p_edit.get("cliente", ""))
             ruc = c2.text_input("RUC", value=p_edit.get("ruc", ""))
             
-            # CAMBIO APLICADO: Valor por defecto vacío en lugar de MONDELEZ
             codigo_proy = c3.text_input("Código de Proyecto", value=p_edit.get("codigo", ""))
 
             c4, c5, c6 = st.columns(3)
@@ -874,7 +873,6 @@ else:
             lista_operaciones = []
             total_horas_ops = 0.0
 
-            # CAMBIO APLICADO: Eliminada la columna "Código proyecto" del encabezado
             h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
             h_col1.markdown("**Rol**")
             h_col2.markdown("**Nombre**")
@@ -886,7 +884,6 @@ else:
             st.write("---")
 
             for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
-                # CAMBIO APLICADO: Eliminado el input de Código proyecto de la fila
                 c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
                 
                 rol_val = p_fijo["rol"]
@@ -936,7 +933,6 @@ else:
                 rol_sel = c_rol.selectbox("Rol Asignado", roles_disponibles, key=f"soc_rol_{idx}")
                 persona_nom = c_persona.text_input("Persona Encargada", value="", placeholder="Ej: Maria Ramos", key=f"soc_pers_{idx}")
 
-                # CAMBIO APLICADO: El tiempo asignado por defecto toma automáticamente la constante de la IA
                 tiempo_ia = TIEMPOS_IA_CONFECCION.get(rol_sel, 0.5)
                 tiempo_unitario = c_tiempo.number_input("Tiempo / Unidad (hrs)", min_value=0.0, value=float(tiempo_ia), step=0.05, key=f"soc_tunit_{idx}")
 
