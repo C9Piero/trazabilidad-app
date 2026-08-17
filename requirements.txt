@@ -4,4 +4,3 @@ python-docx
 supabase
 reportlab
 streamlit-option-menu
-python-docx
