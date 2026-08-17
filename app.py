@@ -1447,19 +1447,19 @@ else:
                 " trabajadas por actividad**"
             )
 
-            # CÁLCULO DINÁMICO REACTIVO EN BASE AL MATERIAL INGRESADO EN EL PASO 2
-            if peso_total_recibido <= 0:
-                dias_calc_corte = 1
-                hdia_calc_corte = 2.0
-            elif peso_total_recibido <= 20:
-                dias_calc_corte = 2
-                hdia_calc_corte = 4.0
-            elif peso_total_recibido <= 50:
-                dias_calc_corte = 3
-                hdia_calc_corte = 6.0
-            else:
-                dias_calc_corte = max(3, int(peso_total_recibido / 20))
-                hdia_calc_corte = 8.0
+            # CÁLCULO DINÁMICO REAJUSTADO A TIEMPOS REALES DE UPCYCLING
+    if peso_total_recibido <= 10:
+        dias_calc_corte = 1
+        hdia_calc_corte = 3.0  # 3 hrs totales por persona
+    elif peso_total_recibido <= 30:
+        dias_calc_corte = 1
+        hdia_calc_corte = 6.0  # 6 hrs totales por persona
+    elif peso_total_recibido <= 50:
+        dias_calc_corte = 2
+        hdia_calc_corte = 6.0  # 12 hrs totales por persona
+    else:
+        dias_calc_corte = max(2, int(peso_total_recibido / 25))
+        hdia_calc_corte = 8.0
 
             st.markdown("#### Operaciones – Corte y Logística")
 
