@@ -1439,7 +1439,7 @@ else:
 
         st.write("")
 
-        # 7. EQUIPO DE TRABAJO Y GENERACIÓN DE HORAS
+# 7. EQUIPO DE TRABAJO Y GENERACIÓN DE HORAS
         with st.container(border=True):
             st.subheader("7. Equipo de Trabajo y Generación de Horas")
             st.markdown(
@@ -1524,12 +1524,14 @@ else:
                     label_visibility="collapsed",
                 )
 
-                tot_hrs_pers = val_dias * val_hdia
+                # MULTIPLICACIÓN DIRECTA Y CORRECCIÓN DE MOSTRADO
+                tot_hrs_pers = float(val_dias) * float(val_hdia)
+                
                 c_tot.text_input(
                     "Total",
                     value=f"{tot_hrs_pers:.2f}",
                     disabled=True,
-                    key=f"ops_tot_{idx}",
+                    key=f"ops_tot_{idx}_{val_dias}_{val_hdia}",  # <--- KEY DINÁMICA PARA FORZAR RE-RENDERIZADO
                     label_visibility="collapsed",
                 )
 
@@ -1658,7 +1660,6 @@ else:
                 f"{total_horas_social:.2f} hrs",
                 f"{total_personas_social} Beneficiarios",
             )
-
         st.write("")
 
         # BOTONES DE ACCIÓN Y GENERACIÓN
