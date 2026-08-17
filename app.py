@@ -321,7 +321,9 @@ except Exception as e:
 
 
 def cargar_proyectos(estado=None):
-    """Carga proyectos desde Supabase."""
+    """Carga proyectos desde Supabase. Muestra una advertencia visible si
+    falla en vez de fallar en silencio, para no ocultar problemas de
+    conexión."""
     try:
         query = supabase.table("proyectos").select("*")
         if estado:
@@ -1002,7 +1004,7 @@ else:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
                 cod_ref = p.get("codigo", "")
-                label_btn = f"📌 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
+                label_btn = f"📁 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
 
                 es_activo = st.session_state.proyecto_editar.get(
                     "id"
@@ -1021,8 +1023,8 @@ else:
                     st.rerun()
 
             st.write("")
-            if st.button("📂 Ver Lista en Proceso", use_container_width=True):
-                st.session_state.pestaña_activa = "📂 Proyectos en Proceso"
+            if st.button("📋 Ver Lista en Proceso", use_container_width=True):
+                st.session_state.pestaña_activa = "📋 Proyectos en Proceso"
                 st.rerun()
         else:
             st.caption("📭 No hay proyectos en borrador")
@@ -1066,7 +1068,7 @@ else:
     st.markdown(
         f"""
         <div class="hero-header">
-            <h1>📋 Sistema de Gestión de Informes Técnicos</h1>
+            <h1>📄 Sistema de Gestión de Informes Técnicos</h1>
             <p>Sección Activa: <b>{st.session_state.pestaña_activa}</b></p>
         </div>
     """,
@@ -1079,7 +1081,7 @@ else:
 
         if p_edit:
             st.warning(
-                "✏️ **Modo Edición Activo:** Modificando borrador de"
+                "📝 **Modo Edición Activo:** Modificando borrador de"
                 f" **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
             )
             if st.button("❌ Descartar selección y limpiar formulario"):
@@ -1518,7 +1520,7 @@ else:
             co2_neto = co2_evitado_total - emisiones_proceso
 
             st.warning(
-                "🌱 **Total Emisiones del Proceso:**"
+                "🍃 **Total Emisiones del Proceso:**"
                 f" {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto"
                 f" Evitado:** {co2_neto:.2f} kg CO₂e"
             )
@@ -1533,6 +1535,7 @@ else:
                 " trabajadas por actividad**"
             )
 
+            # CÁLCULO DINÁMICO REACTIVO (CORTE Y LOGÍSTICA)
             if peso_total_recibido <= 10:
                 dias_calc_corte, hdia_calc_corte = 1, 3.0
                 dias_calc_log, hdia_calc_log = 1, 2.0
@@ -1580,7 +1583,7 @@ else:
                 )
 
                 editar_nom = c_chk.checkbox(
-                    "✅", key=f"ops_chk_{idx}", label_visibility="collapsed"
+                    "✅ ", key=f"ops_chk_{idx}", label_visibility="collapsed"
                 )
                 nom_val = c_nom.text_input(
                     "Nombre",
@@ -1590,6 +1593,7 @@ else:
                     label_visibility="collapsed",
                 )
 
+                # ASIGNACIÓN SEGÚN EL ROL
                 if rol_val == "Logística":
                     val_dias_defecto = dias_calc_log
                     val_hdia_defecto = hdia_calc_log
@@ -1653,7 +1657,7 @@ else:
                 tiempo_sugerido_ia = estimar_tiempo_unidad(p_nom)
 
                 st.markdown(
-                    f"**🧵 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
+                    f"**🤖 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
                     f"| Estimación IA: {tiempo_sugerido_ia:.2f} hrs/unid)*"
                 )
 
@@ -1751,6 +1755,9 @@ else:
         st.write("")
 
         def _validar_borrador(cliente_val, codigo_val):
+            """Validación ligera: un borrador puede estar incompleto, pero
+            necesita al menos cliente o código para poder identificarlo
+            después."""
             errores = []
             if not cliente_val.strip() and not codigo_val.strip():
                 errores.append(
@@ -1760,6 +1767,9 @@ else:
             return errores
 
         def _validar_informe_final(cliente_val, ruc_val, items_val):
+            """Validación estricta antes de emitir el informe oficial: estos
+            campos son los que aparecen impresos en el PDF y no deberían
+            quedar vacíos o con datos placeholder en un documento final."""
             errores = []
             if not cliente_val.strip():
                 errores.append("El campo **Cliente** es obligatorio.")
@@ -1888,8 +1898,8 @@ else:
                 )
 
     # --- PESTAÑA: PROYECTOS EN PROCESO ---
-    elif st.session_state.pestaña_activa == "📂 Proyectos en Proceso":
-        st.subheader("📂 Proyectos Guardados en Borrador (En Proceso)")
+    elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
+        st.subheader("📋 Proyectos Guardados en Borrador (En Proceso)")
         proyectos_lista = cargar_proyectos(estado="EN_PROCESO")
 
         if proyectos_lista:
@@ -1908,7 +1918,7 @@ else:
             )
 
             if col_btn.button(
-                "✏️ Cargar Borrador", type="primary", use_container_width=True
+                "📂 Cargar Borrador", type="primary", use_container_width=True
             ):
                 st.session_state.proyecto_editar = opciones_proy[seleccionado]
                 st.session_state.pestaña_activa = "➕ Nuevo Reporte PDF"
