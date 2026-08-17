@@ -180,7 +180,7 @@ PERSONAL_FIJO_OPERACIONES = [
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
     page_title="Pequeños Detalles - Sistema de Trazabilidad",
-    page_icon="✂️",
+    page_icon="♻️",
     layout="wide",
 )
 
@@ -188,14 +188,31 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --brand-900: #0F172A;
+        --brand-700: #1E3A8A;
+        --brand-500: #2563EB;
+        --brand-100: #DBEAFE;
+        --ink: #1E293B;
+        --ink-muted: #64748B;
+        --border: #E2E8F0;
+        --surface: #F8FAFC;
+        --radius: 14px;
+    }
+
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
     div[data-testid="stNumberInput"] button { display: none !important; }
     div[data-testid="stNumberInput"] input { text-align: left; }
-    
+
+    /* --- Header principal --- */
     .hero-header {
-        background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
+        background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-700) 50%, var(--brand-500) 100%);
         color: white;
         padding: 24px 30px;
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.3);
         margin-bottom: 25px;
     }
@@ -211,13 +228,14 @@ st.markdown(
         font-size: 0.95rem;
     }
 
+    /* --- Sidebar --- */
     div[data-testid="stSidebar"] {
-        background-color: #F8FAFC;
-        border-right: 1px solid #E2E8F0;
+        background-color: var(--surface);
+        border-right: 1px solid var(--border);
     }
-    
+
     .sidebar-section-title {
-        color: #475569;
+        color: var(--ink-muted);
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
@@ -225,6 +243,54 @@ st.markdown(
         margin-top: 15px;
         margin-bottom: 8px;
     }
+
+    /* --- Tarjetas (st.container(border=True)) --- */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: var(--radius) !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        transition: box-shadow 0.2s ease;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+
+    /* --- Botones --- */
+    div[data-testid="stButton"] button, div[data-testid="stDownloadButton"] button {
+        border-radius: 10px;
+        font-weight: 600;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+        border: 1px solid var(--border);
+    }
+    div[data-testid="stButton"] button:hover, div[data-testid="stDownloadButton"] button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
+    }
+    div[data-testid="stButton"] button[kind="primary"] {
+        background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 100%);
+        border: none;
+    }
+
+    /* --- Métricas --- */
+    div[data-testid="stMetric"] {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+    div[data-testid="stMetricLabel"] { color: var(--ink-muted); }
+
+    /* --- Inputs --- */
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input,
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+        border-radius: 8px !important;
+    }
+
+    /* --- Scrollbar --- */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
     </style>
 """,
     unsafe_allow_html=True,
@@ -241,18 +307,31 @@ def init_supabase() -> Client:
 
 try:
     supabase = init_supabase()
-except Exception:
-    st.error("Error al conectar con Supabase. Revisa las credenciales en Secrets.")
+except KeyError:
+    st.error(
+        "⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\n"
+        "Configura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en "
+        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
+        "(Streamlit Cloud)."
+    )
+    st.stop()
+except Exception as e:
+    st.error(f"⚠️ No se pudo conectar con Supabase: {e}")
+    st.stop()
 
 
 def cargar_proyectos(estado=None):
+    """Carga proyectos desde Supabase. Muestra una advertencia visible si
+    falla en vez de fallar en silencio, para no ocultar problemas de
+    conexión."""
     try:
         query = supabase.table("proyectos").select("*")
         if estado:
             query = query.eq("estado", estado)
         response = query.execute()
         return response.data
-    except Exception:
+    except Exception as e:
+        st.warning(f"⚠️ No se pudieron cargar los proyectos: {e}")
         return []
 
 
@@ -846,14 +925,26 @@ if "catalogo_productos" not in st.session_state:
     st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
 
 # --- LOGIN ---
-USUARIO_CORRECTO = "admin"
-PASSWORD_CORRECTO = "pequenos2026"
+# Las credenciales NUNCA deben vivir en el código fuente (quien tenga acceso
+# al repositorio las vería en texto plano). Se leen desde st.secrets, igual
+# que las credenciales de Supabase.
+try:
+    USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
+    PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
+except KeyError:
+    st.error(
+        "⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\n"
+        "Agrega `USUARIO` y `PASSWORD` dentro de `[auth]` en "
+        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
+        "(Streamlit Cloud)."
+    )
+    st.stop()
 
 if not st.session_state.autenticado:
     st.markdown(
         """
         <div style="text-align: center; padding: 40px 10px;">
-            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">✂️    Pequeños Detalles</h1>
+            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">♻️ Pequeños Detalles</h1>
             <p style="color: #64748B; font-size: 1.1rem;">Handmade Perú S.A.C. — Gestión de Sostenibilidad</p>
         </div>
     """,
@@ -863,7 +954,7 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.subheader("🔒    Iniciar Sesión")
+            st.subheader("🔐 Iniciar Sesión")
             usuario_input = st.text_input("Usuario")
             password_input = st.text_input("Contraseña", type="password")
 
@@ -885,7 +976,7 @@ else:
 
     # --- BARRA LATERAL ---
     with st.sidebar:
-        st.markdown("### ✂️    Pequeños Detalles")
+        st.markdown("### ♻️ Pequeños Detalles")
         st.caption("Panel de Control Interno | 2026")
         st.write("---")
 
@@ -916,7 +1007,7 @@ else:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
                 cod_ref = p.get("codigo", "")
-                label_btn = f"📂    {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
+                label_btn = f"📁 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
 
                 es_activo = st.session_state.proyecto_editar.get(
                     "id"
@@ -935,11 +1026,11 @@ else:
                     st.rerun()
 
             st.write("")
-            if st.button("📋    Ver Lista en Proceso", use_container_width=True):
-                st.session_state.pestaña_activa = "📑    Proyectos en Proceso"
+            if st.button("📋 Ver Lista en Proceso", use_container_width=True):
+                st.session_state.pestaña_activa = "📋 Proyectos en Proceso"
                 st.rerun()
         else:
-            st.caption("📄    No hay proyectos en borrador")
+            st.caption("📭 No hay proyectos en borrador")
 
         st.markdown(
             '<p class="sidebar-section-title">Analítica e Histórico</p>',
@@ -947,31 +1038,31 @@ else:
         )
 
         if st.button(
-            "📊    Dashboard 2026",
+            "📊 Dashboard 2026",
             use_container_width=True,
             type=(
                 "primary"
-                if st.session_state.pestaña_activa == "📊    Dashboard 2026"
+                if st.session_state.pestaña_activa == "📊 Dashboard 2026"
                 else "secondary"
             ),
         ):
-            st.session_state.pestaña_activa = "📊    Dashboard 2026"
+            st.session_state.pestaña_activa = "📊 Dashboard 2026"
             st.rerun()
 
         if st.button(
-            "📚    Historial Completo",
+            "🗂️ Historial Completo",
             use_container_width=True,
             type=(
                 "primary"
-                if st.session_state.pestaña_activa == "📚    Historial Completo"
+                if st.session_state.pestaña_activa == "🗂️ Historial Completo"
                 else "secondary"
             ),
         ):
-            st.session_state.pestaña_activa = "📚    Historial Completo"
+            st.session_state.pestaña_activa = "🗂️ Historial Completo"
             st.rerun()
 
         st.write("---")
-        if st.button("🚪    Cerrar Sesión", use_container_width=True):
+        if st.button("🚪 Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False
             st.session_state.proyecto_editar = {}
             st.rerun()
@@ -980,7 +1071,7 @@ else:
     st.markdown(
         f"""
         <div class="hero-header">
-            <h1>✂️    Sistema de Gestión de Informes Técnicos</h1>
+            <h1>📄 Sistema de Gestión de Informes Técnicos</h1>
             <p>Sección Activa: <b>{st.session_state.pestaña_activa}</b></p>
         </div>
     """,
@@ -993,7 +1084,7 @@ else:
 
         if p_edit:
             st.warning(
-                "📝    **Modo Edición Activo:** Modificando borrador de"
+                "✏️ **Modo Edición Activo:** Modificando borrador de"
                 f" **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
             )
             if st.button("❌    Descartar selección y limpiar formulario"):
@@ -1185,7 +1276,7 @@ else:
                     key=f"tr_fecha_{i}",
                 )
 
-                permitir_editar = c_edit_chk.checkbox("📝    Editar", key=f"chk_edit_{i}")
+                permitir_editar = c_edit_chk.checkbox("✏️ Editar", key=f"chk_edit_{i}")
                 e_res = c_resp.text_input(
                     "Responsable",
                     value=item_fijo["resp_defecto"],
@@ -1304,7 +1395,7 @@ else:
                 )
 
             st.success(
-                "📦    **Suma Total de Productos Obtenidos:**"
+                "🧮 **Suma Total de Productos Obtenidos:**"
                 f" {total_prod_unid} unidades"
             )
 
@@ -1361,7 +1452,7 @@ else:
         with st.container(border=True):
             st.subheader("6. Balance de Emisiones (CO₂e)")
 
-            st.markdown("##### 🚗    A. Cálculo de Transporte")
+            st.markdown("##### 🚚 A. Cálculo de Transporte")
             ct1, ct2, ct3 = st.columns(3)
             vehiculo_sel = ct1.selectbox(
                 "Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys())
@@ -1388,7 +1479,7 @@ else:
             )
 
             st.markdown(
-                "##### 🧺    B. Lavandería y Taller de Corte (Calculado desde"
+                "##### ✂️ B. Lavandería y Taller de Corte (Calculado desde"
                 " Trazabilidad)"
             )
             emisiones_lavado = peso_lavado_auto * 0.30
@@ -1404,7 +1495,7 @@ else:
                 " *(Factor: 0.05)*"
             )
 
-            st.markdown("##### 🪡    C. Cálculo de Bordado")
+            st.markdown("##### 🧵 C. Cálculo de Bordado")
             cb1, cb2 = st.columns(2)
             cant_prendas_bordado = cb1.number_input(
                 "Cantidad de prendas que requieren bordado",
@@ -1432,7 +1523,7 @@ else:
             co2_neto = co2_evitado_total - emisiones_proceso
 
             st.warning(
-                "🌿    **Total Emisiones del Proceso:**"
+                "🌍 **Total Emisiones del Proceso:**"
                 f" {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto"
                 f" Evitado:** {co2_neto:.2f} kg CO₂e"
             )
@@ -1495,7 +1586,7 @@ else:
                 )
 
                 editar_nom = c_chk.checkbox(
-                    "📝", key=f"ops_chk_{idx}", label_visibility="collapsed"
+                    "✅ ", key=f"ops_chk_{idx}", label_visibility="collapsed"
                 )
                 nom_val = c_nom.text_input(
                     "Nombre",
@@ -1570,7 +1661,7 @@ else:
                 tiempo_sugerido_ia = estimar_tiempo_unidad(p_nom)
 
                 st.markdown(
-                    f"**🛍️   Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid"
+                    f"**📦 ️   Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid"
                     f" | Estimación IA: {tiempo_sugerido_ia:.2f} hrs/unid)*"
                 )
 
@@ -1661,97 +1752,158 @@ else:
                 f"{len(personas_confeccion_set)} Artesanas",
             )
             ms3.metric(
-                "👥    TOTAL IMPACTO SOCIAL",
+                "🤝 TOTAL IMPACTO SOCIAL",
                 f"{total_horas_social:.2f} hrs",
                 f"{total_personas_social} Beneficiarios",
             )
         st.write("")
 
+        def _validar_borrador(cliente_val, codigo_val):
+            """Validación ligera: un borrador puede estar incompleto, pero
+            necesita al menos cliente o código para poder identificarlo
+            después."""
+            errores = []
+            if not cliente_val.strip() and not codigo_val.strip():
+                errores.append(
+                    "Ingresa al menos el **Cliente** o el **Código de "
+                    "Proyecto** para poder guardar el borrador."
+                )
+            return errores
+
+        def _validar_informe_final(cliente_val, ruc_val, items_val):
+            """Validación estricta antes de emitir el informe oficial: estos
+            campos son los que aparecen impresos en el PDF y no deberían
+            quedar vacíos o con datos placeholder en un documento final."""
+            errores = []
+            if not cliente_val.strip():
+                errores.append("El campo **Cliente** es obligatorio.")
+            if not ruc_val.strip():
+                errores.append("El campo **RUC** es obligatorio.")
+            if not items_val:
+                errores.append(
+                    "Debes registrar al menos **un ítem de material "
+                    "ingresado** antes de generar el informe."
+                )
+            return errores
+
         # BOTONES DE ACCIÓN Y GENERACIÓN
         b_col1, b_col2 = st.columns(2)
 
         if b_col1.button(
-            "💾    Guardar Borrador (En Proceso)", use_container_width=True
+            "💾 Guardar Borrador (En Proceso)", use_container_width=True
         ):
-            try:
-                supabase.table("proyectos").upsert({
-                    "codigo": codigo_proy if codigo_proy else "PROY-PENDIENTE",
-                    "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
-                    "fecha": f"{fe_inicio} - {fe_fin}",
-                    "ruc": ruc,
-                    "estado": "EN_PROCESO",
-                }).execute()
-                st.success("💾    ¡Guardado con éxito como Borrador!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error al guardar: {e}")
+            errores_borrador = _validar_borrador(cliente, codigo_proy)
+            if errores_borrador:
+                for err in errores_borrador:
+                    st.error(err)
+            else:
+                try:
+                    with st.spinner("Guardando borrador..."):
+                        supabase.table("proyectos").upsert({
+                            "codigo": codigo_proy if codigo_proy else "PROY-PENDIENTE",
+                            "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
+                            "fecha": f"{fe_inicio} - {fe_fin}",
+                            "ruc": ruc,
+                            "estado": "EN_PROCESO",
+                        }).execute()
+                    st.success("✅ ¡Guardado con éxito como Borrador!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"⚠️ No se pudo guardar el borrador: {e}")
 
         if b_col2.button(
-            "📋    Finalizar y Generar PDF Oficial",
+            "📄 Finalizar y Generar PDF Oficial",
             type="primary",
             use_container_width=True,
         ):
-            try:
-                supabase.table("proyectos").upsert({
-                    "codigo": codigo_proy if codigo_proy else "SIN-CODIGO",
-                    "cliente": cliente if cliente else "CLIENTE GENERAL",
-                    "fecha": f"{fe_inicio} - {fe_fin}",
-                    "ruc": ruc,
-                    "estado": "COMPLETADO",
-                }).execute()
-            except Exception:
-                pass
+            errores_final = _validar_informe_final(cliente, ruc, lista_items)
+            if errores_final:
+                st.error(
+                    "No se puede generar el informe oficial. Revisa lo "
+                    "siguiente:"
+                )
+                for err in errores_final:
+                    st.markdown(f"- {err}")
+            else:
+                guardado_ok = True
+                try:
+                    with st.spinner("Actualizando estado del proyecto..."):
+                        supabase.table("proyectos").upsert({
+                            "codigo": codigo_proy if codigo_proy else "SIN-CODIGO",
+                            "cliente": cliente if cliente else "CLIENTE GENERAL",
+                            "fecha": f"{fe_inicio} - {fe_fin}",
+                            "ruc": ruc,
+                            "estado": "COMPLETADO",
+                        }).execute()
+                except Exception as e:
+                    guardado_ok = False
+                    st.warning(
+                        "⚠️ El informe se generará, pero **no se pudo "
+                        "actualizar el estado del proyecto en la base de "
+                        f"datos**: {e}"
+                    )
 
-            pdf_buffer = generar_pdf_oficial(
-                cliente=cliente,
-                ruc=ruc,
-                proyecto_nom=proyecto_nom,
-                codigo_proy=codigo_proy,
-                fe_inicio=fe_inicio,
-                fe_fin=fe_fin,
-                responsable=responsable,
-                area=area,
-                tipo_material="Poliéster / Algodón",
-                valorizacion="Upcycling / Reciclaje Textil",
-                unidad_medida="Kilogramos / Piezas",
-                guia_remision=guia_remision,
-                origen=origen,
-                destino=destino,
-                lista_items=lista_items,
-                lista_trazabilidad=lista_trazabilidad,
-                lista_productos=lista_productos,
-                mat_transformado=mat_transformado,
-                retazos_aprovechables=retazos_aprovechables,
-                perdida_no_aprovechable=perdida_no_aprovechable,
-                total_procesado=total_procesado,
-                pct_aprovechamiento_total=pct_aprovechamiento_total,
-                pct_perdida=pct_perdida,
-                lista_operaciones_pdf=lista_operaciones,
-                lista_confeccion=lista_confeccion,
-                total_horas_social=total_horas_social,
-                total_personas_social=total_personas_social,
-                co2_evitado_total=co2_evitado_total,
-                emisiones_transporte=emisiones_transporte,
-                emisiones_lavado=emisiones_lavado,
-                emisiones_corte=emisiones_corte,
-                emisiones_bordado=emisiones_bordado,
-            )
+                try:
+                    with st.spinner("Generando informe PDF..."):
+                        pdf_buffer = generar_pdf_oficial(
+                            cliente=cliente,
+                            ruc=ruc,
+                            proyecto_nom=proyecto_nom,
+                            codigo_proy=codigo_proy,
+                            fe_inicio=fe_inicio,
+                            fe_fin=fe_fin,
+                            responsable=responsable,
+                            area=area,
+                            tipo_material="Poliéster / Algodón",
+                            valorizacion="Upcycling / Reciclaje Textil",
+                            unidad_medida="Kilogramos / Piezas",
+                            guia_remision=guia_remision,
+                            origen=origen,
+                            destino=destino,
+                            lista_items=lista_items,
+                            lista_trazabilidad=lista_trazabilidad,
+                            lista_productos=lista_productos,
+                            mat_transformado=mat_transformado,
+                            retazos_aprovechables=retazos_aprovechables,
+                            perdida_no_aprovechable=perdida_no_aprovechable,
+                            total_procesado=total_procesado,
+                            pct_aprovechamiento_total=pct_aprovechamiento_total,
+                            pct_perdida=pct_perdida,
+                            lista_operaciones_pdf=lista_operaciones,
+                            lista_confeccion=lista_confeccion,
+                            total_horas_social=total_horas_social,
+                            total_personas_social=total_personas_social,
+                            co2_evitado_total=co2_evitado_total,
+                            emisiones_transporte=emisiones_transporte,
+                            emisiones_lavado=emisiones_lavado,
+                            emisiones_corte=emisiones_corte,
+                            emisiones_bordado=emisiones_bordado,
+                        )
+                except Exception as e:
+                    st.error(
+                        "⚠️ Ocurrió un error al generar el PDF. No se pudo "
+                        "completar el informe."
+                    )
+                    with st.expander("Detalle técnico del error"):
+                        st.exception(e)
+                    st.stop()
 
-            st.success("✅    ¡Informe Técnico Generado Exitosamente!")
-            st.download_button(
-                label="📥    DESCARGAR INFORME TÉCNICO EN PDF",
-                data=pdf_buffer,
-                file_name=(
-                    "Informe_Trazabilidad_"
-                    f"{codigo_proy if codigo_proy else 'PROYECTO'}.pdf"
-                ),
-                mime="application/pdf",
-                use_container_width=True,
-            )
+                if guardado_ok:
+                    st.success("✅ ¡Informe Técnico Generado Exitosamente!")
+                st.download_button(
+                    label="⬇️ DESCARGAR INFORME TÉCNICO EN PDF",
+                    data=pdf_buffer,
+                    file_name=(
+                        "Informe_Trazabilidad_"
+                        f"{codigo_proy if codigo_proy else 'PROYECTO'}.pdf"
+                    ),
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
 
     # --- PESTAÑA: PROYECTOS EN PROCESO ---
-    elif st.session_state.pestaña_activa == "📑    Proyectos en Proceso":
-        st.subheader("📋    Proyectos Guardados en Borrador (En Proceso)")
+    elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
+        st.subheader("📋 Proyectos Guardados en Borrador (En Proceso)")
         proyectos_lista = cargar_proyectos(estado="EN_PROCESO")
 
         if proyectos_lista:
@@ -1770,7 +1922,7 @@ else:
             )
 
             if col_btn.button(
-                "📝    Cargar Borrador", type="primary", use_container_width=True
+                "📂 Cargar Borrador", type="primary", use_container_width=True
             ):
                 st.session_state.proyecto_editar = opciones_proy[seleccionado]
                 st.session_state.pestaña_activa = "➕    Nuevo Reporte PDF"
@@ -1779,8 +1931,8 @@ else:
             st.info("No hay proyectos pendientes o guardados en proceso.")
 
     # --- PESTAÑA: DASHBOARD 2026 ---
-    elif st.session_state.pestaña_activa == "📊    Dashboard 2026":
-        st.subheader("📊    Indicadores Globales de Sostenibilidad 2026")
+    elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
+        st.subheader("📊 Indicadores Globales de Sostenibilidad 2026")
 
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Total Material Procesado", "1,245.80 kg", "+15% vs 2025")
@@ -1790,13 +1942,13 @@ else:
 
         st.write("---")
         st.info(
-            "📈    Aquí se visualizarán los gráficos acumulados conforme guardes"
+            "📈 Aquí se visualizarán los gráficos acumulados conforme guardes"
             " informes terminados en la base de datos."
         )
 
     # --- PESTAÑA: HISTORIAL COMPLETO ---
-    elif st.session_state.pestaña_activa == "📚    Historial Completo":
-        st.subheader("📚    Histórico de Proyectos Finalizados")
+    elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
+        st.subheader("🗂️ Histórico de Proyectos Finalizados")
         proyectos_completados = cargar_proyectos(estado="COMPLETADO")
 
         if proyectos_completados:
