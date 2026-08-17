@@ -994,8 +994,8 @@ else:
           "Upcycling",
           "Producción desde cero",
           "Cambio de logo",
-          "Mixto",
           "Banner",
+          "Mixto",
       ]
       tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
       idx_tipo = (
