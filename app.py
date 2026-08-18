@@ -161,7 +161,7 @@ class ReporteCanvas(canvas.Canvas):
         self.restoreState()
 
 
-# --- GENERADOR DEL PDF OFICIAL REFORZADO (BASADO EN TU CÓDIGO ORIGINAL Y PLANTILLA INSTITUCIONAL) ---
+# --- GENERADOR DEL PDF OFICIAL CON CARÁTULA INICIAL ---
 def generar_pdf_oficial(
     cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin,
     responsable, area, tipo_material, valorizacion, unidad_medida,
@@ -185,21 +185,49 @@ def generar_pdf_oficial(
 
     styles = getSampleStyleSheet()
     
-    # Estilos tipográficos institucionales limpios
-    title_style = ParagraphStyle("TitleSt", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=15, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=2)
-    sub_style = ParagraphStyle("SubSt", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#475569"), alignment=1, spaceAfter=10, leading=11)
-    h2_style = ParagraphStyle("H2St", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=10.5, textColor=colors.HexColor("#1E3A8A"), spaceBefore=10, spaceAfter=5)
-    body_style = ParagraphStyle("BodySt", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#334155"), leading=12, spaceAfter=6)
-    cell_style = ParagraphStyle("CellSt", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#1E293B"), leading=11)
-    cell_bold = ParagraphStyle("CellBSt", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=11)
-    card_title = ParagraphStyle("CardT", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), alignment=1)
-    card_sub = ParagraphStyle("CardS", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=7, textColor=colors.HexColor("#64748B"), alignment=1)
+    # Estilos tipográficos institucionales
+    cover_title = ParagraphStyle("CoverT", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=22, textColor=colors.HexColor("#1E3A8A"), alignment=1, spaceAfter=10, leading=26)
+    cover_subtitle = ParagraphStyle("CoverSub", parent=styles["Normal"], fontName="Helvetica", fontSize=13, textColor=colors.HexColor("#475569"), alignment=1, spaceAfter=20, leading=18)
+    cover_meta = ParagraphStyle("CoverMeta", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#334155"), alignment=1, leading=15)
+    
+    title_style = ParagraphStyle("TitleSt", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=2)
+    sub_style = ParagraphStyle("SubSt", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#475569"), alignment=1, spaceAfter=8, leading=10)
+    h2_style = ParagraphStyle("H2St", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=10, textColor=colors.HexColor("#1E3A8A"), spaceBefore=8, spaceAfter=4)
+    body_style = ParagraphStyle("BodySt", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=11, spaceAfter=5)
+    cell_style = ParagraphStyle("CellSt", parent=styles["Normal"], fontName="Helvetica", fontSize=7.5, textColor=colors.HexColor("#1E293B"), leading=10)
+    cell_bold = ParagraphStyle("CellBSt", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=7.5, textColor=colors.HexColor("#0F172A"), leading=10)
+    card_title = ParagraphStyle("CardT", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, textColor=colors.HexColor("#1E3A8A"), alignment=1)
+    card_sub = ParagraphStyle("CardS", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=6.5, textColor=colors.HexColor("#64748B"), alignment=1)
 
     elements = []
 
-    # 1. Cabecera Institucional
-    elements.append(Paragraph("REPORTE DE IMPACTO DEL PROYECTO", title_style))
-    elements.append(Paragraph(f"Proyecto de transformación de textiles en desuso<br/><b>Cliente:</b> \"{cliente}\" &nbsp;|&nbsp; <b>Empresa:</b> Pequeños Detalles Handmade Perú S.A.C. &nbsp;|&nbsp; <b>Fecha:</b> {fe_fin}", sub_style))
+    # ==========================================
+    # PÁGINA 1: PORTADA / CARÁTULA INSTITUCIONAL
+    # ==========================================
+    elements.append(Spacer(1, 100))
+    elements.append(Paragraph("PEQUEÑOS DETALLES HANDMADE PERÚ S.A.C.", ParagraphStyle("Company", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=30)))
+    elements.append(Paragraph("REPORTE DE IMPACTO AMBIENTAL Y SOCIAL", cover_title))
+    elements.append(Paragraph(f"<b>Proyecto:</b> {proyecto_nom}", cover_subtitle))
+    elements.append(Spacer(1, 40))
+    
+    # Bloque de metadatos de la portada
+    elements.append(Paragraph(f"<b>Presentado a:</b> {cliente}", cover_meta))
+    if ruc:
+        elements.append(Paragraph(f"<b>RUC:</b> {ruc}", cover_meta))
+    elements.append(Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}", cover_meta))
+    elements.append(Paragraph(f"<b>Periodo de Ejecución:</b> {fe_inicio} – {fe_fin}", cover_meta))
+    
+    elements.append(Spacer(1, 120))
+    elements.append(Paragraph(f"<b>Fecha de emisión:</b> {fe_fin}", ParagraphStyle("DateSt", parent=cover_meta, fontSize=9, textColor=colors.HexColor("#64748B"))))
+    
+    # Salto de página para pasar al contenido interno
+    elements.append(PageBreak())
+
+    # ==========================================
+    # PÁGINA 2 EN ADELANTE: CONTENIDO OFICIAL
+    # ==========================================
+    elements.append(Paragraph("RESUMEN GENERAL DEL PROYECTO", title_style))
+    elements.append(Paragraph(f"Proyecto de transformación de textiles en desuso<br/><b>Cliente:</b> \"{cliente}\" &nbsp;|&nbsp; <b>Fecha:</b> {fe_fin}", sub_style))
 
     # Tarjetas de Resumen Superior
     cards_data = [
@@ -211,13 +239,13 @@ def generar_pdf_oficial(
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
-        ("PADDING", (0, 0), (-1, -1), 5),
+        ("PADDING", (0, 0), (-1, -1), 4),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
     ]))
     elements.append(t_cards)
-    elements.append(Spacer(1, 8))
+    elements.append(Spacer(1, 6))
 
-    # 2. Ficha Técnica del Proyecto (Plantilla Word)
+    # Ficha Técnica
     elements.append(Paragraph("FICHA TÉCNICA DEL PROYECTO", h2_style))
     data_ficha = [
         [Paragraph("Cliente", cell_bold), Paragraph(f"\"{cliente}\" (RUC: {ruc})", cell_style), Paragraph("Empresa ejecutora", cell_bold), Paragraph("Pequeños Detalles Handmade Perú S.A.C.", cell_style)],
@@ -230,13 +258,13 @@ def generar_pdf_oficial(
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F1F5F9")),
         ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#F1F5F9")),
-        ("PADDING", (0, 0), (-1, -1), 4),
+        ("PADDING", (0, 0), (-1, -1), 3.5),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     elements.append(t_ficha)
-    elements.append(Spacer(1, 6))
+    elements.append(Spacer(1, 4))
 
-    # 3. Resumen Ejecutivo (Texto exacto de la plantilla)
+    # Resumen Ejecutivo
     elements.append(Paragraph("Resumen Ejecutivo", h2_style))
     texto_ejecutivo = (
         f"En el marco de su compromiso con la sostenibilidad, <b>{cliente}</b> implementó un proyecto de economía circular "
@@ -250,11 +278,10 @@ def generar_pdf_oficial(
     elements.append(Paragraph(texto_ejecutivo, body_style))
     elements.append(Spacer(1, 4))
 
-    # 4. Material Recibido y Caracterización
-    elements.append(Paragraph("Material Recibido", h2_style))
-    elements.append(Paragraph("El proyecto se desarrolló a partir de la recuperación de uniformes corporativos en desuso proporcionados por el cliente. Estos materiales fueron clasificados y acondicionados en función de su tipo, estado y potencial de aprovechamiento, con el objetivo de maximizar su transformación mediante procesos de upcycling.", body_style))
+    # Caracterización del Material
+    elements.append(Paragraph("Material Recibido y Caracterización", h2_style))
+    elements.append(Paragraph("El proyecto se desarrolló a partir de la recuperación de uniformes corporativos en desuso proporcionados por el cliente. Estos materiales fueron clasificados y acondicionados en función de su tipo, estado y potencial de aprovechamiento.", body_style))
     
-    elements.append(Paragraph("<b>Caracterización del material recibido</b>", cell_bold))
     data_prendas_pdf = [[
         Paragraph("Tipo de prenda", cell_bold),
         Paragraph("Cantidad (unidades)", cell_bold),
@@ -277,15 +304,13 @@ def generar_pdf_oficial(
         ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F8FAFC")),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
         ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-        ("PADDING", (0, 0), (-1, -1), 4),
+        ("PADDING", (0, 0), (-1, -1), 3.5),
     ]))
     elements.append(t_prendas)
-    elements.append(Spacer(1, 8))
+    elements.append(Spacer(1, 6))
 
-    # 5. Indicadores de Impacto del Proyecto
+    # Indicadores de Impacto
     elements.append(Paragraph("Indicadores de impacto del proyecto", h2_style))
-    elements.append(Paragraph("A continuación, se presentan los principales indicadores de impacto generados a partir del proyecto de transformación de textiles en desuso, considerando dimensiones ambientales, sociales y productivas.", body_style))
-    
     data_indicadores = [
         [Paragraph("<b>Categoría</b>", cell_bold), Paragraph("<b>Indicador</b>", cell_bold), Paragraph("<b>Valor</b>", cell_bold)],
         [Paragraph("Ambiental", cell_bold), Paragraph("Textiles recibidos (kg)", cell_style), Paragraph(f"{kg_recibidos:.2f} kg", cell_style)],
@@ -301,15 +326,15 @@ def generar_pdf_oficial(
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EFF6FF")),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("PADDING", (0, 0), (-1, -1), 4),
+        ("PADDING", (0, 0), (-1, -1), 3.5),
     ]))
     elements.append(t_inds)
 
     elements.append(PageBreak())
 
-    # 6. Impacto Social (Modelo Híbrido)
+    # Impacto Social (Modelo Híbrido)
     elements.append(Paragraph("Impacto Social", h2_style))
-    elements.append(Paragraph("El proyecto generó impacto social mediante la participación de personas en el proceso de transformación de textiles en desuso, bajo un modelo híbrido de producción que combina actividades descentralizadas realizadas desde el hogar con procesos centralizados en taller y oficina.", body_style))
+    elements.append(Paragraph("El proyecto generó impacto social mediante la participación de personas en el proceso de transformación, bajo un modelo híbrido que combina producción descentralizada (desde casa) con actividades centralizadas en taller y oficina.", body_style))
     
     if lista_confeccion:
         elements.append(Paragraph("<b>Producción descentralizada (trabajo desde casa)</b>", cell_bold))
@@ -332,10 +357,10 @@ def generar_pdf_oficial(
             ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
             ("SPAN", (0, -1), (3, -1)),
             ("ALIGN", (3, 0), (-1, -1), "CENTER"),
-            ("PADDING", (0, 0), (-1, -1), 4),
+            ("PADDING", (0, 0), (-1, -1), 3.5),
         ]))
         elements.append(t_soc)
-        elements.append(Spacer(1, 8))
+        elements.append(Spacer(1, 6))
 
     elements.append(Paragraph("<b>Producción centralizada (taller y oficina)</b>", cell_bold))
     data_ops_pdf = [[Paragraph("Nombre", cell_bold), Paragraph("Área", cell_bold), Paragraph("Días", cell_bold), Paragraph("H/Día", cell_bold), Paragraph("Horas generadas", cell_bold)]]
@@ -357,15 +382,13 @@ def generar_pdf_oficial(
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
         ("SPAN", (0, -1), (3, -1)),
         ("ALIGN", (2, 0), (-1, -1), "CENTER"),
-        ("PADDING", (0, 0), (-1, -1), 4),
+        ("PADDING", (0, 0), (-1, -1), 3.5),
     ]))
     elements.append(t_ops)
-    elements.append(Spacer(1, 8))
+    elements.append(Spacer(1, 6))
 
-    # 7. Resumen de Productos Elaborados
+    # Resumen de Productos
     elements.append(Paragraph("Resumen de productos elaborados", h2_style))
-    elements.append(Paragraph("Como resultado del proceso de transformación, se obtuvieron diversos productos elaborados a partir de los textiles en desuso, en función del tipo de material disponible y los requerimientos del cliente.", body_style))
-    
     data_prod_pdf = [[Paragraph("Producto", cell_bold), Paragraph("Cantidad", cell_bold)]]
     for p_item in lista_productos:
         data_prod_pdf.append([
@@ -379,26 +402,24 @@ def generar_pdf_oficial(
         ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F8FAFC")),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
         ("ALIGN", (1, 0), (1, -1), "CENTER"),
-        ("PADDING", (0, 0), (-1, -1), 4),
+        ("PADDING", (0, 0), (-1, -1), 3.5),
     ]))
     elements.append(t_prod)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 6))
 
-    # 8. Conclusión Oficial
+    # Conclusión
     elements.append(Paragraph("Conclusión", h2_style))
     texto_conclusion = (
         f"El proyecto permitió gestionar de manera eficiente los textiles en desuso de <b>{cliente}</b>, asegurando su aprovechamiento "
         f"mediante un proceso organizado y trazable. Los resultados obtenidos reflejan la capacidad de integrar este tipo de iniciativas "
-        f"dentro de la operación de las empresas, generando valor a partir de materiales existentes. "
-        f"Este tipo de iniciativas permite a las empresas gestionar sus materiales en desuso de manera trazable, generando beneficios "
-        f"ambientales y sociales medibles, e integrando principios de economía circular dentro de su operación."
+        f"dentro de la operación de las empresas, generando valor a partir de materiales existentes y cumpliendo con métricas "
+        f"ambientales y sociales medibles."
     )
     elements.append(Paragraph(texto_conclusion, body_style))
 
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
     return buffer
-
 # --- ESTADOS DE SESIÓN ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
