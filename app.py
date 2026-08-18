@@ -161,7 +161,42 @@ class ReporteCanvas(canvas.Canvas):
         self.restoreState()
 
 
-# --- GENERADOR DEL PDF OFICIAL CON CARÁTULA INICIAL ---
+# --- CLASE CANVAS PARA PIE DE PÁGINA INSTITUCIONAL ---
+class ReporteCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pages = []
+
+    def showPage(self):
+        self.pages.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        num_pages = len(self.pages)
+        for page in self.pages:
+            self.__dict__.update(page)
+            self.draw_footer(num_pages)
+            super().showPage()
+        super().save()
+
+    def draw_footer(self, total_pages):
+        # Omitir pie de página en la portada (página 1)
+        if self._pageNumber > 1:
+            self.saveState()
+            self.setFont("Helvetica", 7)
+            self.setFillColor(colors.HexColor("#64748B"))
+            
+            # Texto institucional alineado a la izquierda o centro inferior
+            footer_text = "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres emprendedoras"
+            self.drawCentredString(letter[0] / 2.0, 20, footer_text)
+            
+            # Número de página a la derecha
+            page_str = f"Pág. {self._pageNumber} de {total_pages}"
+            self.drawRightString(letter[0] - 36, 20, page_str)
+            self.restoreState()
+
+
+# --- GENERADOR DEL PDF OFICIAL CON CARÁTULA EXACTA Y PIE INSTITUCIONAL ---
 def generar_pdf_oficial(
     cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin,
     responsable, area, tipo_material, valorizacion, unidad_medida,
@@ -186,9 +221,9 @@ def generar_pdf_oficial(
     styles = getSampleStyleSheet()
     
     # Estilos tipográficos institucionales
-    cover_title = ParagraphStyle("CoverT", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=22, textColor=colors.HexColor("#1E3A8A"), alignment=1, spaceAfter=10, leading=26)
-    cover_subtitle = ParagraphStyle("CoverSub", parent=styles["Normal"], fontName="Helvetica", fontSize=13, textColor=colors.HexColor("#475569"), alignment=1, spaceAfter=20, leading=18)
-    cover_meta = ParagraphStyle("CoverMeta", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#334155"), alignment=1, leading=15)
+    cover_title = ParagraphStyle("CoverT", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=18, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=15, leading=22)
+    cover_subtitle = ParagraphStyle("CoverSub", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=12, textColor=colors.HexColor("#334155"), alignment=1, spaceAfter=40, leading=16)
+    cover_meta = ParagraphStyle("CoverMeta", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), alignment=1, leading=16)
     
     title_style = ParagraphStyle("TitleSt", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=2)
     sub_style = ParagraphStyle("SubSt", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#475569"), alignment=1, spaceAfter=8, leading=10)
@@ -204,21 +239,22 @@ def generar_pdf_oficial(
     # ==========================================
     # PÁGINA 1: PORTADA / CARÁTULA INSTITUCIONAL
     # ==========================================
-    elements.append(Spacer(1, 100))
-    elements.append(Paragraph("PEQUEÑOS DETALLES HANDMADE PERÚ S.A.C.", ParagraphStyle("Company", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=30)))
-    elements.append(Paragraph("REPORTE DE IMPACTO AMBIENTAL Y SOCIAL", cover_title))
-    elements.append(Paragraph(f"<b>Proyecto:</b> {proyecto_nom}", cover_subtitle))
     elements.append(Spacer(1, 40))
     
-    # Bloque de metadatos de la portada
-    elements.append(Paragraph(f"<b>Presentado a:</b> {cliente}", cover_meta))
-    if ruc:
-        elements.append(Paragraph(f"<b>RUC:</b> {ruc}", cover_meta))
-    elements.append(Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}", cover_meta))
-    elements.append(Paragraph(f"<b>Periodo de Ejecución:</b> {fe_inicio} – {fe_fin}", cover_meta))
+    # Logo oficial centrado (Asegúrate de tener la imagen disponible o ajusta la ruta)
+    if os.path.exists("logo_pequenos_detalles.png"):
+        elements.append(Image("logo_pequenos_detalles.png", width=120, height=60, hAlign="CENTER"))
+    elements.append(Spacer(1, 60))
     
-    elements.append(Spacer(1, 120))
-    elements.append(Paragraph(f"<b>Fecha de emisión:</b> {fe_fin}", ParagraphStyle("DateSt", parent=cover_meta, fontSize=9, textColor=colors.HexColor("#64748B"))))
+    elements.append(Paragraph("Reporte de Impacto del Proyecto", cover_title))
+    elements.append(Paragraph("Proyecto de transformación de textiles en desuso", cover_subtitle))
+    
+    elements.append(Spacer(1, 80))
+    elements.append(Paragraph(f'Cliente: "{cliente}"', cover_meta))
+    elements.append(Paragraph("Empresa: Pequeños Detalles Handmade Perú S.A.C.", cover_meta))
+    
+    elements.append(Spacer(1, 140))
+    elements.append(Paragraph(f"Fecha: {fe_fin}", ParagraphStyle("DateSt", parent=cover_meta, fontSize=11, textColor=colors.HexColor("#0F172A"))))
     
     # Salto de página para pasar al contenido interno
     elements.append(PageBreak())
