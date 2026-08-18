@@ -1233,9 +1233,12 @@ else:
             fast_unid = rm2.number_input("Unidades Producidas *", min_value=0, step=1)
             fast_co2 = rm3.number_input("CO₂e Neto Evitado (kg) *", min_value=0.0, step=0.1)
 
-            rm4, rm5 = st.columns(2)
+            rm4, rm5, rm6 = st.columns(3)
             fast_horas = rm4.number_input("Horas de Trabajo Generadas *", min_value=0.0, step=0.5)
             fast_personas = rm5.number_input("Personas / Beneficiarios *", min_value=0, step=1)
+            fast_aprovechamiento = rm6.number_input("% Aprovechamiento *", min_value=0.0, max_value=100.0, value=100.0, step=0.1)
+
+            fast_origen = st.text_input("Punto Origen", value="Sede Central")
 
         st.write("")
 
@@ -1255,6 +1258,13 @@ else:
                             "responsable": fast_resp,
                             "fecha": f"{fe_ini_str} - {fe_fin_str}",
                             "estado": "COMPLETADO",
+                            "peso_recibido": fast_peso,
+                            "peso_transformado": fast_peso,
+                            "aprovechamiento": fast_aprovechamiento,
+                            "co2_neto": fast_co2,
+                            "horas_totales": fast_horas,
+                            "productos_unids": fast_unid,
+                            "punto_origen": fast_origen
                         }).execute()
                     st.success(f"✅ ¡Proyecto **{fast_cliente}** registrado exitosamente en el Histórico!")
                     st.toast("⚡ Guardado rápido completado")
@@ -1280,7 +1290,6 @@ else:
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
 
-            # --- MANEJO Y PARSEO DE FECHAS ---
             fechas_raw = p_edit.get("fecha", " - ").split(" - ")
             try:
                 def_f_ini = datetime.datetime.strptime(
@@ -2009,17 +2018,30 @@ else:
             else:
                 try:
                     with st.spinner("Guardando borrador..."):
-                        supabase.table("proyectos").upsert({
+                        datos_borrador = {
                             "codigo": codigo_proy,
                             "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "ruc": ruc,
+                            "tipo_proyecto": proyecto_nom,
+                            "responsable": responsable,
                             "estado": "EN_PROCESO",
-                        }).execute()
-                    st.success("✅  ¡Guardado con éxito como Borrador!")
+                            "peso_recibido": peso_total_recibido,
+                            "peso_transformado": mat_transformado,
+                            "aprovechamiento": pct_aprovechamiento_total,
+                            "co2_neto": co2_neto,
+                            "horas_totales": total_horas_social,
+                            "productos_unids": total_prod_unid,
+                            "punto_origen": origen
+                        }
+                        if p_edit and p_edit.get("id"):
+                            datos_borrador["id"] = p_edit.get("id")
+
+                        supabase.table("proyectos").upsert(datos_borrador).execute()
+                    st.success("✅ ¡Guardado con éxito como Borrador!")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"⚠️  No se pudo guardar el borrador: {e}")
+                    st.error(f"⚠️ No se pudo guardar el borrador: {e}")
 
         if b_col2.button(
             "📄 Finalizar y Generar PDF Oficial",
@@ -2036,20 +2058,34 @@ else:
             else:
                 guardado_ok = True
                 try:
-                    with st.spinner("Actualizando estado del proyecto..."):
-                        supabase.table("proyectos").upsert({
+                    with st.spinner("Actualizando estado del proyecto a COMPLETADO..."):
+                        datos_completado = {
                             "codigo": codigo_proy,
                             "cliente": cliente,
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "ruc": ruc,
+                            "tipo_proyecto": proyecto_nom,
+                            "responsable": responsable,
                             "estado": "COMPLETADO",
-                        }).execute()
+                            "peso_recibido": peso_total_recibido,
+                            "peso_transformado": mat_transformado,
+                            "aprovechamiento": pct_aprovechamiento_total,
+                            "co2_neto": co2_neto,
+                            "horas_totales": total_horas_social,
+                            "productos_unids": total_prod_unid,
+                            "punto_origen": origen
+                        }
+                        if p_edit and p_edit.get("id"):
+                            datos_completado["id"] = p_edit.get("id")
+
+                        supabase.table("proyectos").upsert(datos_completado).execute()
+                        st.session_state.proyecto_editar = {}
                 except Exception as e:
                     guardado_ok = False
                     st.warning(
-                        "⚠️  El informe se generará, pero **no se pudo "
-                        "actualizar el estado del proyecto en la base de "
-                        f"datos**: {e}"
+                        "⚠️ El informe se generará, pero **no se pudo "
+                        "actualizar el estado del proyecto a COMPLETADO**: "
+                        f"{e}"
                     )
 
                 try:
@@ -2090,7 +2126,7 @@ else:
                         )
                 except Exception as e:
                     st.error(
-                        "⚠️  Ocurrió un error al generar el PDF. No se pudo "
+                        "⚠️ Ocurrió un error al generar el PDF. No se pudo "
                         "completar el informe."
                     )
                     with st.expander("Detalle técnico del error"):
@@ -2098,7 +2134,7 @@ else:
                     st.stop()
 
                 if guardado_ok:
-                    st.success("✅  ¡Informe Técnico Generado Exitosamente!")
+                    st.success("✅ ¡Proyecto completado e Informe Técnico Generado Exitosamente!")
                 st.download_button(
                     label="⬇️ DESCARGAR INFORME TÉCNICO EN PDF",
                     data=pdf_buffer,
@@ -2143,17 +2179,27 @@ else:
     elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
         st.subheader("📊 Indicadores Globales de Sostenibilidad 2026")
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total Material Procesado", "1,245.80 kg", "+15% vs 2025")
-        m2.metric("CO₂e Neto Evitado", "8,920.40 kg", "+22%")
-        m3.metric("Aprovechamiento Promedio", "89.4%", "1.2%")
-        m4.metric("Horas Trabajo Generadas", "3,450 hrs", "+310 hrs")
+        proyectos_comp = cargar_proyectos(estado="COMPLETADO")
+        if proyectos_comp:
+            tot_peso = sum([p.get("peso_recibido", 0) or 0 for p in proyectos_comp])
+            tot_co2 = sum([p.get("co2_neto", 0) or 0 for p in proyectos_comp])
+            tot_horas = sum([p.get("horas_totales", 0) or 0 for p in proyectos_comp])
+            aprov_list = [p.get("aprovechamiento", 0) or 0 for p in proyectos_comp if p.get("aprovechamiento") is not None]
+            prom_aprov = (sum(aprov_list) / len(aprov_list)) if aprov_list else 0.0
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Total Material Procesado", f"{tot_peso:.2f} kg")
+            m2.metric("CO₂e Neto Evitado", f"{tot_co2:.2f} kg")
+            m3.metric("Aprovechamiento Promedio", f"{prom_aprov:.1f}%")
+            m4.metric("Horas Trabajo Generadas", f"{tot_horas:.2f} hrs")
+        else:
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Total Material Procesado", "0.00 kg")
+            m2.metric("CO₂e Neto Evitado", "0.00 kg")
+            m3.metric("Aprovechamiento Promedio", "0.0%")
+            m4.metric("Horas Trabajo Generadas", "0.0 hrs")
 
         st.write("---")
-        st.info(
-            "📈 Aquí se visualizarán los gráficos acumulados conforme guardes"
-            " informes terminados en la base de datos."
-        )
 
     elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
         st.subheader("🗂️ Histórico de Proyectos Finalizados")
