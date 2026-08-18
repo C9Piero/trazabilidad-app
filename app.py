@@ -9,7 +9,6 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     Image,
-    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -87,7 +86,7 @@ PERSONAL_FIJO_OPERACIONES = [
 
 st.set_page_config(
     page_title="Pequeños Detalles - Sistema de Trazabilidad",
-    page_icon="♻️",
+    page_icon="",
     layout="wide",
 )
 
@@ -137,6 +136,31 @@ def cargar_proyectos(estado=None):
     except Exception as e:
         st.warning(f"No se pudieron cargar los proyectos: {e}")
         return []
+
+class ReporteCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pages = []
+
+    def showPage(self):
+        self.pages.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        for page in self.pages:
+            self.__dict__.update(page)
+            self.draw_page_decorations()
+            super().showPage()
+        super().save()
+
+    def draw_page_decorations(self):
+        self.saveState()
+        self.setFont("Helvetica", 8)
+        self.setFillColor(colors.HexColor("#7F8C8D"))
+        self.drawString(36, 20, "Pequeños Detalles Handmade Perú S.A.C. - Reporte Oficial de Impacto")
+        self.drawRightString(576, 20, f"Página {self._pageNumber}")
+        self.restoreState()
+
 
 # --- CLASE CANVAS PARA PIE DE PÁGINA INSTITUCIONAL ---
 class ReporteCanvas(canvas.Canvas):
@@ -198,6 +222,10 @@ def generar_pdf_oficial(
     styles = getSampleStyleSheet()
     
     # Estilos tipográficos institucionales
+    cover_title = ParagraphStyle("CoverT", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=18, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=15, leading=22)
+    cover_subtitle = ParagraphStyle("CoverSub", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=12, textColor=colors.HexColor("#334155"), alignment=1, spaceAfter=40, leading=16)
+    cover_meta = ParagraphStyle("CoverMeta", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), alignment=1, leading=16)
+    
     title_style = ParagraphStyle("TitleSt", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=2)
     sub_style = ParagraphStyle("SubSt", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#475569"), alignment=1, spaceAfter=8, leading=10)
     h2_style = ParagraphStyle("H2St", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=10, textColor=colors.HexColor("#1E3A8A"), spaceBefore=8, spaceAfter=4)
@@ -292,7 +320,7 @@ def generar_pdf_oficial(
     elements.append(Spacer(1, 4))
 
     # Resumen Ejecutivo
-    elements.append(Paragraph("1. Resumen Ejecutivo", h2_style))
+    elements.append(Paragraph("Resumen Ejecutivo", h2_style))
     texto_ejecutivo = (
         f"En el marco de su compromiso con la sostenibilidad, <b>{cliente}</b> implementó un proyecto de economía circular "
         f"mediante la transformación de <b>textiles en desuso</b> provenientes de sus operaciones. Estos materiales fueron recuperados y "
@@ -306,7 +334,7 @@ def generar_pdf_oficial(
     elements.append(Spacer(1, 4))
 
     # Caracterización del Material
-    elements.append(Paragraph("2. Material Recibido y Caracterización", h2_style))
+    elements.append(Paragraph("Material Recibido y Caracterización", h2_style))
     elements.append(Paragraph("El proyecto se desarrolló a partir de la recuperación de uniformes corporativos en desuso proporcionados por el cliente. Estos materiales fueron clasificados y acondicionados en función de su tipo, estado y potencial de aprovechamiento.", body_style))
     
     data_prendas_pdf = [[
@@ -336,45 +364,8 @@ def generar_pdf_oficial(
     elements.append(t_prendas)
     elements.append(Spacer(1, 6))
 
-    # Eficiencia del proceso
-    material_aprovechado = mat_transformado + retazos_aprovechables
-    elements.append(Paragraph("3. Eficiencia del proceso", h2_style))
-    elements.append(Paragraph(
-        "A partir del material recibido, se evaluó su potencial de aprovechamiento dentro del "
-        "proceso productivo, priorizando la reutilización de textiles en función de su estado y "
-        "características. Este enfoque permitió maximizar el uso del material disponible mediante "
-        "procesos de transformación.",
-        body_style,
-    ))
-    data_eficiencia = [
-        [Paragraph("<b>Indicador</b>", cell_bold), Paragraph("<b>Valor</b>", cell_bold)],
-        [Paragraph("Material recibido", cell_style), Paragraph(f"{kg_recibidos:.2f} kg", cell_style)],
-        [Paragraph("Material transformado en productos", cell_style), Paragraph(f"{mat_transformado:.2f} kg", cell_style)],
-        [Paragraph("Retazos aprovechables", cell_style), Paragraph(f"{retazos_aprovechables:.2f} kg", cell_style)],
-        [Paragraph("Material aprovechado (total)", cell_style), Paragraph(f"{material_aprovechado:.2f} kg", cell_style)],
-        [Paragraph("% de aprovechamiento", cell_bold), Paragraph(f"{pct_aprovechamiento_total:.2f} %", cell_bold)],
-        [Paragraph("Pérdida no aprovechable", cell_style), Paragraph(f"{perdida_no_aprovechable:.2f} kg", cell_style)],
-        [Paragraph("% de pérdida", cell_style), Paragraph(f"{pct_perdida:.2f} %", cell_style)],
-    ]
-    t_eficiencia = Table(data_eficiencia, colWidths=[300, 240])
-    t_eficiencia.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EFF6FF")),
-        ("BACKGROUND", (0, 5), (-1, 5), colors.HexColor("#F0FDF4")),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
-        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-        ("PADDING", (0, 0), (-1, -1), 3.5),
-    ]))
-    elements.append(t_eficiencia)
-    elements.append(Spacer(1, 4))
-    elements.append(Paragraph(
-        f"Los resultados evidencian un nivel de aprovechamiento del <b>{pct_aprovechamiento_total:.2f}%</b> "
-        "del material recibido, reduciendo la generación de desperdicios y promoviendo un modelo de "
-        "economía circular basado en la reutilización.",
-        body_style,
-    ))
-    elements.append(Spacer(1, 6))
-
     # Indicadores de Impacto
+    elements.append(Paragraph("Indicadores de impacto del proyecto", h2_style))
     data_indicadores = [
         [Paragraph("<b>Categoría</b>", cell_bold), Paragraph("<b>Indicador</b>", cell_bold), Paragraph("<b>Valor</b>", cell_bold)],
         [Paragraph("Ambiental", cell_bold), Paragraph("Textiles recibidos (kg)", cell_style), Paragraph(f"{kg_recibidos:.2f} kg", cell_style)],
@@ -392,13 +383,12 @@ def generar_pdf_oficial(
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("PADDING", (0, 0), (-1, -1), 3.5),
     ]))
-    elements.append(KeepTogether([
-        Paragraph("4. Indicadores de impacto del proyecto", h2_style),
-        t_inds,
-    ]))
+    elements.append(t_inds)
+
+    elements.append(PageBreak())
 
     # Impacto Social (Modelo Híbrido)
-    elements.append(Paragraph("5. Impacto Social", h2_style))
+    elements.append(Paragraph("Impacto Social", h2_style))
     elements.append(Paragraph("El proyecto generó impacto social mediante la participación de personas en el proceso de transformación, bajo un modelo híbrido que combina producción descentralizada (desde casa) con actividades centralizadas en taller y oficina.", body_style))
     
     if lista_confeccion:
@@ -452,128 +442,8 @@ def generar_pdf_oficial(
     elements.append(t_ops)
     elements.append(Spacer(1, 6))
 
-    # Impacto Ambiental
-    elements.append(PageBreak())
-    elements.append(Paragraph("6. Impacto Ambiental", h2_style))
-    elements.append(Paragraph(
-        "El proyecto generó impacto ambiental positivo mediante la transformación de textiles en "
-        "desuso, permitiendo extender su vida útil y evitar la producción de nuevos materiales. "
-        "Este enfoque contribuye a la reducción de emisiones asociadas a la fabricación de "
-        "productos textiles.",
-        body_style,
-    ))
-    data_ambiental = [
-        [Paragraph("<b>Indicador</b>", cell_bold), Paragraph("<b>Valor</b>", cell_bold)],
-        [Paragraph("Textiles transformados", cell_style), Paragraph(f"{kg_recibidos:.2f} kg", cell_style)],
-        [Paragraph("Emisiones evitadas por sustitución (CO2e)", cell_style), Paragraph(f"{co2_evitado_total:.2f} kg CO2e", cell_style)],
-        [Paragraph("Emisiones del proceso (transporte, lavado, corte, bordado)", cell_style), Paragraph(f"{emisiones_proceso:.2f} kg CO2e", cell_style)],
-        [Paragraph("Emisiones de CO2 evitadas (neto)", cell_bold), Paragraph(f"{co2_neto:.2f} kg CO2e", cell_bold)],
-    ]
-    t_ambiental = Table(data_ambiental, colWidths=[340, 200])
-    t_ambiental.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EFF6FF")),
-        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F0FDF4")),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
-        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-        ("PADDING", (0, 0), (-1, -1), 3.5),
-    ]))
-    elements.append(t_ambiental)
-    elements.append(Spacer(1, 4))
-    elements.append(Paragraph(
-        f"Como resultado del proyecto, se estimó la evitación neta de <b>{co2_neto:.2f} kg de CO2 "
-        "equivalente (kg CO2e)</b>, asociada a la transformación de textiles en desuso y su "
-        "reincorporación a la cadena productiva, descontando las emisiones propias del proceso "
-        "de transporte, lavado, corte y bordado.",
-        body_style,
-    ))
-    elements.append(Spacer(1, 8))
-
-    # Metodología
-    elements.append(Paragraph("7. Metodología", h2_style))
-    elements.append(Paragraph(
-        "La estimación de los indicadores del proyecto se realizó utilizando factores "
-        "referenciales del sector textil, considerando la diferencia entre la producción "
-        "convencional y la reutilización de materiales mediante procesos de upcycling.",
-        body_style,
-    ))
-    elements.append(Paragraph(
-        "Para la estimación de emisiones de CO2 evitadas, se consideraron valores promedio "
-        "asociados a la fabricación de productos textiles, tomando como referencia el impacto "
-        "que se evita al no requerir la producción de nuevos materiales, descontando las "
-        "emisiones generadas por las operaciones propias del proceso (transporte, lavado, corte "
-        "y bordado).",
-        body_style,
-    ))
-    elements.append(Paragraph(
-        "Los resultados presentados corresponden a valores estimados con fines informativos, "
-        "basados en aproximaciones técnicas y supuestos razonables.",
-        body_style,
-    ))
-    elements.append(Spacer(1, 8))
-
-    # Trazabilidad
-    elements.append(Paragraph("8. Trazabilidad", h2_style))
-    elements.append(Paragraph(
-        "El proyecto contó con un sistema de trazabilidad que permitió hacer seguimiento a los "
-        "textiles en desuso desde su origen hasta su transformación en nuevos productos, "
-        "asegurando la transparencia del proceso y el control de los materiales involucrados.",
-        body_style,
-    ))
-    if origen or destino or guia_remision:
-        detalle_logistico = []
-        if guia_remision:
-            detalle_logistico.append(f"guía de remisión <b>{guia_remision}</b>")
-        if origen:
-            detalle_logistico.append(f"origen <b>{origen}</b>")
-        if destino:
-            detalle_logistico.append(f"destino <b>{destino}</b>")
-        elements.append(Paragraph(
-            "El traslado del material fue registrado con " + ", ".join(detalle_logistico) + ".",
-            body_style,
-        ))
-    if lista_trazabilidad:
-        data_traza = [[
-            Paragraph("<b>Etapa</b>", cell_bold),
-            Paragraph("<b>Fecha</b>", cell_bold),
-            Paragraph("<b>Responsable</b>", cell_bold),
-            Paragraph("<b>Peso (kg)</b>", cell_bold),
-            Paragraph("<b>Tipo de registro</b>", cell_bold),
-        ]]
-        for tr in lista_trazabilidad:
-            data_traza.append([
-                Paragraph(str(tr["etapa"]), cell_style),
-                Paragraph(str(tr["fecha"]), cell_style),
-                Paragraph(str(tr["responsable"]), cell_style),
-                Paragraph(f"{tr['peso']:.2f}", cell_style),
-                Paragraph(str(tr["tipo_registro"]), cell_style),
-            ])
-        t_traza = Table(data_traza, colWidths=[100, 70, 140, 70, 160])
-        t_traza.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EFF6FF")),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
-            ("ALIGN", (3, 0), (3, -1), "CENTER"),
-            ("PADDING", (0, 0), (-1, -1), 3.5),
-        ]))
-        elements.append(Spacer(1, 4))
-        elements.append(t_traza)
-    else:
-        elements.append(Paragraph(
-            "No se registraron etapas de trazabilidad detalladas para este proyecto.",
-            body_style,
-        ))
-    elements.append(Spacer(1, 4))
-    elements.append(Paragraph(
-        f"Como resultado, se logró la transformación de <b>{kg_recibidos:.2f} kg de textiles</b>, "
-        "los cuales fueron reincorporados a la cadena productiva en forma de nuevos productos. El "
-        "sistema de trazabilidad implementado permite garantizar el seguimiento del material a lo "
-        "largo de toda la cadena de transformación, asegurando la correcta gestión del proceso y "
-        "aportando transparencia al cliente respecto al destino de los textiles en desuso.",
-        body_style,
-    ))
-    elements.append(Spacer(1, 6))
-
     # Resumen de Productos
-    elements.append(Paragraph("9. Resumen de productos elaborados", h2_style))
+    elements.append(Paragraph("Resumen de productos elaborados", h2_style))
     data_prod_pdf = [[Paragraph("Producto", cell_bold), Paragraph("Cantidad", cell_bold)]]
     for p_item in lista_productos:
         data_prod_pdf.append([
@@ -593,20 +463,14 @@ def generar_pdf_oficial(
     elements.append(Spacer(1, 6))
 
     # Conclusión
-    texto_conclusion_1 = (
+    elements.append(Paragraph("Conclusión", h2_style))
+    texto_conclusion = (
         f"El proyecto permitió gestionar de manera eficiente los textiles en desuso de <b>{cliente}</b>, asegurando su aprovechamiento "
         f"mediante un proceso organizado y trazable. Los resultados obtenidos reflejan la capacidad de integrar este tipo de iniciativas "
-        f"dentro de la operación de las empresas, generando valor a partir de materiales existentes."
+        f"dentro de la operación de las empresas, generando valor a partir de materiales existentes y cumpliendo con métricas "
+        f"ambientales y sociales medibles."
     )
-    texto_conclusion_2 = (
-        "Este tipo de iniciativas permite a las empresas gestionar sus materiales en desuso de manera trazable, generando beneficios "
-        "ambientales y sociales medibles, e integrando principios de economía circular dentro de su operación."
-    )
-    elements.append(KeepTogether([
-        Paragraph("10. Conclusión", h2_style),
-        Paragraph(texto_conclusion_1, body_style),
-        Paragraph(texto_conclusion_2, body_style),
-    ]))
+    elements.append(Paragraph(texto_conclusion, body_style))
 
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
@@ -650,7 +514,7 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.subheader("🔐 Iniciar Sesión")
+            st.subheader("🔑 Iniciar Sesión")
             usuario_input = st.text_input("Usuario")
             password_input = st.text_input("Contraseña", type="password")
 
@@ -702,7 +566,7 @@ else:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
                 cod_ref = p.get("codigo", "")
-                label_btn = f"📁 {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
+                label_btn = f"📁  {cli_nombre}" + (f" ({cod_ref})" if cod_ref else "")
 
                 es_activo = st.session_state.proyecto_editar.get(
                     "id"
@@ -721,11 +585,11 @@ else:
                     st.rerun()
 
             st.write("")
-            if st.button("📋 Ver Lista en Proceso", use_container_width=True):
-                st.session_state.pestaña_activa = "📋 Proyectos en Proceso"
+            if st.button("📋  Ver Lista en Proceso", use_container_width=True):
+                st.session_state.pestaña_activa = "📋  Proyectos en Proceso"
                 st.rerun()
         else:
-            st.caption("📭 No hay proyectos en borrador")
+            st.caption("📂  No hay proyectos en borrador")
 
         st.markdown(
             '<p class="sidebar-section-title">Analítica e Histórico</p>',
@@ -733,31 +597,31 @@ else:
         )
 
         if st.button(
-            "📊 Dashboard 2026",
+            "📊  Dashboard 2026",
             use_container_width=True,
             type=(
                 "primary"
-                if st.session_state.pestaña_activa == "📊 Dashboard 2026"
+                if st.session_state.pestaña_activa == "📊  Dashboard 2026"
                 else "secondary"
             ),
         ):
-            st.session_state.pestaña_activa = "📊 Dashboard 2026"
+            st.session_state.pestaña_activa = "📊  Dashboard 2026"
             st.rerun()
 
         if st.button(
-            "🗂️ Historial Completo",
+            "📜  Historial Completo",
             use_container_width=True,
             type=(
                 "primary"
-                if st.session_state.pestaña_activa == "🗂️ Historial Completo"
+                if st.session_state.pestaña_activa == "📜  Historial Completo"
                 else "secondary"
             ),
         ):
-            st.session_state.pestaña_activa = "🗂️ Historial Completo"
+            st.session_state.pestaña_activa = "📜  Historial Completo"
             st.rerun()
 
         st.write("---")
-        if st.button("🚪 Cerrar Sesión", use_container_width=True):
+        if st.button("🚪  Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False
             st.session_state.proyecto_editar = {}
             st.rerun()
@@ -765,7 +629,7 @@ else:
     st.markdown(
         f"""
         <div class="hero-header">
-            <h1>📄 Sistema de Gestión de Informes Técnicos</h1>
+            <h1>📄  Sistema de Gestión de Informes Técnicos</h1>
             <p>Sección Activa: <b>{st.session_state.pestaña_activa}</b></p>
         </div>
     """,
@@ -777,7 +641,7 @@ else:
 
         if p_edit:
             st.warning(
-                "✏️ **Modo Edición Activo:** Modificando borrador de"
+                "📝  **Modo Edición Activo:** Modificando borrador de"
                 f" **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
             )
             if st.button("❌     Descartar selección y limpiar formulario"):
@@ -966,7 +830,7 @@ else:
                     key=f"tr_fecha_{i}",
                 )
 
-                permitir_editar = c_edit_chk.checkbox("✏️ Editar", key=f"chk_edit_{i}")
+                permitir_editar = c_edit_chk.checkbox("📝  Editar", key=f"chk_edit_{i}")
                 e_res = c_resp.text_input(
                     "Responsable",
                     value=item_fijo["resp_defecto"],
@@ -1086,7 +950,7 @@ else:
                 )
 
             st.success(
-                "🧮 **Suma Total de Productos Obtenidos:**"
+                "📦  **Suma Total de Productos Obtenidos:**"
                 f" {total_prod_unid} unidades"
             )
 
@@ -1140,7 +1004,7 @@ else:
         with st.container(border=True):
             st.subheader("6. Balance de Emisiones (CO₂e)")
 
-            st.markdown("##### 🚚 A. Cálculo de Transporte")
+            st.markdown("##### 🚚  A. Cálculo de Transporte")
             ct1, ct2, ct3 = st.columns(3)
             vehiculo_sel = ct1.selectbox(
                 "Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys())
@@ -1182,7 +1046,7 @@ else:
                 " *(Factor: 0.05)*"
             )
 
-            st.markdown("##### 🧵 C. Cálculo de Bordado")
+            st.markdown("##### 🪡  C. Cálculo de Bordado")
             cb1, cb2 = st.columns(2)
             cant_prendas_bordado = cb1.number_input(
                 "Cantidad de prendas que requieren bordado",
@@ -1210,7 +1074,7 @@ else:
             co2_neto = co2_evitado_total - emisiones_proceso
 
             st.warning(
-                "🌍 **Total Emisiones del Proceso:**"
+                "🌱  **Total Emisiones del Proceso:**"
                 f" {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto"
                 f" Evitado:** {co2_neto:.2f} kg CO₂e"
             )
@@ -1343,7 +1207,7 @@ else:
                 tiempo_base_ia = estimar_tiempo_unidad(p_nom)
 
                 st.markdown(
-                    f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
+                    f"**🧵  Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
                     f"| Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*"
                 )
 
@@ -1475,7 +1339,7 @@ else:
         b_col1, b_col2 = st.columns(2)
 
         if b_col1.button(
-            "💾 Guardar Borrador (En Proceso)", use_container_width=True
+            "💾  Guardar Borrador (En Proceso)", use_container_width=True
         ):
             errores_borrador = _validar_borrador(cliente, codigo_proy)
             if errores_borrador:
@@ -1497,7 +1361,7 @@ else:
                     st.error(f"⚠️  No se pudo guardar el borrador: {e}")
 
         if b_col2.button(
-            "📄 Finalizar y Generar PDF Oficial",
+            "📄  Finalizar y Generar PDF Oficial",
             type="primary",
             use_container_width=True,
         ):
@@ -1576,7 +1440,7 @@ else:
                 if guardado_ok:
                     st.success("✅  ¡Informe Técnico Generado Exitosamente!")
                 st.download_button(
-                    label="⬇️ DESCARGAR INFORME TÉCNICO EN PDF",
+                    label="📥     DESCARGAR INFORME TÉCNICO EN PDF",
                     data=pdf_buffer,
                     file_name=(
                         "Informe_Trazabilidad_"
@@ -1586,8 +1450,8 @@ else:
                     use_container_width=True,
                 )
 
-    elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
-        st.subheader("📋 Proyectos Guardados en Borrador (En Proceso)")
+    elif st.session_state.pestaña_activa == "📋  Proyectos en Proceso":
+        st.subheader("📋  Proyectos Guardados en Borrador (En Proceso)")
         proyectos_lista = cargar_proyectos(estado="EN_PROCESO")
 
         if proyectos_lista:
@@ -1606,7 +1470,7 @@ else:
             )
 
             if col_btn.button(
-                "📂 Cargar Borrador", type="primary", use_container_width=True
+                "📂  Cargar Borrador", type="primary", use_container_width=True
             ):
                 st.session_state.proyecto_editar = opciones_proy[seleccionado]
                 st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
@@ -1614,8 +1478,8 @@ else:
         else:
             st.info("No hay proyectos pendientes o guardados en proceso.")
 
-    elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
-        st.subheader("📊 Indicadores Globales de Sostenibilidad 2026")
+    elif st.session_state.pestaña_activa == "📊  Dashboard 2026":
+        st.subheader("📊  Indicadores Globales de Sostenibilidad 2026")
 
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Total Material Procesado", "1,245.80 kg", "+15% vs 2025")
@@ -1625,12 +1489,12 @@ else:
 
         st.write("---")
         st.info(
-            "📈 Aquí se visualizarán los gráficos acumulados conforme guardes"
+            "📈  Aquí se visualizarán los gráficos acumulados conforme guardes"
             " informes terminados en la base de datos."
         )
 
-    elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
-        st.subheader("🗂️ Histórico de Proyectos Finalizados")
+    elif st.session_state.pestaña_activa == "📜  Historial Completo":
+        st.subheader("📜  Histórico de Proyectos Finalizados")
         proyectos_completados = cargar_proyectos(estado="COMPLETADO")
 
         if proyectos_completados:
