@@ -352,14 +352,13 @@ class ReporteCanvas(canvas.Canvas):
         self.setFont("Helvetica", 7)
         self.setFillColor(colors.HexColor("#94A3B8"))  # Tono gris claro
 
-        # Texto institucional dividido en dos líneas para que se ajuste perfectamente
         linea_1 = "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres"
         linea_2 = "emprendedoras"
 
-        # Coordenadas X centradas (ancho de carta = 612 pt)
         self.drawCentredString(612 / 2.0, 22, linea_1)
         self.drawCentredString(612 / 2.0, 12, linea_2)
         self.restoreState()
+
 
 # --- GENERADOR DEL PDF OFICIAL ---
 def generar_pdf_oficial(
@@ -401,8 +400,6 @@ def generar_pdf_oficial(
         emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
     )
     co2_neto = co2_evitado_total - emisiones_proceso
-
-    # Primero necesitamos calcular total_prod_unidades para usarlo en el texto introductorio
     total_prod_unidades = sum([p_item["cantidad"] for p_item in lista_productos])
 
     buffer = io.BytesIO()
@@ -412,7 +409,7 @@ def generar_pdf_oficial(
         leftMargin=36,
         rightMargin=36,
         topMargin=36,
-        bottomMargin=36,
+        bottomMargin=45,
     )
 
     styles = getSampleStyleSheet()
@@ -487,7 +484,7 @@ def generar_pdf_oficial(
         )
     )
 
-# --- PÁRRAFO EJECUTIVO ÚNICO Y DIRECTO ---
+    # --- PÁRRAFO EJECUTIVO ÚNICO Y DIRECTO ---
     resumen_texto = f"""
     Proyecto de economía circular implementado para <b>{cliente}</b>, transformando <b>{total_procesado:.2f} kg</b> 
     de textiles en desuso mediante upcycling, con la elaboración de <b>{total_prod_unidades}</b> productos, participación 
@@ -500,14 +497,13 @@ def generar_pdf_oficial(
         fontName="Helvetica",
         fontSize=8.5,
         leading=12,
-        alignment=4,  # Justificado
+        alignment=4,
         spaceBefore=4,
         spaceAfter=6,
     )
 
     elements.append(Paragraph(resumen_texto, resumen_style))
     elements.append(Spacer(1, 4))
-    # ---------------------------------------------
 
     cards_data = [
         [
@@ -961,8 +957,8 @@ def generar_pdf_oficial(
             ])
         )
         elements.append(t_soc)
-elements.append(Spacer(1, 10))
-# 8. CONCLUSIONES
+
+    # 8. CONCLUSIÓN
     elements.append(Spacer(1, 10))
     elements.append(Paragraph("8. CONCLUSIÓN", h2_style))
 
@@ -972,7 +968,7 @@ elements.append(Spacer(1, 10))
         fontName="Helvetica",
         fontSize=8.5,
         leading=13,
-        alignment=4,  # Justificado
+        alignment=4,
         textColor=colors.HexColor("#334155"),
         spaceBefore=4,
         spaceAfter=10,
@@ -990,10 +986,6 @@ elements.append(Spacer(1, 10))
 
     elements.append(Paragraph(texto_conclusion, conclusion_style))
 
-    # Construcción final del PDF
-    doc.build(elements, canvasmaker=ReporteCanvas)
-    buffer.seek(0)
-    return buffer
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
     return buffer
