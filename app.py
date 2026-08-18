@@ -399,7 +399,6 @@ def generar_pdf_oficial(
     buffer.seek(0)
     return buffer
 
-
 # --- ESTADOS DE SESIÓN ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
