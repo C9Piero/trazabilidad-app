@@ -495,7 +495,7 @@ def generar_pdf_oficial(
     Como resultado del proyecto, se transformaron <b>{total_procesado:.2f} kg</b> de textiles, 
     se elaboraron <b>{total_prod_unidades}</b> productos, y se generaron oportunidades 
     económicas para <b>{total_personas_social}</b> personas, bajo un modelo de producción 
-    descentralizada. Asimismo, se estimó la evitación de <b>{co2_neto:.2f} kg</b> de CO₂e.<br/><br/>
+    descentralizada. Asimismo, se estimó la evitación de <b>{co2_neto:.2f} kg</b> de CO2e.<br/><br/>
     Este proyecto demuestra cómo la economía circular permite revalorizar materiales en desuso, 
     generando impacto ambiental y social positivo.
     """
