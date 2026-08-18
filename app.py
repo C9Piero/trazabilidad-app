@@ -487,34 +487,30 @@ def generar_pdf_oficial(
         )
     )
 
-    # --- BLOQUE NARRATIVO DE IMPACTO INTEGRADO ---
+# --- BLOQUE NARRATIVO REDUCIDO ---
     resumen_texto = f"""
-    En el marco de su compromiso con la sostenibilidad, <b>{cliente}</b> implementó un proyecto de 
-    economía circular mediante la transformación de textiles en desuso provenientes de sus 
-    operaciones. Estos materiales fueron recuperados y transformados a través de procesos de 
-    upcycling, permitiendo extender su vida útil y reincorporarlos a la cadena productiva 
-    como nuevos productos.<br/><br/>
-    Como resultado del proyecto, se transformaron <b>{total_procesado:.2f} kg</b> de textiles, 
-    se elaboraron <b>{total_prod_unidades}</b> productos, y se generaron oportunidades 
-    económicas para <b>{total_personas_social}</b> personas, bajo un modelo de producción 
-    descentralizada. Asimismo, se estimó la evitación de <b>{co2_neto:.2f} kg</b> de CO2e.<br/><br/>
-    Este proyecto demuestra cómo la economía circular permite revalorizar materiales en desuso, 
-    generando impacto ambiental y social positivo.
+    Como parte de su compromiso con la sostenibilidad, <b>{cliente}</b> impulsó un proyecto de economía 
+    circular mediante la valorización de <b>{total_procesado:.2f} kg</b> de textiles en desuso a través 
+    de procesos de upcycling. 
+    <br/><br/>
+    Esta iniciativa permitió elaborar <b>{total_prod_unidades}</b> nuevos productos, generar 
+    oportunidades económicas para <b>{total_personas_social}</b> personas bajo un modelo descentralizado 
+    y evitar la emisión de <b>{co2_neto:.2f} kg</b> de CO₂e.
     """
 
     resumen_style = ParagraphStyle(
         "Resumen",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9,
-        leading=14,
+        fontSize=8.5,
+        leading=12,
         alignment=4,  # Justificado
-        spaceBefore=8,
-        spaceAfter=12,
+        spaceBefore=4,
+        spaceAfter=8,
     )
 
     elements.append(Paragraph(resumen_texto, resumen_style))
-    elements.append(Spacer(1, 5))
+    elements.append(Spacer(1, 3))
     # ---------------------------------------------
 
     cards_data = [
