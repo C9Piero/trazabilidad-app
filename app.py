@@ -400,6 +400,9 @@ def generar_pdf_oficial(
     )
     co2_neto = co2_evitado_total - emisiones_proceso
 
+    # Primero necesitamos calcular total_prod_unidades para usarlo en el texto introductorio
+    total_prod_unidades = sum([p_item["cantidad"] for p_item in lista_productos])
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -481,6 +484,36 @@ def generar_pdf_oficial(
             sub_style,
         )
     )
+
+    # --- BLOQUE NARRATIVO DE IMPACTO INTEGRADO ---
+    resumen_texto = f"""
+    En el marco de su compromiso con la sostenibilidad, <b>{cliente}</b> implementó un proyecto de 
+    economía circular mediante la transformación de textiles en desuso provenientes de sus 
+    operaciones. Estos materiales fueron recuperados y transformados a través de procesos de 
+    upcycling, permitiendo extender su vida útil y reincorporarlos a la cadena productiva 
+    como nuevos productos.<br/><br/>
+    Como resultado del proyecto, se transformaron <b>{total_procesado:.2f} kg</b> de textiles, 
+    se elaboraron <b>{total_prod_unidades}</b> productos, y se generaron oportunidades 
+    económicas para <b>{total_personas_social}</b> personas, bajo un modelo de producción 
+    descentralizada. Asimismo, se estimó la evitación de <b>{co2_neto:.2f} kg</b> de CO₂e.<br/><br/>
+    Este proyecto demuestra cómo la economía circular permite revalorizar materiales en desuso, 
+    generando impacto ambiental y social positivo.
+    """
+
+    resumen_style = ParagraphStyle(
+        "Resumen",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=14,
+        alignment=4,  # Justificado
+        spaceBefore=8,
+        spaceAfter=12,
+    )
+
+    elements.append(Paragraph(resumen_texto, resumen_style))
+    elements.append(Spacer(1, 5))
+    # ---------------------------------------------
 
     cards_data = [
         [
@@ -690,11 +723,8 @@ def generar_pdf_oficial(
         Paragraph("Evidencia", cell_bold),
     ]]
 
-    total_prod_unidades = 0
     for p_item in lista_productos:
-        total_prod_unidades += p_item["cantidad"]
         img_cell = obtener_imagen_pdf(p_item["foto"], 60, 60)
-
         data_prod_pdf.append([
             Paragraph(p_item["producto"], cell_style),
             Paragraph(str(p_item["cantidad"]), cell_style),
@@ -941,7 +971,6 @@ def generar_pdf_oficial(
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
     return buffer
-
 
 # --- ESTADOS DE SESIÓN ---
 if "autenticado" not in st.session_state:
