@@ -1,5 +1,6 @@
 import datetime
 import io
+import re
 import pandas as pd
 import streamlit as st
 from reportlab.lib import colors
@@ -350,7 +351,7 @@ class ReporteCanvas(canvas.Canvas):
     def draw_footer(self):
         self.saveState()
         self.setFont("Helvetica", 7)
-        self.setFillColor(colors.HexColor("#94A3B8"))  # Tono gris claro
+        self.setFillColor(colors.HexColor("#94A3B8"))
 
         linea_1 = "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres"
         linea_2 = "emprendedoras"
@@ -360,7 +361,7 @@ class ReporteCanvas(canvas.Canvas):
         self.restoreState()
 
 
-# --- GENERADOR DEL PDF OFICIAL ---
+# --- GENERADOR DEL PDF OFICIAL COMPLETO ---
 def generar_pdf_oficial(
     cliente,
     ruc,
@@ -484,7 +485,6 @@ def generar_pdf_oficial(
         )
     )
 
-    # --- PÁRRAFO EJECUTIVO ÚNICO Y DIRECTO ---
     resumen_texto = f"""
     Proyecto de economía circular implementado para <b>{cliente}</b>, transformando <b>{total_procesado:.2f} kg</b> 
     de textiles en desuso mediante upcycling, con la elaboración de <b>{total_prod_unidades}</b> productos, participación 
@@ -958,7 +958,6 @@ def generar_pdf_oficial(
         )
         elements.append(t_soc)
 
-    # 8. CONCLUSIÓN
     elements.append(Spacer(1, 10))
     elements.append(Paragraph("8. CONCLUSIÓN", h2_style))
 
@@ -989,6 +988,7 @@ def generar_pdf_oficial(
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
     return buffer
+
 
 # --- ESTADOS DE SESIÓN ---
 if "autenticado" not in st.session_state:
@@ -1165,16 +1165,53 @@ else:
 
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
-            c1, c2, c3 = st.columns(3)
+
+            # --- MANEJO Y PARSEO DE FECHAS ---
+            fechas_raw = p_edit.get("fecha", " - ").split(" - ")
+            try:
+                def_f_ini = datetime.datetime.strptime(
+                    fechas_raw[0].strip(), "%d/%m/%Y"
+                ).date()
+            except Exception:
+                def_f_ini = datetime.date.today()
+
+            try:
+                def_f_fin = datetime.datetime.strptime(
+                    fechas_raw[1].strip(), "%d/%m/%Y"
+                ).date()
+            except Exception:
+                def_f_fin = datetime.date.today()
+
+            c1, c2, c5, c6 = st.columns(4)
             cliente = c1.text_input(
-                "Cliente / Empresa", value=p_edit.get("cliente", "")
-            )
-            ruc = c2.text_input("RUC", value=p_edit.get("ruc", ""))
-            codigo_proy = c3.text_input(
-                "Código de Proyecto", value=p_edit.get("codigo", "")
+                "Cliente / Empresa *", value=p_edit.get("cliente", "")
             )
 
-            c4, c5, c6 = st.columns(3)
+            # CAMBIO RUC: Validación y formato de 11 dígitos
+            ruc = c2.text_input(
+                "RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11
+            )
+
+            # CAMBIO FECHAS: Selectores visuales nativos
+            fe_inicio_dt = c5.date_input(
+                "Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY"
+            )
+            fe_fin_dt = c6.date_input(
+                "Fecha Término *", value=def_f_fin, format="DD/MM/YYYY"
+            )
+
+            fe_inicio = fe_inicio_dt.strftime("%d/%m/%Y")
+            fe_fin = fe_fin_dt.strftime("%d/%m/%Y")
+
+            # CAMBIO CÓDIGO PROYECTO: Generación automática dinámica
+            str_empresa = cliente.strip() if cliente.strip() else "EMPRESA"
+            codigo_proy = f"{str_empresa}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}"
+
+            st.info(
+                f"🆔 **Código del Proyecto (Generado automáticamente):** `{codigo_proy}`"
+            )
+
+            c4, c7, c8, c9 = st.columns(4)
             opciones_tipo_proyecto = [
                 "Upcycling",
                 "Producción desde cero",
@@ -1190,28 +1227,23 @@ else:
             )
 
             proyecto_nom = c4.selectbox(
-                "Tipo de Proyecto", opciones_tipo_proyecto, index=idx_tipo
+                "Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo
             )
 
-            fechas_raw = p_edit.get("fecha", " - ").split(" - ")
-            f_ini_val = fechas_raw[0] if len(fechas_raw) > 0 else ""
-            f_fin_val = fechas_raw[1] if len(fechas_raw) > 1 else ""
-
-            fe_inicio = c5.text_input("Fecha Inicio", value=f_ini_val)
-            fe_fin = c6.text_input("Fecha Término", value=f_fin_val)
-
-            c7, c8, c9 = st.columns(3)
+            # CAMBIO RESPONSABLE Y ÁREA
             responsable = c7.text_input(
-                "Responsable", value=p_edit.get("responsable", "")
+                "Responsable *", value=p_edit.get("responsable", "")
             )
-            area = c8.text_input("Área", value=p_edit.get("area", ""))
+
+            # El área siempre es Sostenibilidad fija
+            area = c8.text_input("Área", value="Sostenibilidad", disabled=True)
             guia_remision = c9.text_input(
                 "Nº Guía Remisión", value=p_edit.get("guia", "")
             )
 
             c10, c11 = st.columns(2)
-            origen = c10.text_input("Punto Origen", value=p_edit.get("origen", ""))
-            destino = c11.text_input("Punto Destino", value=p_edit.get("destino", ""))
+            origen = c10.text_input("Punto Origen *", value=p_edit.get("origen", ""))
+            destino = c11.text_input("Punto Destino *", value=p_edit.get("destino", ""))
 
         st.write("")
 
@@ -1244,13 +1276,13 @@ else:
                 )
 
                 desc = col_desc.selectbox(
-                    "Tipo de Producto / Prenda", opciones_prendas, key=f"desc_{i}"
+                    "Tipo de Producto / Prenda *", opciones_prendas, key=f"desc_{i}"
                 )
                 unid = col_unid.number_input(
-                    "Ingreso (unid.)", min_value=0, value=0, key=f"unid_{i}"
+                    "Ingreso (unid.) *", min_value=0, value=0, key=f"unid_{i}"
                 )
                 peso_u = col_peso.number_input(
-                    "Peso Unit. (kg)",
+                    "Peso Unit. (kg) *",
                     min_value=0.0,
                     value=0.0,
                     step=0.05,
@@ -1338,8 +1370,10 @@ else:
                     disabled=True,
                     key=f"tr_etapa_{i}",
                 )
+
+                # CAMBIO FECHA TRAZABILIDAD: Selector nativo DD/MM/YYYY
                 e_fec_val = c_fecha.date_input(
-                    "Fecha",
+                    "Fecha *",
                     value=item_fijo["fecha"],
                     format="DD/MM/YYYY",
                     key=f"tr_fecha_{i}",
@@ -1347,14 +1381,14 @@ else:
 
                 permitir_editar = c_edit_chk.checkbox("✏️ Editar", key=f"chk_edit_{i}")
                 e_res = c_resp.text_input(
-                    "Responsable",
+                    "Responsable *",
                     value=item_fijo["resp_defecto"],
                     disabled=not permitir_editar,
                     key=f"tr_resp_{i}",
                 )
 
                 e_pes_str = c_peso.text_input(
-                    "Peso (kg)", value=item_fijo["peso"], key=f"tr_peso_{i}"
+                    "Peso (kg) *", value=item_fijo["peso"], key=f"tr_peso_{i}"
                 )
 
                 try:
@@ -1391,7 +1425,6 @@ else:
 
         st.write("")
 
-        # 4. SALIDA DE PRODUCTOS (CORREGIDO)
         with st.container(border=True):
             st.subheader("4. Salida de Productos")
 
@@ -1419,14 +1452,14 @@ else:
                 )
 
                 prod_seleccionado = col_psel.selectbox(
-                    "Seleccionar Producto Base",
+                    "Seleccionar Producto Base *",
                     st.session_state.catalogo_productos,
                     key=f"prod_sel_{i}",
                 )
 
-                if prod_seleccionado == "➕     Otro (Escribir nuevo producto)":
+                if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
                     nuevo_nombre = col_pnom_nuevo.text_input(
-                        "Escriba el Nuevo Producto", key=f"prod_nuevo_txt_{i}"
+                        "Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}"
                     )
                     nombre_final = (
                         nuevo_nombre.strip()
@@ -1440,7 +1473,6 @@ else:
                     ):
                         st.session_state.catalogo_productos.insert(-1, nuevo_nombre.strip())
                 else:
-                    # CORREGIDO: Ahora muestra correctamente la selección actual del usuario en lugar de un texto estático
                     col_pnom_nuevo.text_input(
                         "Producto",
                         value=prod_seleccionado,
@@ -1450,7 +1482,7 @@ else:
                     nombre_final = prod_seleccionado
 
                 p_cant = col_pcant.number_input(
-                    "Cantidad (Unid.)", min_value=0, value=0, key=f"prod_cant_{i}"
+                    "Cantidad (Unid.) *", min_value=0, value=0, key=f"prod_cant_{i}"
                 )
                 p_foto = col_pfoto.file_uploader(
                     "Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}"
@@ -1747,12 +1779,12 @@ else:
                     )
 
                     rol_sel = c_rol.selectbox(
-                        "Rol",
+                        "Rol *",
                         ["Confección", "Acabado"],
                         key=f"soc_rol_{idx}_{p_idx}",
                     )
                     persona_nom = c_persona.text_input(
-                        "Persona Encargada",
+                        "Persona Encargada *",
                         placeholder=f"Encargado/a {p_idx+1}",
                         key=f"soc_pers_{idx}_{p_idx}",
                     )
@@ -1762,7 +1794,7 @@ else:
                     ) if p_cant > 0 else 0
 
                     cant_asig = c_cant_asig.number_input(
-                        "Unid. Asignadas",
+                        "Unid. Asignadas *",
                         min_value=0,
                         max_value=p_cant,
                         value=cant_sugerida,
@@ -1779,7 +1811,7 @@ else:
                         )
                     else:
                         tiempo_unitario = c_tiempo.number_input(
-                            "Tiempo/Unid (hrs)",
+                            "Tiempo/Unid (hrs) *",
                             min_value=0.0,
                             value=float(tiempo_base_ia),
                             step=0.05,
@@ -1829,25 +1861,32 @@ else:
             )
         st.write("")
 
-        def _validar_borrador(cliente_val, codigo_val):
-            errores = []
-            if not cliente_val.strip() and not codigo_val.strip():
-                errores.append(
-                    "Ingresa al menos el **Cliente** o el **Código de "
-                    "Proyecto** para poder guardar el borrador."
-                )
-            return errores
-
-        def _validar_informe_final(cliente_val, ruc_val, items_val):
+        def _validar_borrador(cliente_val):
             errores = []
             if not cliente_val.strip():
-                errores.append("El campo **Cliente** es obligatorio.")
+                errores.append("Ingresa el **Cliente / Empresa** para guardar el borrador.")
+            return errores
+
+        # CAMBIO VALIDACIÓN: Estricta de 11 dígitos y campos requeridos
+        def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, destino_val, items_val):
+            errores = []
+            if not cliente_val.strip():
+                errores.append("El campo **Cliente / Empresa** es obligatorio.")
+            
             if not ruc_val.strip():
                 errores.append("El campo **RUC** es obligatorio.")
+            elif not re.fullmatch(r"\d{11}", ruc_val.strip()):
+                errores.append("El **RUC** debe contener exactamente 11 números.")
+                
+            if not responsable_val.strip():
+                errores.append("El campo **Responsable** es obligatorio.")
+            if not origen_val.strip():
+                errores.append("El campo **Punto Origen** es obligatorio.")
+            if not destino_val.strip():
+                errores.append("El campo **Punto Destino** es obligatorio.")
             if not items_val:
                 errores.append(
-                    "Debes registrar al menos **un ítem de material "
-                    "ingresado** antes de generar el informe."
+                    "Debes registrar al menos **un ítem de material ingresado**."
                 )
             return errores
 
@@ -1856,7 +1895,7 @@ else:
         if b_col1.button(
             "💾 Guardar Borrador (En Proceso)", use_container_width=True
         ):
-            errores_borrador = _validar_borrador(cliente, codigo_proy)
+            errores_borrador = _validar_borrador(cliente)
             if errores_borrador:
                 for err in errores_borrador:
                     st.error(err)
@@ -1864,7 +1903,7 @@ else:
                 try:
                     with st.spinner("Guardando borrador..."):
                         supabase.table("proyectos").upsert({
-                            "codigo": codigo_proy if codigo_proy else "PROY-PENDIENTE",
+                            "codigo": codigo_proy,
                             "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "ruc": ruc,
@@ -1880,12 +1919,11 @@ else:
             type="primary",
             use_container_width=True,
         ):
-            errores_final = _validar_informe_final(cliente, ruc, lista_items)
+            errores_final = _validar_informe_final(
+                cliente, ruc, responsable, origen, destino, lista_items
+            )
             if errores_final:
-                st.error(
-                    "No se puede generar el informe oficial. Revisa lo "
-                    "siguiente:"
-                )
+                st.error("No se puede generar el informe oficial. Revisa los siguientes campos obligatorios:")
                 for err in errores_final:
                     st.markdown(f"- {err}")
             else:
@@ -1893,8 +1931,8 @@ else:
                 try:
                     with st.spinner("Actualizando estado del proyecto..."):
                         supabase.table("proyectos").upsert({
-                            "codigo": codigo_proy if codigo_proy else "SIN-CODIGO",
-                            "cliente": cliente if cliente else "CLIENTE GENERAL",
+                            "codigo": codigo_proy,
+                            "cliente": cliente,
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "ruc": ruc,
                             "estado": "COMPLETADO",
@@ -1957,10 +1995,7 @@ else:
                 st.download_button(
                     label="⬇️ DESCARGAR INFORME TÉCNICO EN PDF",
                     data=pdf_buffer,
-                    file_name=(
-                        "Informe_Trazabilidad_"
-                        f"{codigo_proy if codigo_proy else 'PROYECTO'}.pdf"
-                    ),
+                    file_name=f"Informe_Trazabilidad_{codigo_proy}.pdf",
                     mime="application/pdf",
                     use_container_width=True,
                 )
@@ -2020,4 +2055,3 @@ else:
                 "Aún no se registran proyectos marcados como COMPLETADO en la base de"
                 " datos."
             )
-
