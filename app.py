@@ -240,26 +240,34 @@ def generar_pdf_oficial(
     # ==========================================
     # PÁGINA 1: PORTADA / CARÁTULA INSTITUCIONAL
     # ==========================================
-    elements.append(Spacer(1, 40))
+    elements.append(Spacer(1, 20))
     
-    # Logo oficial centrado (Asegúrate de tener la imagen disponible o ajusta la ruta)
-    if os.path.exists("logo_pequenos_detalles.png"):
-        elements.append(Image("logo_pequenos_detalles.png", width=120, height=60, hAlign="CENTER"))
-    elements.append(Spacer(1, 60))
+    # Logo oficial centrado buscando el nombre correcto con espacios
+    logo_path = None
+    for posible_nombre in ["pequeños detalles logo.png", "logo_pequenos_detalles.png", "logo.png"]:
+        if os.path.exists(posible_nombre):
+            logo_path = posible_nombre
+            break
+
+    if logo_path:
+        elements.append(Image(logo_path, width=140, height=70, hAlign="CENTER"))
+    else:
+        elements.append(Paragraph("<b>PEQUEÑOS DETALLES HANDMADE PERÚ S.A.C.</b>", ParagraphStyle("LogoTxt", fontName="Helvetica-Bold", fontSize=12, textColor=colors.HexColor("#D946EF"), alignment=1)))
+    
+    elements.append(Spacer(1, 40))
     
     elements.append(Paragraph("Reporte de Impacto del Proyecto", cover_title))
     elements.append(Paragraph("Proyecto de transformación de textiles en desuso", cover_subtitle))
     
-    elements.append(Spacer(1, 80))
+    elements.append(Spacer(1, 60))
     elements.append(Paragraph(f'Cliente: "{cliente}"', cover_meta))
     elements.append(Paragraph("Empresa: Pequeños Detalles Handmade Perú S.A.C.", cover_meta))
     
-    elements.append(Spacer(1, 140))
+    elements.append(Spacer(1, 120))
     elements.append(Paragraph(f"Fecha: {fe_fin}", ParagraphStyle("DateSt", parent=cover_meta, fontSize=11, textColor=colors.HexColor("#0F172A"))))
     
     # Salto de página para pasar al contenido interno
     elements.append(PageBreak())
-
     # ==========================================
     # PÁGINA 2 EN ADELANTE: CONTENIDO OFICIAL
     # ==========================================
