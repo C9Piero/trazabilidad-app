@@ -487,15 +487,11 @@ def generar_pdf_oficial(
         )
     )
 
-# --- BLOQUE NARRATIVO REDUCIDO ---
+# --- PÁRRAFO EJECUTIVO ÚNICO Y DIRECTO ---
     resumen_texto = f"""
-    Como parte de su compromiso con la sostenibilidad, <b>{cliente}</b> impulsó un proyecto de economía 
-    circular mediante la valorización de <b>{total_procesado:.2f} kg</b> de textiles en desuso a través 
-    de procesos de upcycling. 
-    <br/><br/>
-    Esta iniciativa permitió elaborar <b>{total_prod_unidades}</b> nuevos productos, generar 
-    oportunidades económicas para <b>{total_personas_social}</b> personas bajo un modelo descentralizado 
-    y evitar la emisión de <b>{co2_neto:.2f} kg</b> de CO₂e.
+    Proyecto de economía circular implementado para <b>{cliente}</b>, transformando <b>{total_procesado:.2f} kg</b> 
+    de textiles en desuso mediante upcycling, con la elaboración de <b>{total_prod_unidades}</b> productos, participación 
+    de <b>{total_personas_social}</b> personas y un impacto neto evitado de <b>{co2_neto:.2f} kg</b> de CO₂e.
     """
 
     resumen_style = ParagraphStyle(
@@ -506,11 +502,11 @@ def generar_pdf_oficial(
         leading=12,
         alignment=4,  # Justificado
         spaceBefore=4,
-        spaceAfter=8,
+        spaceAfter=6,
     )
 
     elements.append(Paragraph(resumen_texto, resumen_style))
-    elements.append(Spacer(1, 3))
+    elements.append(Spacer(1, 4))
     # ---------------------------------------------
 
     cards_data = [
