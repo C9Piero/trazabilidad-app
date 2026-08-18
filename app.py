@@ -328,7 +328,7 @@ def cargar_proyectos(estado=None):
         return []
 
 
-# --- CANVAS PARA PIE DE PÁGINA Y HEADER EN EL PDF ---
+# --- CLASE CANVAS PERSONALIZADA PARA EL PIE DE PÁGINA ---
 class ReporteCanvas(canvas.Canvas):
 
     def __init__(self, *args, **kwargs):
@@ -340,24 +340,26 @@ class ReporteCanvas(canvas.Canvas):
         self._startPage()
 
     def save(self):
+        num_pages = len(self.pages)
         for page in self.pages:
             self.__dict__.update(page)
-            self.draw_page_decorations()
+            self.draw_footer()
             super().showPage()
         super().save()
 
-    def draw_page_decorations(self):
+    def draw_footer(self):
         self.saveState()
-        self.setFont("Helvetica", 8)
-        self.setFillColor(colors.HexColor("#7F8C8D"))
-        self.drawString(
-            36,
-            20,
-            "Pequeños Detalles Handmade Perú S.A.C. - Trazabilidad y Sostenibilidad Textil",
-        )
-        self.drawRightString(576, 20, f"Página {self._pageNumber}")
-        self.restoreState()
+        self.setFont("Helvetica", 7)
+        self.setFillColor(colors.HexColor("#94A3B8"))  # Tono gris claro
 
+        # Texto institucional dividido en dos líneas para que se ajuste perfectamente
+        linea_1 = "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres"
+        linea_2 = "emprendedoras"
+
+        # Coordenadas X centradas (ancho de carta = 612 pt)
+        self.drawCentredString(612 / 2.0, 22, linea_1)
+        self.drawCentredString(612 / 2.0, 12, linea_2)
+        self.restoreState()
 
 # --- GENERADOR DEL PDF OFICIAL ---
 def generar_pdf_oficial(
