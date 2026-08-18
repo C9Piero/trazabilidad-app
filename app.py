@@ -238,11 +238,11 @@ def generar_pdf_oficial(
     elements = []
 
     # ==========================================
-    # PÁGINA 1: PORTADA / CARÁTULA INSTITUCIONAL (PROFESIONAL)
+    # PÁGINA 1: PORTADA / CARÁTULA INSTITUCIONAL
     # ==========================================
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 10))
     
-    # Logo oficial centrado con proporciones más cuadradas y estéticas
+    # Buscamos tu archivo asegurando que mantenga proporciones cuadradas/naturales (ej. 140x110)
     logo_path = None
     for posible_nombre in ["pequeños detalles logo.png", "logo_pequenos_detalles.png", "logo.png"]:
         if os.path.exists(posible_nombre):
@@ -250,31 +250,31 @@ def generar_pdf_oficial(
             break
 
     if logo_path:
-        # Aumentamos ancho y altura para que respire de forma cuadrada/equilibrada
-        elements.append(Image(logo_path, width=160, height=90, hAlign="CENTER"))
+        # Usamos dimensiones proporcionales para que no se vea aplanado
+        elements.append(Image(logo_path, width=130, height=100, hAlign="CENTER"))
     else:
         elements.append(Paragraph("<b>PEQUEÑOS DETALLES HANDMADE PERÚ S.A.C.</b>", ParagraphStyle("LogoTxt", fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#D946EF"), alignment=1)))
     
-    elements.append(Spacer(1, 50))
+    elements.append(Spacer(1, 35))
     
-    # Estilos de carátula con mayor jerarquía y presencia visual
-    cover_title_pro = ParagraphStyle("CoverTP", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=22, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=12, leading=26)
-    cover_subtitle_pro = ParagraphStyle("CoverSubP", parent=styles["Normal"], fontName="Helvetica", fontSize=13, textColor=colors.HexColor("#475569"), alignment=1, spaceAfter=60, leading=18)
-    cover_meta_pro = ParagraphStyle("CoverMetaP", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=12, textColor=colors.HexColor("#1E293B"), alignment=1, leading=18)
+    # Estilos idénticos a tu referencia
+    cover_title_ref = ParagraphStyle("CoverTRef", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=20, textColor=colors.HexColor("#0F172A"), alignment=1, spaceAfter=10, leading=24)
+    cover_subtitle_ref = ParagraphStyle("CoverSubRef", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=12, textColor=colors.HexColor("#000000"), alignment=1, spaceAfter=50, leading=16)
+    cover_meta_ref = ParagraphStyle("CoverMetaRef", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#000000"), alignment=1, leading=16)
     
-    elements.append(Paragraph("Reporte de Impacto del Proyecto", cover_title_pro))
-    elements.append(Paragraph("Proyecto de transformación de textiles en desuso", cover_subtitle_pro))
+    elements.append(Paragraph("Reporte de Impacto del Proyecto", cover_title_ref))
+    elements.append(Paragraph("Proyecto de transformación de textiles en desuso", cover_subtitle_ref))
     
-    elements.append(Spacer(1, 40))
-    elements.append(Paragraph(f'Cliente: "{cliente}"', cover_meta_pro))
-    elements.append(Spacer(1, 8))
-    elements.append(Paragraph("Empresa: Pequeños Detalles Handmade Perú S.A.C.", cover_meta_pro))
+    elements.append(Spacer(1, 60))
+    elements.append(Paragraph(f'Cliente: "{cliente}"', cover_meta_ref))
+    elements.append(Spacer(1, 6))
+    elements.append(Paragraph("Empresa: Pequeños Detalles Handmade Perú S.A.C.", cover_meta_ref))
     
-    # Espaciador amplio para empujar la fecha de manera elegante hacia la parte baja de la página
-    elements.append(Spacer(1, 160))
+    # Espaciado para ubicar la fecha correctamente abajo
+    elements.append(Spacer(1, 140))
     
-    fecha_pro_style = ParagraphStyle("DateStP", parent=cover_meta_pro, fontName="Helvetica", fontSize=11, textColor=colors.HexColor("#64748B"), alignment=1)
-    elements.append(Paragraph(f"<b>Fecha de emisión:</b> {fe_fin}", fecha_pro_style))
+    fecha_ref_style = ParagraphStyle("DateRef", parent=cover_meta_ref, fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#000000"), alignment=1)
+    elements.append(Paragraph(f"Fecha: {fe_fin}", fecha_ref_style))
     
     # Salto de página para pasar al contenido interno
     elements.append(PageBreak())
