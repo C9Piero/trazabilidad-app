@@ -1105,6 +1105,18 @@ else:
             st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
             st.rerun()
 
+        if st.button(
+            "⚡     Carga Rápida Histórica",
+            use_container_width=True,
+            type=(
+                "primary"
+                if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica"
+                else "secondary"
+            ),
+        ):
+            st.session_state.pestaña_activa = "⚡     Carga Rápida Histórica"
+            st.rerun()
+
         st.markdown(
             '<p class="sidebar-section-title">Proyectos Pendientes</p>',
             unsafe_allow_html=True,
@@ -1184,7 +1196,72 @@ else:
         unsafe_allow_html=True,
     )
 
-    if st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
+    if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
+        st.subheader("⚡ Carga Rápida de Proyectos Históricos / Pasados")
+        st.caption(
+            "Utiliza este formulario simplificado para ingresar rápidamente métricas "
+            "consolidadas de proyectos pasados directamente al historial y métricas generales "
+            "sin pasar por la creación del PDF."
+        )
+
+        with st.container(border=True):
+            st.markdown("##### 1. Datos Generales del Proyecto")
+            rq1, rq2, rq3, rq4 = st.columns(4)
+            fast_cliente = rq1.text_input("Cliente / Empresa *")
+            fast_ruc = rq2.text_input("RUC (11 dígitos) *", max_chars=11)
+            fast_tipo = rq3.selectbox(
+                "Tipo de Proyecto",
+                ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"],
+            )
+            fast_resp = rq4.text_input("Responsable", value="Sostenibilidad")
+
+            rq5, rq6 = st.columns(2)
+            fast_f_ini = rq5.date_input("Fecha Inicio", value=datetime.date.today(), format="DD/MM/YYYY")
+            fast_f_fin = rq6.date_input("Fecha Término", value=datetime.date.today(), format="DD/MM/YYYY")
+
+            fe_ini_str = fast_f_ini.strftime("%d/%m/%Y")
+            fe_fin_str = fast_f_fin.strftime("%d/%m/%Y")
+            cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
+            fast_codigo = f"{cli_clean}_{fast_f_ini.strftime('%d%m%Y')}-{fast_f_fin.strftime('%d%m%Y')}"
+
+            st.info(f"🆔 **Código Generado:** `{fast_codigo}`")
+
+        with st.container(border=True):
+            st.markdown("##### 2. Métricas Consolidadas")
+            rm1, rm2, rm3 = st.columns(3)
+            fast_peso = rm1.number_input("Material Procesado Total (kg) *", min_value=0.0, step=0.1)
+            fast_unid = rm2.number_input("Unidades Producidas *", min_value=0, step=1)
+            fast_co2 = rm3.number_input("CO₂e Neto Evitado (kg) *", min_value=0.0, step=0.1)
+
+            rm4, rm5 = st.columns(2)
+            fast_horas = rm4.number_input("Horas de Trabajo Generadas *", min_value=0.0, step=0.5)
+            fast_personas = rm5.number_input("Personas / Beneficiarios *", min_value=0, step=1)
+
+        st.write("")
+
+        if st.button("🚀 Guardar Proyecto Histórico Directamente", type="primary", use_container_width=True):
+            if not fast_cliente.strip():
+                st.error("El campo **Cliente / Empresa** es obligatorio.")
+            elif not fast_ruc.strip() or not re.fullmatch(r"\d{11}", fast_ruc.strip()):
+                st.error("El **RUC** es obligatorio y debe tener 11 dígitos.")
+            else:
+                try:
+                    with st.spinner("Registrando proyecto histórico..."):
+                        supabase.table("proyectos").upsert({
+                            "codigo": fast_codigo,
+                            "cliente": fast_cliente,
+                            "ruc": fast_ruc,
+                            "tipo_proyecto": fast_tipo,
+                            "responsable": fast_resp,
+                            "fecha": f"{fe_ini_str} - {fe_fin_str}",
+                            "estado": "COMPLETADO",
+                        }).execute()
+                    st.success(f"✅ ¡Proyecto **{fast_cliente}** registrado exitosamente en el Histórico!")
+                    st.toast("⚡ Guardado rápido completado")
+                except Exception as e:
+                    st.error(f"⚠️ Error al registrar el proyecto: {e}")
+
+    elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
         if p_edit:
