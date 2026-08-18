@@ -962,32 +962,38 @@ def generar_pdf_oficial(
         )
         elements.append(t_soc)
 elements.append(Spacer(1, 10))
+# 8. CONCLUSIONES
+    elements.append(Spacer(1, 10))
     elements.append(Paragraph("8. CONCLUSIÓN", h2_style))
-    elements.append(
-        Paragraph(
-            "El proyecto permitió gestionar de manera eficiente los textiles en"
-            " desuso del cliente, asegurando su aprovechamiento mediante un"
-            " proceso organizado y trazable.<br/><br/>Los resultados"
-            " obtenidos reflejan la capacidad de integrar este tipo de"
-            " iniciativas dentro de la operación de las empresas, generando valor"
-            " a partir de materiales existentes.<br/><br/>Este tipo de"
-            " iniciativas permite a las empresas gestionar sus materiales en"
-            " desuso de manera trazable, generando beneficios ambientales y"
-            " sociales medibles, e integrando principios de economía circular"
-            " dentro de su operación.",
-            ParagraphStyle(
-                "ConclusionText",
-                parent=styles["Normal"],
-                fontName="Helvetica",
-                fontSize=8.5,
-                leading=13,
-                alignment=4,  # Justificado
-                textColor=colors.HexColor("#334155"),
-                spaceBefore=4,
-                spaceAfter=10,
-            ),
-        )
+
+    conclusion_style = ParagraphStyle(
+        "ConclusionText",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=8.5,
+        leading=13,
+        alignment=4,  # Justificado
+        textColor=colors.HexColor("#334155"),
+        spaceBefore=4,
+        spaceAfter=10,
     )
+
+    texto_conclusion = """
+    El proyecto permitió gestionar de manera eficiente los textiles en desuso del cliente, 
+    asegurando su aprovechamiento mediante un proceso organizado y trazable.<br/><br/>
+    Los resultados obtenidos reflejan la capacidad de integrar este tipo de iniciativas 
+    dentro de la operación de las empresas, generando valor a partir de materiales existentes.<br/><br/>
+    Este tipo de iniciativas permite a las empresas gestionar sus materiales en desuso de 
+    manera trazable, generando beneficios ambientales y sociales medibles, e integrando 
+    principios de economía circular dentro de su operación.
+    """
+
+    elements.append(Paragraph(texto_conclusion, conclusion_style))
+
+    # Construcción final del PDF
+    doc.build(elements, canvasmaker=ReporteCanvas)
+    buffer.seek(0)
+    return buffer
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
     return buffer
