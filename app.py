@@ -329,6 +329,39 @@ def cargar_proyectos(estado=None):
         return []
 
 
+def eliminar_proyecto_bd(proyecto_id, codigo_proy):
+    """Elimina definitivamente un proyecto de la base de datos."""
+    try:
+        if proyecto_id:
+            supabase.table("proyectos").delete().eq("id", proyecto_id).execute()
+        elif codigo_proy:
+            supabase.table("proyectos").delete().eq("codigo", codigo_proy).execute()
+        return True
+    except Exception as e:
+        st.error(f"❌ Error al eliminar el proyecto: {e}")
+        return False
+
+
+# --- DIÁLOGO MODAL DE CONFIRMACIÓN DE ELIMINACIÓN ---
+@st.dialog("⚠️ Confirmar Eliminación Permanente")
+def modal_confirmar_eliminacion(proyecto):
+    st.warning(
+        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\n"
+        "Esta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
+    )
+    col_confirm, col_cancel = st.columns(2)
+    
+    if col_confirm.button("🚨 Sí, Eliminar Definitivamente", use_container_width=True, type="primary"):
+        exito = eliminar_proyecto_bd(proyecto.get("id"), proyecto.get("codigo"))
+        if exito:
+            st.session_state.proyecto_editar = {}
+            st.toast("🗑️ Proyecto eliminado con éxito.")
+            st.rerun()
+
+    if col_cancel.button(" Cancelar", use_container_width=True):
+        st.rerun()
+
+
 # --- CLASE CANVAS PERSONALIZADA PARA EL PIE DE PÁGINA ---
 class ReporteCanvas(canvas.Canvas):
 
@@ -1159,9 +1192,13 @@ else:
                 "✏️ **Modo Edición Activo:** Modificando borrador de"
                 f" **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
             )
-            if st.button("❌     Descartar selección y limpiar formulario"):
+            col_desc, col_elim = st.columns([2, 2])
+            if col_desc.button("❌ Descartar selección y limpiar formulario", use_container_width=True):
                 st.session_state.proyecto_editar = {}
                 st.rerun()
+            
+            if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
+                modal_confirmar_eliminacion(p_edit)
 
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
@@ -1187,12 +1224,10 @@ else:
                 "Cliente / Empresa *", value=p_edit.get("cliente", "")
             )
 
-            # CAMBIO RUC: Validación y formato de 11 dígitos
             ruc = c2.text_input(
                 "RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11
             )
 
-            # CAMBIO FECHAS: Selectores visuales nativos
             fe_inicio_dt = c5.date_input(
                 "Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY"
             )
@@ -1203,7 +1238,6 @@ else:
             fe_inicio = fe_inicio_dt.strftime("%d/%m/%Y")
             fe_fin = fe_fin_dt.strftime("%d/%m/%Y")
 
-            # CAMBIO CÓDIGO PROYECTO: Generación automática dinámica
             str_empresa = cliente.strip() if cliente.strip() else "EMPRESA"
             codigo_proy = f"{str_empresa}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}"
 
@@ -1230,12 +1264,10 @@ else:
                 "Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo
             )
 
-            # CAMBIO RESPONSABLE Y ÁREA
             responsable = c7.text_input(
                 "Responsable *", value=p_edit.get("responsable", "")
             )
 
-            # El área siempre es Sostenibilidad fija
             area = c8.text_input("Área", value="Sostenibilidad", disabled=True)
             guia_remision = c9.text_input(
                 "Nº Guía Remisión", value=p_edit.get("guia", "")
@@ -1371,7 +1403,6 @@ else:
                     key=f"tr_etapa_{i}",
                 )
 
-                # CAMBIO FECHA TRAZABILIDAD: Selector nativo DD/MM/YYYY
                 e_fec_val = c_fecha.date_input(
                     "Fecha *",
                     value=item_fijo["fecha"],
@@ -1867,7 +1898,6 @@ else:
                 errores.append("Ingresa el **Cliente / Empresa** para guardar el borrador.")
             return errores
 
-        # CAMBIO VALIDACIÓN: Estricta de 11 dígitos y campos requeridos
         def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, destino_val, items_val):
             errores = []
             if not cliente_val.strip():
@@ -2009,8 +2039,8 @@ else:
             st.dataframe(df, use_container_width=True)
 
             st.write("---")
-            st.markdown("##### Seleccionar proyecto para continuar editando:")
-            col_sel, col_btn = st.columns([3, 1])
+            st.markdown("##### Seleccionar proyecto para gestionar:")
+            col_sel, col_btn, col_btn_del = st.columns([3, 1, 1])
             opciones_proy = {
                 f"{p.get('cliente', '')} ({p.get('codigo', '')})": p
                 for p in proyectos_lista
@@ -2025,6 +2055,11 @@ else:
                 st.session_state.proyecto_editar = opciones_proy[seleccionado]
                 st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
                 st.rerun()
+
+            if col_btn_del.button(
+                "🗑️ Eliminar Proyecto", use_container_width=True
+            ):
+                modal_confirmar_eliminacion(opciones_proy[seleccionado])
         else:
             st.info("No hay proyectos pendientes o guardados en proceso.")
 
