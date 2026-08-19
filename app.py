@@ -1912,11 +1912,24 @@ else:
                         ["Confección", "Acabado"],
                         key=f"soc_rol_{idx}_{p_idx}",
                     )
-                    persona_nom = c_persona.text_input(
+                    
+                    # --- INICIO DE MODIFICACIÓN ---
+                    opciones_encargado = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado", "➕ Otro nombre"]
+                    encargado_sel = c_persona.selectbox(
                         "Persona Encargada *",
-                        placeholder=f"Encargado/a {p_idx+1}",
-                        key=f"soc_pers_{idx}_{p_idx}",
+                        opciones_encargado,
+                        key=f"soc_pers_sel_{idx}_{p_idx}"
                     )
+                    
+                    if encargado_sel == "➕ Otro nombre":
+                        persona_nom = c_persona.text_input(
+                            "Escriba el nombre *",
+                            placeholder="Nombre del encargado",
+                            key=f"soc_pers_txt_{idx}_{p_idx}"
+                        )
+                    else:
+                        persona_nom = encargado_sel
+                    # --- FIN DE MODIFICACIÓN ---
 
                     cant_sugerida = max(
                         1, int(p_cant / st.session_state[key_num_pers])
@@ -1957,7 +1970,7 @@ else:
                     )
 
                     horas_confeccion_total += horas_persona
-                    if persona_nom.strip():
+                    if persona_nom and persona_nom.strip():
                         personas_confeccion_set.add(persona_nom.strip())
 
                     lista_confeccion.append({
