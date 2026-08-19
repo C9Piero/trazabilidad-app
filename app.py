@@ -2079,34 +2079,59 @@ else:
                 "y agregue o quite participantes según sea necesario. El acabado se calcula automáticamente al 20% del tiempo de confección."
             )
 
-            # Módulo de administración interna de la lista de personal
-            with st.expander("⚙️ Administrar Lista de Personal (Agregar / Quitar del Catálogo)"):
-                col_add_p1, col_add_p2 = st.columns([3, 1])
-                nuevo_integrante = col_add_p1.text_input(
-                    "Nombre completo del nuevo integrante:",
-                    placeholder="Ej. María Elena Pérez",
-                    key="input_nuevo_personal_conf",
-                )
-                if col_add_p2.button("➕ Agregar a la Lista", use_container_width=True):
-                    nombre_limpio = nuevo_integrante.strip()
-                    if nombre_limpio and nombre_limpio not in st.session_state.lista_personal_confeccion:
-                        st.session_state.lista_personal_confeccion.append(nombre_limpio)
-                        st.toast(f"✅ Se agregó a: {nombre_limpio}")
-                        st.rerun()
-                    elif nombre_limpio in st.session_state.lista_personal_confeccion:
-                        st.warning("⚠️ Esta persona ya está registrada en la lista.")
+            # Panel de Administración de Catálogo de Personal
+            with st.expander("⚙️ Administrar Catálogo de Personal (Agregar, Modificar o Eliminar)"):
+                tab_add, tab_edit, tab_del = st.tabs(["➕ Agregar Personal", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
+                
+                with tab_add:
+                    c_a1, c_a2 = st.columns([3, 1])
+                    nuevo_integrante = c_a1.text_input(
+                        "Nombre completo de la nueva persona:",
+                        placeholder="Ej. Rosa María Quispe",
+                        key="adm_input_add",
+                    )
+                    if c_a2.button("Guardar en Lista", use_container_width=True):
+                        n_limpio = nuevo_integrante.strip()
+                        if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.append(n_limpio)
+                            st.session_state.lista_personal_confeccion.sort()
+                            st.toast(f"✅ Agregado/a: {n_limpio}")
+                            st.rerun()
+                        elif n_limpio in st.session_state.lista_personal_confeccion:
+                            st.warning("⚠️ Esta persona ya se encuentra en la lista.")
 
-                col_del_p1, col_del_p2 = st.columns([3, 1])
-                persona_a_eliminar = col_del_p1.selectbox(
-                    "Selecciona una persona para eliminar de la lista:",
-                    st.session_state.lista_personal_confeccion,
-                    key="sel_eliminar_personal_conf",
-                )
-                if col_del_p2.button("🗑️ Eliminar de Lista", use_container_width=True):
-                    if persona_a_eliminar in st.session_state.lista_personal_confeccion:
-                        st.session_state.lista_personal_confeccion.remove(persona_a_eliminar)
-                        st.toast(f"🗑️ Se eliminó a: {persona_a_eliminar}")
-                        st.rerun()
+                with tab_edit:
+                    c_e1, c_e2, c_e3 = st.columns([2, 2, 1])
+                    pers_a_mod = c_e1.selectbox(
+                        "Persona a modificar:",
+                        st.session_state.lista_personal_confeccion,
+                        key="adm_sel_mod",
+                    )
+                    nombre_modificado = c_e2.text_input(
+                        "Nombre corregido:",
+                        value=pers_a_mod,
+                        key=f"adm_txt_mod_{pers_a_mod}",
+                    )
+                    if c_e3.button("Actualizar", use_container_width=True):
+                        if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
+                            idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
+                            st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
+                            st.session_state.lista_personal_confeccion.sort()
+                            st.toast(f"✅ Actualizado: {nombre_modificado.strip()}")
+                            st.rerun()
+
+                with tab_del:
+                    c_d1, c_d2 = st.columns([3, 1])
+                    pers_a_borrar = c_d1.selectbox(
+                        "Persona a eliminar del catálogo:",
+                        st.session_state.lista_personal_confeccion,
+                        key="adm_sel_del",
+                    )
+                    if c_d2.button("Eliminar", use_container_width=True):
+                        if pers_a_borrar in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
+                            st.toast(f"🗑️ Eliminado/a: {pers_a_borrar}")
+                            st.rerun()
 
             lista_confeccion = []
             horas_confeccion_total = 0.0
@@ -2140,7 +2165,7 @@ else:
 
                 for p_idx in range(st.session_state[key_num_pers]):
                     c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns(
-                        [1.8, 2.8, 1.4, 1.8, 1.8]
+                        [1.8, 3.0, 1.4, 1.8, 1.8]
                     )
 
                     rol_sel = c_rol.selectbox(
@@ -2150,12 +2175,31 @@ else:
                     )
 
                     opciones_personas = list(st.session_state.lista_personal_confeccion)
+                    opcion_otro = "➕ Otro (Escribir nuevo nombre)"
+                    if opcion_otro not in opciones_personas:
+                        opciones_personas.append(opcion_otro)
+
                     persona_sel = c_persona.selectbox(
                         "Persona Encargada *",
                         opciones_personas,
                         key=f"soc_pers_sel_{idx}_{p_idx}",
                     )
-                    persona_nom = persona_sel
+
+                    if persona_sel == opcion_otro:
+                        nuevo_nombre_escrito = c_persona.text_input(
+                            "Escribe el nombre *",
+                            placeholder="Nombre y Apellido",
+                            key=f"soc_pers_txt_custom_{idx}_{p_idx}",
+                        )
+                        persona_nom = nuevo_nombre_escrito.strip() if nuevo_nombre_escrito.strip() else f"Persona {p_idx+1}"
+                        if (
+                            nuevo_nombre_escrito.strip()
+                            and nuevo_nombre_escrito.strip() not in st.session_state.lista_personal_confeccion
+                        ):
+                            st.session_state.lista_personal_confeccion.append(nuevo_nombre_escrito.strip())
+                            st.session_state.lista_personal_confeccion.sort()
+                    else:
+                        persona_nom = persona_sel
 
                     cant_sugerida = max(
                         1, int(p_cant / st.session_state[key_num_pers])
