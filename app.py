@@ -218,9 +218,10 @@ DISTANCIAS_LIMA_SJL = {
     "➕ Otro / Fuera de Lima (Ingreso manual)": 0.0,
 }
 
-# --- FACTORES DE BORDADO ---
+# --- FACTORES DE BORDADO O ESTAMPADO ---
 FACTORES_BORDADO = {
     "Sin bordado / Ninguno": 0.0,
+    "Estampado DTF": 0.020,
     "Simple (5 min/pieza)": 0.020,
     "Medio (9 min/pieza)": 0.037,
     "Complejo (10 min/pieza)": 0.041,
@@ -904,7 +905,7 @@ def generar_pdf_oficial(
         Paragraph(
             "Balance de emisiones de CO2 equivalente: el CO2 evitado al no fabricar "
             "prendas nuevas, menos las emisiones propias generadas por el proceso "
-            "de transporte, lavado, corte y bordado, da como resultado el impacto "
+            "de transporte, lavado, corte y bordado o estampado, da como resultado el impacto "
             "ambiental neto del proyecto.",
             sub_style,
         )
@@ -1100,7 +1101,6 @@ if "catalogo_productos" not in st.session_state:
 if "pct_corte_random" not in st.session_state:
     st.session_state.pct_corte_random = random.uniform(0.88, 0.93)
 
-# Ratios automáticos para eficiencia aleatoria (entre 88% y 94%)
 if "pct_aprovechamiento_random" not in st.session_state:
     st.session_state.pct_aprovechamiento_random = round(random.uniform(0.88, 0.94), 4)
 
@@ -1511,7 +1511,6 @@ else:
                     "Ingreso (unid.) *", min_value=0, value=0, key=f"unid_{i}"
                 )
                 
-                # Ingreso de peso total y cálculo de peso unitario
                 p_total = col_peso.number_input(
                     "Peso Total (kg) *",
                     min_value=0.0,
@@ -1625,7 +1624,6 @@ else:
                     key=f"tr_resp_{i}",
                 )
 
-                # Clasificación: toma el peso total de Sección 2 y queda bloqueado
                 es_clasificacion = (item_fijo["etapa"] == "Clasificación")
                 e_pes_str = c_peso.text_input(
                     "Peso (kg) *",
@@ -1752,7 +1750,6 @@ else:
                 f"⚖️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg"
             )
 
-            # Cálculo automático basado en eficiencia aleatoria (88% - 94%)
             pct_aprov_auto = st.session_state.pct_aprovechamiento_random
             pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
             pct_retazos_auto = pct_aprov_auto - pct_transf_auto
@@ -1885,10 +1882,10 @@ else:
                 " *(Factor: 0.05)*"
             )
 
-            st.markdown("##### 🧵 C. Cálculo de Bordado")
+            st.markdown("##### 🧵 C. Cálculo de Bordado o Estampado")
             cb1, cb2 = st.columns(2)
             cant_prendas_bordado = cb1.number_input(
-                "Cantidad de prendas que requieren bordado",
+                "Cantidad de prendas que requieren bordado o estampado",
                 min_value=0,
                 value=0,
                 step=1,
@@ -1901,7 +1898,7 @@ else:
             emisiones_bordado = cant_prendas_bordado * factor_bordado
 
             st.caption(
-                f"Emisión de Bordado estimada: **{emisiones_bordado:.2f} kg CO₂e**"
+                f"Emisión estimada (Bordado/Estampado): **{emisiones_bordado:.2f} kg CO₂e**"
             )
 
             emisiones_proceso = (
