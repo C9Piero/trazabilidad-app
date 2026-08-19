@@ -1970,7 +1970,6 @@ else:
                     label_visibility="collapsed",
                 )
 
-                # Casilla para habilitar la edición de esa fila
                 editar_fila = c_chk.checkbox(
                     "✅", key=f"ops_chk_{idx}", label_visibility="collapsed"
                 )
@@ -2177,7 +2176,7 @@ else:
                             "ruc": ruc,
                             "tipo_proyecto": proyecto_nom,
                             "responsable": responsable,
-                            "responsables":圖=responsables_seleccionados if 'responsables_seleccionados' in locals() else [],
+                            "responsables": responsables_seleccionados,
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "estado": "EN_PROCESO",
                             "peso_recibido": peso_total_recibido,
@@ -2186,9 +2185,9 @@ else:
                             "co2_neto": co2_neto,
                             "horas_totales": total_horas_social,
                             "productos_unids": total_prod_unid,
-                            "punto_origen": origen
+                            "punto_origen": origen,
                         }
-                        
+
                         if p_edit.get("id"):
                             supabase.table("proyectos").update(datos_borrador).eq("id", p_edit["id"]).execute()
                         else:
@@ -2275,7 +2274,7 @@ else:
                                     "co2_neto": co2_neto,
                                     "horas_totales": total_horas_social,
                                     "productos_unids": total_prod_unid,
-                                    "punto_origen": origen
+                                    "punto_origen": origen,
                                 }
                                 if p_edit.get("id"):
                                     supabase.table("proyectos").update(datos_completado).eq("id", p_edit["id"]).execute()
