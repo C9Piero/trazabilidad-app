@@ -529,6 +529,7 @@ def generar_pdf_oficial(
     emisiones_lavado,
     emisiones_corte,
     emisiones_bordado,
+    lista_anexos=None,
 ):
     kg_recibidos = sum([item["peso_total"] for item in lista_items])
     emisiones_proceso = (
@@ -1124,6 +1125,37 @@ def generar_pdf_oficial(
 
     elements.append(Paragraph(texto_conclusion, conclusion_style))
 
+    # --- 9. SECCIÓN ANEXOS (SI EXISTEN EN EL REPORTE) ---
+    if lista_anexos and any(a.get("foto") or a.get("nota") for a in lista_anexos):
+        elements.append(PageBreak())
+        elements.append(Paragraph("9. ANEXOS Y REGISTRO FOTOGRÁFICO", h2_style))
+        elements.append(
+            Paragraph(
+                "Evidencia fotográfica complementaria del proceso productivo, testimonios, "
+                "talleres descentralizados, colaboradoras y entrega final.",
+                sub_style,
+            )
+        )
+
+        data_anexos_pdf = []
+        for idx_a, anexo in enumerate(lista_anexos, 1):
+            img_cell = obtener_imagen_pdf(anexo["foto"], 130, 95)
+            nota_texto = anexo["nota"].strip() if anexo["nota"].strip() else "Sin descripción adicional."
+            texto_cell = Paragraph(f"<b>Evidencia {idx_a}:</b><br/><br/>{nota_texto}", cell_style)
+            data_anexos_pdf.append([img_cell, texto_cell])
+
+        t_anexos = Table(data_anexos_pdf, colWidths=[145, 395])
+        t_anexos.setStyle(
+            TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ])
+        )
+        elements.append(t_anexos)
+
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
     return buffer
@@ -1144,6 +1176,9 @@ if "catalogo_productos" not in st.session_state:
 
 if "lista_personal_confeccion" not in st.session_state:
     st.session_state.lista_personal_confeccion = list(PERSONAL_CONFECCION_BASE)
+
+if "num_anexos" not in st.session_state:
+    st.session_state.num_anexos = 1
 
 # Ratio de aprovechamiento aleatorio único por sesión (entre 88% y 94%)
 if "pct_aprovechamiento_random" not in st.session_state:
@@ -2265,6 +2300,50 @@ else:
 
         st.write("")
 
+        # --- SECCIÓN 8: ANEXOS (REGISTRO FOTOGRÁFICO EXTRA) ---
+        with st.container(border=True):
+            st.subheader("8. Anexos (Registro Fotográfico Adicional)")
+            st.caption(
+                "Agrega fotografías adicionales de colaboradoras con sus productos, procesos en taller, "
+                "talleres de corte o evidencia de recepción/entrega con su respectiva nota descriptiva."
+            )
+
+            col_anx1, col_anx2, _ = st.columns([1, 1, 4])
+            if col_anx1.button("➕     Agregar Anexo"):
+                st.session_state.num_anexos += 1
+                st.rerun()
+            if col_anx2.button("➖     Quitar Anexo") and st.session_state.num_anexos > 0:
+                st.session_state.num_anexos -= 1
+                st.rerun()
+
+            lista_anexos = []
+            for a_i in range(st.session_state.num_anexos):
+                st.markdown(f"**Evidencia Anexa {a_i+1}**")
+                col_afoto, col_anota = st.columns([1.5, 3])
+
+                foto_anx = col_afoto.file_uploader(
+                    "Fotografía de Evidencia",
+                    type=["jpg", "png", "jpeg"],
+                    key=f"anx_foto_{a_i}",
+                )
+
+                if foto_anx is not None:
+                    col_afoto.image(foto_anx, width=110)
+
+                nota_anx = col_anota.text_area(
+                    "Nota / Descripción de la evidencia",
+                    placeholder="Ej. Colaboradora Juana Padilla elaborando productos en taller descentralizado...",
+                    key=f"anx_nota_{a_i}",
+                    height=90,
+                )
+
+                lista_anexos.append({
+                    "foto": foto_anx,
+                    "nota": nota_anx,
+                })
+
+        st.write("")
+
         def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, items_val):
             errores = []
             if not cliente_val.strip():
@@ -2369,6 +2448,7 @@ else:
                                 emisiones_lavado,
                                 emisiones_corte,
                                 emisiones_bordado,
+                                lista_anexos=lista_anexos,
                             )
                             st.success("✅  ¡PDF generado exitosamente!")
                             st.download_button(
