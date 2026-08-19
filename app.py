@@ -1461,8 +1461,12 @@ else:
                 )
                 peso_u = p_total / unid if unid > 0 else 0.0
                 
+                # Dynamic key for real-time recalculation
                 col_tot.text_input(
-                    "Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}"
+                    "Peso Unitario",
+                    value=f"{peso_u:.2f} kg",
+                    disabled=True,
+                    key=f"peso_u_{i}_{unid}_{p_total}",
                 )
 
                 foto = col_foto.file_uploader(
@@ -1807,7 +1811,7 @@ else:
         with st.container(border=True):
             st.subheader("7. Equipo de Trabajo y Generación de Horas")
             st.markdown(
-                "**Participación del personal en el proceso de upcycling y horas"
+                "**Participación del personal en el proceso de upcycling e horas"
                 " trabajadas por actividad**"
             )
 
