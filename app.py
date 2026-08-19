@@ -1100,6 +1100,13 @@ if "catalogo_productos" not in st.session_state:
 if "pct_corte_random" not in st.session_state:
     st.session_state.pct_corte_random = random.uniform(0.88, 0.93)
 
+# Ratios automáticos para eficiencia aleatoria (entre 88% y 94%)
+if "pct_aprovechamiento_random" not in st.session_state:
+    st.session_state.pct_aprovechamiento_random = round(random.uniform(0.88, 0.94), 4)
+
+if "pct_transformado_ratio" not in st.session_state:
+    st.session_state.pct_transformado_ratio = round(random.uniform(0.78, 0.83), 4)
+
 try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
@@ -1745,20 +1752,43 @@ else:
                 f"⚖️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg"
             )
 
+            # Cálculo automático basado en eficiencia aleatoria (88% - 94%)
+            pct_aprov_auto = st.session_state.pct_aprovechamiento_random
+            pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
+            pct_retazos_auto = pct_aprov_auto - pct_transf_auto
+
+            mat_transf_def = round(peso_total_recibido * pct_transf_auto, 2)
+            retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
+            perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
+
+            editar_balance = st.checkbox("✏️ Editar balance manualmente", key="chk_edit_balance")
+
             col_bm1, col_bm2 = st.columns(2)
             mat_transformado = col_bm1.number_input(
                 "Material transformado en productos (kg)",
                 min_value=0.0,
-                value=0.0,
+                value=float(mat_transf_def),
                 step=0.1,
+                disabled=not editar_balance,
+                key=f"bm_mat_transf_{peso_total_recibido:.2f}_{editar_balance}",
             )
             retazos_aprovechables = col_bm2.number_input(
-                "Retazos aprovechables (kg)", min_value=0.0, value=0.0, step=0.1
+                "Retazos aprovechables (kg)",
+                min_value=0.0,
+                value=float(retazos_def),
+                step=0.1,
+                disabled=not editar_balance,
+                key=f"bm_retazos_{peso_total_recibido:.2f}_{editar_balance}",
             )
 
             col_bm3, _ = st.columns([1, 1])
             perdida_no_aprovechable = col_bm3.number_input(
-                "Pérdida no aprovechable (kg)", min_value=0.0, value=0.0, step=0.1
+                "Pérdida no aprovechable (kg)",
+                min_value=0.0,
+                value=float(perdida_def),
+                step=0.1,
+                disabled=not editar_balance,
+                key=f"bm_perdida_{peso_total_recibido:.2f}_{editar_balance}",
             )
 
             total_procesado = (
