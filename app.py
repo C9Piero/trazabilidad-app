@@ -580,7 +580,12 @@ def generar_pdf_oficial(
             Paragraph("Cliente / Empresa", cell_bold),
             Paragraph(f"{cliente} (RUC: {ruc})", cell_style),
             Paragraph("Área / Responsable", cell_bold),
-            Paragraph(f"{area} / {responsable}", cell_style),
+            Paragraph(
+                f"{area} / " + "<br/>".join(
+                    f"• {r}" for r in responsable.split(", ") if r.strip()
+                ),
+                cell_style,
+            ),
         ],
         [
             Paragraph("Tipo de Proyecto", cell_bold),
@@ -1354,9 +1359,51 @@ else:
                 "Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo
             )
 
-            responsable = c7.text_input(
-                "Responsable *", value=p_edit.get("responsable", "")
+            # Responsables del proyecto: se pueden seleccionar varios y agregar nombres nuevos.
+            RESPONSABLES_BASE = [
+                "Evelyn Prada Vizarreta",
+                "Gabriel Manrique Hurtado",
+            ]
+
+            responsables_guardados = p_edit.get("responsables", [])
+            if not isinstance(responsables_guardados, list):
+                responsables_guardados = [
+                    r.strip() for r in str(responsables_guardados).split(",") if r.strip()
+                ]
+
+            responsable_anterior = p_edit.get("responsable", "")
+            if responsable_anterior and not responsables_guardados:
+                responsables_guardados = [
+                    r.strip() for r in str(responsable_anterior).split(",") if r.strip()
+                ]
+
+            opciones_responsables = list(dict.fromkeys(
+                RESPONSABLES_BASE + responsables_guardados
+            ))
+
+            responsables_seleccionados = c7.multiselect(
+                "Responsable *",
+                options=opciones_responsables,
+                default=[
+                    r for r in responsables_guardados
+                    if r in opciones_responsables
+                ],
+                placeholder="Selecciona uno o más responsables",
+                key="responsables_proyecto",
             )
+
+            nuevo_responsable = c7.text_input(
+                "➕ Agregar otro responsable",
+                placeholder="Escribe el nombre completo",
+                key="nuevo_responsable_proyecto",
+            )
+
+            if nuevo_responsable.strip():
+                nuevo_nombre = nuevo_responsable.strip()
+                if nuevo_nombre not in responsables_seleccionados:
+                    responsables_seleccionados.append(nuevo_nombre)
+
+            responsable = ", ".join(responsables_seleccionados)
 
             area = c8.text_input("Área", value="Sostenibilidad", disabled=True)
             guia_remision = c9.text_input(
@@ -1912,24 +1959,11 @@ else:
                         ["Confección", "Acabado"],
                         key=f"soc_rol_{idx}_{p_idx}",
                     )
-                    
-                    # --- INICIO DE MODIFICACIÓN ---
-                    opciones_encargado = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado", "➕ Otro nombre"]
-                    encargado_sel = c_persona.selectbox(
+                    persona_nom = c_persona.text_input(
                         "Persona Encargada *",
-                        opciones_encargado,
-                        key=f"soc_pers_sel_{idx}_{p_idx}"
+                        placeholder=f"Encargado/a {p_idx+1}",
+                        key=f"soc_pers_{idx}_{p_idx}",
                     )
-                    
-                    if encargado_sel == "➕ Otro nombre":
-                        persona_nom = c_persona.text_input(
-                            "Escriba el nombre *",
-                            placeholder="Nombre del encargado",
-                            key=f"soc_pers_txt_{idx}_{p_idx}"
-                        )
-                    else:
-                        persona_nom = encargado_sel
-                    # --- FIN DE MODIFICACIÓN ---
 
                     cant_sugerida = max(
                         1, int(p_cant / st.session_state[key_num_pers])
@@ -1970,7 +2004,7 @@ else:
                     )
 
                     horas_confeccion_total += horas_persona
-                    if persona_nom and persona_nom.strip():
+                    if persona_nom.strip():
                         personas_confeccion_set.add(persona_nom.strip())
 
                     lista_confeccion.append({
@@ -2027,6 +2061,7 @@ else:
                             "ruc": ruc,
                             "tipo_proyecto": proyecto_nom,
                             "responsable": responsable,
+                            "responsables": responsables_seleccionados,
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "estado": "EN_PROCESO",
                             "peso_recibido": peso_total_recibido,
