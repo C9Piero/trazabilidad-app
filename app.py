@@ -1125,7 +1125,7 @@ def generar_pdf_oficial(
 
     elements.append(Paragraph(texto_conclusion, conclusion_style))
 
-    # --- 9. SECCIÓN ANEXOS (MÁXIMO 2 POR HOJA CON FOTOS GRANDES Y SALTO AUTOMÁTICO) ---
+    # --- 9. SECCIÓN ANEXOS ---
     anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
     if anexos_validos:
         elements.append(PageBreak())
@@ -1191,7 +1191,6 @@ if "lista_personal_confeccion" not in st.session_state:
 if "num_anexos" not in st.session_state:
     st.session_state.num_anexos = 1
 
-# Ratio de aprovechamiento aleatorio único por sesión (entre 88% y 94%)
 if "pct_aprovechamiento_random" not in st.session_state:
     st.session_state.pct_aprovechamiento_random = round(random.uniform(0.88, 0.94), 4)
 
@@ -1358,12 +1357,12 @@ else:
         unsafe_allow_html=True,
     )
 
+    # --- VISTA: CARGA RÁPIDA HISTÓRICA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos / Pasados")
         st.caption(
             "Utiliza este formulario simplificado para ingresar rápidamente métricas "
-            "consolidadas de proyectos pasados directamente al historial y métricas generales "
-            "sin pasar por la creación del PDF."
+            "consolidadas de proyectos pasados directamente al historial y métricas generales."
         )
 
         with st.container(border=True):
@@ -1433,6 +1432,91 @@ else:
                 except Exception as e:
                     st.error(f"⚠️ Error al registrar el proyecto: {e}")
 
+    # --- VISTA: PROYECTOS EN PROCESO ---
+    elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
+        st.subheader("📋 Lista de Proyectos en Proceso (Borradores)")
+        st.caption("Proyectos guardados pendientes de culminación o emisión definitiva.")
+        
+        proyectos_lista = cargar_proyectos()
+        borradores = [p for p in proyectos_lista if p.get("estado") == "EN_PROCESO"]
+
+        if borradores:
+            for b in borradores:
+                with st.container(border=True):
+                    bc1, bc2, bc3 = st.columns([3, 2, 2])
+                    bc1.markdown(f"**Cliente:** {b.get('cliente', 'Sin Nombre')}")
+                    bc1.caption(f"Código: `{b.get('codigo', '')}`")
+                    bc2.markdown(f"**Tipo:** {b.get('tipo_proyecto', 'Upcycling')}")
+                    bc2.caption(f"Fecha: {b.get('fecha', '')}")
+                    
+                    if bc3.button("✏️ Retomar Edición", key=f"retomar_{b.get('id', b.get('codigo'))}", use_container_width=True, type="primary"):
+                        st.session_state.proyecto_editar = b
+                        st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+                        st.rerun()
+        else:
+            st.info("📭 No hay borradores en proceso actualmente.")
+
+    # --- VISTA: DASHBOARD 2026 ---
+    elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
+        st.subheader("📊 Dashboard de Sostenibilidad e Impacto 2026")
+        st.caption("Métricas consolidadas de todos los proyectos completados en el sistema.")
+
+        proyectos_lista = cargar_proyectos()
+        completados = [p for p in proyectos_lista if p.get("estado") == "COMPLETADO"]
+
+        tot_peso = sum([float(p.get("peso_recibido", 0) or 0) for p in completados])
+        tot_co2 = sum([float(p.get("co2_neto", 0) or 0) for p in completados])
+        tot_horas = sum([float(p.get("horas_totales", 0) or 0) for p in completados])
+        tot_unids = sum([int(p.get("productos_unids", 0) or 0) for p in completados])
+
+        dm1, dm2, dm3, dm4 = st.columns(4)
+        dm1.metric("📦 Material Reciclado", f"{tot_peso:.2f} kg")
+        dm2.metric("🌍 CO₂e Neto Evitado", f"{tot_co2:.2f} kg")
+        dm3.metric("⏳ Horas de Trabajo", f"{tot_horas:.2f} hrs")
+        dm4.metric("🛍️ Productos Creados", f"{tot_unids} unid")
+
+        st.write("")
+        st.markdown("##### 📋 Resumen General de Proyectos Registrados")
+        if completados:
+            df_comp = pd.DataFrame(completados)
+            columnas_mostrar = ["codigo", "cliente", "tipo_proyecto", "peso_recibido", "co2_neto", "horas_totales", "productos_unids"]
+            nombres_cols = {
+                "codigo": "Código",
+                "cliente": "Cliente",
+                "tipo_proyecto": "Tipo",
+                "peso_recibido": "Peso (kg)",
+                "co2_neto": "CO₂e Evitado (kg)",
+                "horas_totales": "Horas",
+                "productos_unids": "Unidades",
+            }
+            df_tabla = df_comp[[c for c in columnas_mostrar if c in df_comp.columns]].rename(columns=nombres_cols)
+            st.dataframe(df_tabla, use_container_width=True, hide_index=True)
+        else:
+            st.info("📭 Aún no hay proyectos completados para mostrar en las métricas.")
+
+    # --- VISTA: HISTORIAL COMPLETO ---
+    elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
+        st.subheader("🗂️ Historial Completo de Proyectos")
+        st.caption("Listado general de todos los proyectos registrados en la base de datos.")
+
+        proyectos_lista = cargar_proyectos()
+        if proyectos_lista:
+            for p in proyectos_lista:
+                with st.container(border=True):
+                    hc1, hc2, hc3, hc4 = st.columns([3, 2, 2, 1.5])
+                    hc1.markdown(f"**{p.get('cliente', 'Sin Nombre')}**")
+                    hc1.caption(f"ID/Código: `{p.get('codigo', '')}`")
+                    hc2.markdown(f"Estado: **{p.get('estado', 'N/D')}**")
+                    hc2.caption(f"Tipo: {p.get('tipo_proyecto', 'Upcycling')}")
+                    hc3.markdown(f"Peso: `{float(p.get('peso_recibido', 0) or 0):.2f} kg`")
+                    hc3.caption(f"Fecha: {p.get('fecha', 'N/D')}")
+
+                    if hc4.button("🗑️ Eliminar", key=f"hist_del_{p.get('id', p.get('codigo'))}", use_container_width=True):
+                        modal_confirmar_eliminacion(p)
+        else:
+            st.info("📭 No hay proyectos registrados en el historial.")
+
+    # --- VISTA: NUEVO REPORTE PDF ---
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
