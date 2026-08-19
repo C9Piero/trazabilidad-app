@@ -1451,7 +1451,7 @@ else:
                     "Ingreso (unid.) *", min_value=0, value=0, key=f"unid_{i}"
                 )
                 
-                # Ingreso modificado: Ahora pides peso total y calculas peso unitario
+                # Ingreso de peso total y cálculo de peso unitario en tiempo real
                 p_total = col_peso.number_input(
                     "Peso Total (kg) *",
                     min_value=0.0,
@@ -1461,7 +1461,6 @@ else:
                 )
                 peso_u = p_total / unid if unid > 0 else 0.0
                 
-                # Dynamic key for real-time recalculation
                 col_tot.text_input(
                     "Peso Unitario",
                     value=f"{peso_u:.2f} kg",
@@ -1567,8 +1566,13 @@ else:
                     key=f"tr_resp_{i}",
                 )
 
+                # Clasificación: toma el peso total de la Sección 2 y queda bloqueado (disabled)
+                es_clasificacion = (item_fijo["etapa"] == "Clasificación")
                 e_pes_str = c_peso.text_input(
-                    "Peso (kg) *", value=item_fijo["peso"], key=f"tr_peso_{i}"
+                    "Peso (kg) *",
+                    value=f"{peso_total_recibido:.2f}" if es_clasificacion else item_fijo["peso"],
+                    disabled=es_clasificacion,
+                    key=f"tr_peso_{i}_{peso_total_recibido:.2f}" if es_clasificacion else f"tr_peso_{i}",
                 )
 
                 try:
@@ -1811,7 +1815,7 @@ else:
         with st.container(border=True):
             st.subheader("7. Equipo de Trabajo y Generación de Horas")
             st.markdown(
-                "**Participación del personal en el proceso de upcycling e horas"
+                "**Participación del personal en el proceso de upcycling y horas"
                 " trabajadas por actividad**"
             )
 
