@@ -163,6 +163,61 @@ FACTORES_TRANSPORTE = {
     "Camión grande": {"consumo": 0.40, "factor": 2.68},
 }
 
+# --- DISTANCIAS APROXIMADAS (KM) A LAS FLORES, SAN JUAN DE LURIGANCHO ---
+DISTANCIAS_LIMA_SJL = {
+    "San Juan de Lurigancho (Local)": 4.0,
+    "Ancón": 48.0,
+    "Ate": 14.0,
+    "Barranco": 18.5,
+    "Bellavista (Callao)": 17.0,
+    "Breña": 10.5,
+    "Callao (Cercado)": 18.0,
+    "Carabayllo": 25.0,
+    "Carmen de la Legua Reynoso (Callao)": 15.0,
+    "Chaclacayo": 28.0,
+    "Chorrillos": 22.0,
+    "Cieneguilla": 32.0,
+    "Comas": 18.0,
+    "El Agustino": 6.0,
+    "Independencia": 12.0,
+    "Jesús María": 12.0,
+    "La Molina": 15.0,
+    "La Perla (Callao)": 18.0,
+    "La Punta (Callao)": 21.0,
+    "La Victoria": 9.5,
+    "Lima (Cercado de Lima)": 9.0,
+    "Lince": 12.5,
+    "Los Olivos": 15.0,
+    "Lurigancho-Chosica": 36.0,
+    "Lurín": 36.0,
+    "Magdalena del Mar": 15.0,
+    "Mi Perú (Callao)": 32.0,
+    "Miraflores": 16.0,
+    "Pachacámac": 34.0,
+    "Pucusana": 72.0,
+    "Pueblo Libre": 13.5,
+    "Puente Piedra": 28.0,
+    "Punta Hermosa": 52.0,
+    "Punta Negra": 56.0,
+    "Rímac": 7.5,
+    "San Bartolo": 60.0,
+    "San Borja": 12.0,
+    "San Isidro": 13.5,
+    "San Juan de Miraflores": 20.0,
+    "San Luis": 10.0,
+    "San Martín de Porres": 13.0,
+    "San Miguel": 15.5,
+    "Santa Anita": 8.0,
+    "Santa María del Mar": 63.0,
+    "Santa Rosa": 42.0,
+    "Santiago de Surco": 17.0,
+    "Surquillo": 14.5,
+    "Ventanilla (Callao)": 30.0,
+    "Villa El Salvador": 28.0,
+    "Villa María del Triunfo": 24.0,
+    "➕ Otro / Fuera de Lima (Ingreso manual)": 0.0,
+}
+
 # --- FACTORES DE BORDADO ---
 FACTORES_BORDADO = {
     "Sin bordado / Ninguno": 0.0,
@@ -1359,7 +1414,6 @@ else:
                 "Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo
             )
 
-            # Responsables del proyecto: se pueden seleccionar varios y agregar nombres nuevos.
             RESPONSABLES_BASE = [
                 "Evelyn Prada Vizarreta",
                 "Gabriel Manrique Hurtado",
@@ -1411,7 +1465,6 @@ else:
             )
 
             origen = st.text_input("Punto Origen *", value=p_edit.get("origen", ""))
-            # El destino ahora es una constante fija. No se mostrará en pantalla.
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
 
         st.write("")
@@ -1451,7 +1504,7 @@ else:
                     "Ingreso (unid.) *", min_value=0, value=0, key=f"unid_{i}"
                 )
                 
-                # Ingreso de peso total y cálculo de peso unitario en tiempo real
+                # Ingreso de peso total y cálculo de peso unitario
                 p_total = col_peso.number_input(
                     "Peso Total (kg) *",
                     min_value=0.0,
@@ -1501,7 +1554,6 @@ else:
         with st.container(border=True):
             st.subheader("3. Trazabilidad del Proceso en Upcycling")
             
-            # Dinamismo de pesos:
             peso_corte_default = peso_total_recibido * st.session_state.pct_corte_random
 
             etapas_fijas = [
@@ -1566,7 +1618,7 @@ else:
                     key=f"tr_resp_{i}",
                 )
 
-                # Clasificación: toma el peso total de la Sección 2 y queda bloqueado (disabled)
+                # Clasificación: toma el peso total de Sección 2 y queda bloqueado
                 es_clasificacion = (item_fijo["etapa"] == "Clasificación")
                 e_pes_str = c_peso.text_input(
                     "Peso (kg) *",
@@ -1736,15 +1788,41 @@ else:
             st.subheader("6. Balance de Emisiones (CO₂e)")
 
             st.markdown("##### 🚚 A. Cálculo de Transporte")
-            ct1, ct2, ct3 = st.columns(3)
-            vehiculo_sel = ct1.selectbox(
+            st.caption("Destino Fijo: **Taller Las Flores, San Juan de Lurigancho (SJL)**")
+            
+            ct1, ct2, ct3, ct4 = st.columns([2.5, 1.2, 1.8, 1.5])
+            
+            distrito_sel = ct1.selectbox(
+                "Distrito de Origen (Recojo de Material) *",
+                list(DISTANCIAS_LIMA_SJL.keys()),
+                index=0,
+                key="transporte_distrito_origen",
+            )
+
+            dist_defecto = float(DISTANCIAS_LIMA_SJL[distrito_sel])
+
+            if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)":
+                distancia_km = ct2.number_input(
+                    "Distancia (km) *",
+                    min_value=0.0,
+                    value=0.0,
+                    step=1.0,
+                    key="dist_km_manual",
+                )
+            else:
+                distancia_km = ct2.number_input(
+                    "Distancia (km)",
+                    min_value=0.0,
+                    value=dist_defecto,
+                    step=0.5,
+                    key=f"dist_km_auto_{distrito_sel}",
+                )
+
+            vehiculo_sel = ct3.selectbox(
                 "Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys())
             )
-            recorrido_tipo = ct2.selectbox(
+            recorrido_tipo = ct4.selectbox(
                 "Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"]
-            )
-            distancia_km = ct3.number_input(
-                "Distancia Recorrida (km)", min_value=0.0, value=0.0, step=0.5
             )
 
             factor_veh = FACTORES_TRANSPORTE[vehiculo_sel]
@@ -1757,8 +1835,8 @@ else:
             )
 
             st.caption(
-                "Emisión de Transporte estimada:"
-                f" **{emisiones_transporte:.2f} kg CO₂e**"
+                f"Distancia considerada: **{distancia_km:.1f} km** ({recorrido_tipo}) | "
+                f"Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**"
             )
 
             st.markdown(
