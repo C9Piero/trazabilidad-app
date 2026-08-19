@@ -1,6 +1,7 @@
 import datetime
 import io
 import re
+import random
 import pandas as pd
 import streamlit as st
 from reportlab.lib import colors
@@ -1036,6 +1037,9 @@ if "proyecto_editar" not in st.session_state:
 if "catalogo_productos" not in st.session_state:
     st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
 
+if "pct_corte_random" not in st.session_state:
+    st.session_state.pct_corte_random = random.uniform(0.88, 0.93)
+
 try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
@@ -1359,9 +1363,9 @@ else:
                 "Nº Guía Remisión", value=p_edit.get("guia", "")
             )
 
-            c10, c11 = st.columns(2)
-            origen = c10.text_input("Punto Origen *", value=p_edit.get("origen", ""))
-            destino = c11.text_input("Punto Destino *", value=p_edit.get("destino", ""))
+            origen = st.text_input("Punto Origen *", value=p_edit.get("origen", ""))
+            # El destino ahora es una constante fija. No se mostrará en pantalla.
+            destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
 
         st.write("")
 
@@ -1399,17 +1403,21 @@ else:
                 unid = col_unid.number_input(
                     "Ingreso (unid.) *", min_value=0, value=0, key=f"unid_{i}"
                 )
-                peso_u = col_peso.number_input(
-                    "Peso Unit. (kg) *",
+                
+                # Ingreso modificado: Ahora pides peso total y calculas peso unitario
+                p_total = col_peso.number_input(
+                    "Peso Total (kg) *",
                     min_value=0.0,
                     value=0.0,
                     step=0.05,
-                    key=f"peso_{i}",
+                    key=f"tot_input_{i}",
                 )
-                p_total = unid * peso_u
+                peso_u = p_total / unid if unid > 0 else 0.0
+                
                 col_tot.text_input(
-                    "Peso Total", value=f"{p_total:.2f} kg", disabled=True, key=f"tot_{i}"
+                    "Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}"
                 )
+
                 foto = col_foto.file_uploader(
                     "Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}"
                 )
@@ -1442,33 +1450,37 @@ else:
 
         with st.container(border=True):
             st.subheader("3. Trazabilidad del Proceso en Upcycling")
+            
+            # Dinamismo de pesos:
+            peso_corte_default = peso_total_recibido * st.session_state.pct_corte_random
+
             etapas_fijas = [
                 {
                     "etapa": "Clasificación",
                     "fecha": datetime.date.today(),
                     "resp_defecto": "Evelyn Prada Vizarreta",
-                    "peso": "0.00",
+                    "peso": f"{peso_total_recibido:.2f}",
                     "tipo": "Registro interno",
                 },
                 {
                     "etapa": "Lavado",
                     "fecha": datetime.date.today(),
                     "resp_defecto": "Lavandería",
-                    "peso": "0.00",
+                    "peso": f"{peso_total_recibido:.2f}",
                     "tipo": "Servicio Externo",
                 },
                 {
                     "etapa": "Corte",
                     "fecha": datetime.date.today(),
                     "resp_defecto": "Taller de corte (5 integrantes)",
-                    "peso": "0.00",
+                    "peso": f"{peso_corte_default:.2f}",
                     "tipo": "Pesaje real",
                 },
                 {
                     "etapa": "Confección",
                     "fecha": datetime.date.today(),
                     "resp_defecto": "Producción descentralizada",
-                    "peso": "0.00",
+                    "peso": f"{peso_corte_default:.2f}",
                     "tipo": "Entrega / Recepción",
                 },
             ]
@@ -1936,7 +1948,13 @@ else:
                         )
 
                     horas_persona = cant_asig * tiempo_unitario
-                    c_tot.metric("Subtotal Horas", f"{horas_persona:.2f} hrs")
+
+                    c_tot.text_input(
+                        "Horas Totales",
+                        value=f"{horas_persona:.2f} hrs",
+                        disabled=True,
+                        key=f"soc_htot_{idx}_{p_idx}",
+                    )
 
                     horas_confeccion_total += horas_persona
                     if persona_nom.strip():
@@ -1944,87 +1962,59 @@ else:
 
                     lista_confeccion.append({
                         "producto": p_nom,
-                        "cantidad": cant_asig,
                         "rol": rol_sel,
-                        "persona": (
-                            persona_nom.strip() if persona_nom.strip() else "Por asignar"
-                        ),
+                        "persona": persona_nom,
+                        "cantidad": cant_asig,
                         "tiempo_unitario": tiempo_unitario,
                         "horas_totales": horas_persona,
                     })
-
-                st.write("---")
 
             total_horas_social = total_horas_ops + horas_confeccion_total
             total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(
                 personas_confeccion_set
             )
 
-            ms1, ms2, ms3 = st.columns(3)
-            ms1.metric(
-                "Horas Corte y Logística",
-                f"{total_horas_ops:.2f} hrs",
-                f"{len(PERSONAL_FIJO_OPERACIONES)} Personas",
+            st.info(
+                "🧑‍🤝‍🧑 **Impacto Social Total:**"
+                f" {total_horas_social:.2f} horas generadas |"
+                f" {total_personas_social} personas beneficiadas."
             )
-            ms2.metric(
-                "Horas Confección y Acabado",
-                f"{horas_confeccion_total:.2f} hrs",
-                f"{len(personas_confeccion_set)} Artesanas",
-            )
-            ms3.metric(
-                " TOTAL IMPACTO SOCIAL",
-                f"{total_horas_social:.2f} hrs",
-                f"{total_personas_social} Beneficiarios",
-            )
+
         st.write("")
 
-        def _validar_borrador(cliente_val):
+        def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, items_val):
             errores = []
             if not cliente_val.strip():
-                errores.append("Ingresa el **Cliente / Empresa** para guardar el borrador.")
-            return errores
-
-        def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, destino_val, items_val):
-            errores = []
-            if not cliente_val.strip():
-                errores.append("El campo **Cliente / Empresa** es obligatorio.")
-            
-            if not ruc_val.strip():
-                errores.append("El campo **RUC** es obligatorio.")
-            elif not re.fullmatch(r"\d{11}", ruc_val.strip()):
-                errores.append("El **RUC** debe contener exactamente 11 números.")
-                
+                errores.append("Falta 'Cliente / Empresa' en Ficha General.")
+            if not ruc_val.strip() or not re.fullmatch(r"\d{11}", ruc_val.strip()):
+                errores.append("El 'RUC' debe tener 11 dígitos numéricos.")
             if not responsable_val.strip():
-                errores.append("El campo **Responsable** es obligatorio.")
+                errores.append("Falta 'Responsable' en Ficha General.")
             if not origen_val.strip():
-                errores.append("El campo **Punto Origen** es obligatorio.")
-            if not destino_val.strip():
-                errores.append("El campo **Punto Destino** es obligatorio.")
-            if not items_val:
-                errores.append(
-                    "Debes registrar al menos **un ítem de material ingresado**."
-                )
+                errores.append("Falta 'Punto Origen' en Ficha General.")
+            for i_item, v_item in enumerate(items_val, 1):
+                if v_item["unidades"] <= 0 or v_item["peso_total"] <= 0:
+                    errores.append(
+                        f"En Ingreso de Material (Ítem {i_item}), las unidades y el "
+                        "peso total deben ser mayores a 0."
+                    )
             return errores
 
-        b_col1, b_col2 = st.columns(2)
+        with st.container(border=True):
+            col_gen1, col_gen2, col_gen3 = st.columns([1, 1, 1])
 
-        if b_col1.button(
-            "💾 Guardar Borrador (En Proceso)", use_container_width=True
-        ):
-            errores_borrador = _validar_borrador(cliente)
-            if errores_borrador:
-                for err in errores_borrador:
-                    st.error(err)
-            else:
+            if col_gen2.button(
+                "💾 Guardar como Borrador", use_container_width=True
+            ):
                 try:
-                    with st.spinner("Guardando borrador..."):
+                    with st.spinner("Guardando en la base de datos..."):
                         datos_borrador = {
                             "codigo": codigo_proy,
-                            "cliente": cliente if cliente else "CLIENTE POR DEFINIR",
-                            "fecha": f"{fe_inicio} - {fe_fin}",
+                            "cliente": cliente,
                             "ruc": ruc,
                             "tipo_proyecto": proyecto_nom,
                             "responsable": responsable,
+                            "fecha": f"{fe_inicio} - {fe_fin}",
                             "estado": "EN_PROCESO",
                             "peso_recibido": peso_total_recibido,
                             "peso_transformado": mat_transformado,
@@ -2034,182 +2024,101 @@ else:
                             "productos_unids": total_prod_unid,
                             "punto_origen": origen
                         }
-                        if p_edit and p_edit.get("id"):
-                            datos_borrador["id"] = p_edit.get("id")
+                        
+                        if p_edit.get("id"):
+                            supabase.table("proyectos").update(datos_borrador).eq("id", p_edit["id"]).execute()
+                        else:
+                            supabase.table("proyectos").insert(datos_borrador).execute()
 
-                        supabase.table("proyectos").upsert(datos_borrador).execute()
-                    st.success("✅ ¡Guardado con éxito como Borrador!")
+                    st.success("✅ Borrador guardado exitosamente.")
+                    st.session_state.proyecto_editar = {}
                     st.rerun()
+
                 except Exception as e:
-                    st.error(f"⚠️ No se pudo guardar el borrador: {e}")
+                    st.error(f"⚠️ Error al guardar el borrador: {e}")
 
-        if b_col2.button(
-            "📄 Finalizar y Generar PDF Oficial",
-            type="primary",
-            use_container_width=True,
-        ):
-            errores_final = _validar_informe_final(
-                cliente, ruc, responsable, origen, destino, lista_items
-            )
-            if errores_final:
-                st.error("No se puede generar el informe oficial. Revisa los siguientes campos obligatorios:")
-                for err in errores_final:
-                    st.markdown(f"- {err}")
-            else:
-                guardado_ok = True
-                try:
-                    with st.spinner("Actualizando estado del proyecto a COMPLETADO..."):
-                        datos_completado = {
-                            "codigo": codigo_proy,
-                            "cliente": cliente,
-                            "fecha": f"{fe_inicio} - {fe_fin}",
-                            "ruc": ruc,
-                            "tipo_proyecto": proyecto_nom,
-                            "responsable": responsable,
-                            "estado": "COMPLETADO",
-                            "peso_recibido": peso_total_recibido,
-                            "peso_transformado": mat_transformado,
-                            "aprovechamiento": pct_aprovechamiento_total,
-                            "co2_neto": co2_neto,
-                            "horas_totales": total_horas_social,
-                            "productos_unids": total_prod_unid,
-                            "punto_origen": origen
-                        }
-                        if p_edit and p_edit.get("id"):
-                            datos_completado["id"] = p_edit.get("id")
-
-                        supabase.table("proyectos").upsert(datos_completado).execute()
-                        st.session_state.proyecto_editar = {}
-                except Exception as e:
-                    guardado_ok = False
-                    st.warning(
-                        "⚠️ El informe se generará, pero **no se pudo "
-                        "actualizar el estado del proyecto a COMPLETADO**: "
-                        f"{e}"
-                    )
-
-                try:
-                    with st.spinner("Generando informe PDF..."):
-                        pdf_buffer = generar_pdf_oficial(
-                            cliente=cliente,
-                            ruc=ruc,
-                            proyecto_nom=proyecto_nom,
-                            codigo_proy=codigo_proy,
-                            fe_inicio=fe_inicio,
-                            fe_fin=fe_fin,
-                            responsable=responsable,
-                            area=area,
-                            tipo_material="Poliéster / Algodón",
-                            valorizacion="Upcycling / Reciclaje Textil",
-                            unidad_medida="Kilogramos / Piezas",
-                            guia_remision=guia_remision,
-                            origen=origen,
-                            destino=destino,
-                            lista_items=lista_items,
-                            lista_trazabilidad=lista_trazabilidad,
-                            lista_productos=lista_productos,
-                            mat_transformado=mat_transformado,
-                            retazos_aprovechables=retazos_aprovechables,
-                            perdida_no_aprovechable=perdida_no_aprovechable,
-                            total_procesado=total_procesado,
-                            pct_aprovechamiento_total=pct_aprovechamiento_total,
-                            pct_perdida=pct_perdida,
-                            lista_operaciones_pdf=lista_operaciones,
-                            lista_confeccion=lista_confeccion,
-                            total_horas_social=total_horas_social,
-                            total_personas_social=total_personas_social,
-                            co2_evitado_total=co2_evitado_total,
-                            emisiones_transporte=emisiones_transporte,
-                            emisiones_lavado=emisiones_lavado,
-                            emisiones_corte=emisiones_corte,
-                            emisiones_bordado=emisiones_bordado,
-                        )
-                except Exception as e:
-                    st.error(
-                        "⚠️ Ocurrió un error al generar el PDF. No se pudo "
-                        "completar el informe."
-                    )
-                    with st.expander("Detalle técnico del error"):
-                        st.exception(e)
-                    st.stop()
-
-                if guardado_ok:
-                    st.success("✅ ¡Proyecto completado e Informe Técnico Generado Exitosamente!")
-                st.download_button(
-                    label="⬇️ DESCARGAR INFORME TÉCNICO EN PDF",
-                    data=pdf_buffer,
-                    file_name=f"Informe_Trazabilidad_{codigo_proy}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
+            if col_gen1.button(
+                "📄 Generar y Descargar PDF",
+                type="primary",
+                use_container_width=True,
+            ):
+                errores_final = _validar_informe_final(
+                    cliente, ruc, responsable, origen, lista_items
                 )
+                if errores_final:
+                    st.error("⚠️  Por favor, corrige los siguientes errores antes de generar el PDF:")
+                    for err in errores_final:
+                        st.markdown(f"- {err}")
+                else:
+                    with st.spinner("Generando Informe Técnico PDF..."):
+                        try:
+                            pdf_buffer = generar_pdf_oficial(
+                                cliente,
+                                ruc,
+                                proyecto_nom,
+                                codigo_proy,
+                                fe_inicio,
+                                fe_fin,
+                                responsable,
+                                area,
+                                "Textiles en desuso",
+                                "Upcycling",
+                                "Kilogramos (kg)",
+                                guia_remision,
+                                origen,
+                                destino,
+                                lista_items,
+                                lista_trazabilidad,
+                                lista_productos,
+                                mat_transformado,
+                                retazos_aprovechables,
+                                perdida_no_aprovechable,
+                                total_procesado,
+                                pct_aprovechamiento_total,
+                                pct_perdida,
+                                lista_operaciones,
+                                lista_confeccion,
+                                total_horas_social,
+                                total_personas_social,
+                                co2_evitado_total,
+                                emisiones_transporte,
+                                emisiones_lavado,
+                                emisiones_corte,
+                                emisiones_bordado,
+                            )
+                            st.success("✅  ¡PDF generado exitosamente!")
+                            st.download_button(
+                                label="📥 Descargar Informe Técnico",
+                                data=pdf_buffer,
+                                file_name=f"Informe_Tecnico_{codigo_proy}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                type="primary",
+                            )
 
-    elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
-        st.subheader("📋 Proyectos Guardados en Borrador (En Proceso)")
-        proyectos_lista = cargar_proyectos(estado="EN_PROCESO")
+                            try:
+                                datos_completado = {
+                                    "codigo": codigo_proy,
+                                    "cliente": cliente,
+                                    "ruc": ruc,
+                                    "tipo_proyecto": proyecto_nom,
+                                    "responsable": responsable,
+                                    "fecha": f"{fe_inicio} - {fe_fin}",
+                                    "estado": "COMPLETADO",
+                                    "peso_recibido": peso_total_recibido,
+                                    "peso_transformado": mat_transformado,
+                                    "aprovechamiento": pct_aprovechamiento_total,
+                                    "co2_neto": co2_neto,
+                                    "horas_totales": total_horas_social,
+                                    "productos_unids": total_prod_unid,
+                                    "punto_origen": origen
+                                }
+                                if p_edit.get("id"):
+                                    supabase.table("proyectos").update(datos_completado).eq("id", p_edit["id"]).execute()
+                                else:
+                                    supabase.table("proyectos").upsert(datos_completado).execute()
+                            except Exception as e_bd:
+                                st.warning(f"⚠️ El PDF se generó, pero hubo un error al actualizar el estado en la BD: {e_bd}")
 
-        if proyectos_lista:
-            df = pd.DataFrame(proyectos_lista)
-            st.dataframe(df, use_container_width=True)
-
-            st.write("---")
-            st.markdown("##### Seleccionar proyecto para gestionar:")
-            col_sel, col_btn, col_btn_del = st.columns([3, 1, 1])
-            opciones_proy = {
-                f"{p.get('cliente', '')} ({p.get('codigo', '')})": p
-                for p in proyectos_lista
-            }
-            seleccionado = col_sel.selectbox(
-                "Seleccione un proyecto", list(opciones_proy.keys())
-            )
-
-            if col_btn.button(
-                "📂 Cargar Borrador", type="primary", use_container_width=True
-            ):
-                st.session_state.proyecto_editar = opciones_proy[seleccionado]
-                st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
-                st.rerun()
-
-            if col_btn_del.button(
-                "🗑️ Eliminar Proyecto", use_container_width=True
-            ):
-                modal_confirmar_eliminacion(opciones_proy[seleccionado])
-        else:
-            st.info("No hay proyectos pendientes o guardados en proceso.")
-
-    elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
-        st.subheader("📊 Indicadores Globales de Sostenibilidad 2026")
-
-        proyectos_comp = cargar_proyectos(estado="COMPLETADO")
-        if proyectos_comp:
-            tot_peso = sum([p.get("peso_recibido", 0) or 0 for p in proyectos_comp])
-            tot_co2 = sum([p.get("co2_neto", 0) or 0 for p in proyectos_comp])
-            tot_horas = sum([p.get("horas_totales", 0) or 0 for p in proyectos_comp])
-            aprov_list = [p.get("aprovechamiento", 0) or 0 for p in proyectos_comp if p.get("aprovechamiento") is not None]
-            prom_aprov = (sum(aprov_list) / len(aprov_list)) if aprov_list else 0.0
-
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Total Material Procesado", f"{tot_peso:.2f} kg")
-            m2.metric("CO₂e Neto Evitado", f"{tot_co2:.2f} kg")
-            m3.metric("Aprovechamiento Promedio", f"{prom_aprov:.1f}%")
-            m4.metric("Horas Trabajo Generadas", f"{tot_horas:.2f} hrs")
-        else:
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Total Material Procesado", "0.00 kg")
-            m2.metric("CO₂e Neto Evitado", "0.00 kg")
-            m3.metric("Aprovechamiento Promedio", "0.0%")
-            m4.metric("Horas Trabajo Generadas", "0.0 hrs")
-
-        st.write("---")
-
-    elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
-        st.subheader("🗂️ Histórico de Proyectos Finalizados")
-        proyectos_completados = cargar_proyectos(estado="COMPLETADO")
-
-        if proyectos_completados:
-            df_comp = pd.DataFrame(proyectos_completados)
-            st.dataframe(df_comp, use_container_width=True)
-        else:
-            st.info(
-                "Aún no se registran proyectos marcados como COMPLETADO en la base de"
-                " datos."
-            )
+                        except Exception as e:
+                            st.error(f"❌ Error al generar el PDF: {e}")
