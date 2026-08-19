@@ -1125,36 +1125,47 @@ def generar_pdf_oficial(
 
     elements.append(Paragraph(texto_conclusion, conclusion_style))
 
-    # --- 9. SECCIÓN ANEXOS (SI EXISTEN EN EL REPORTE) ---
-    if lista_anexos and any(a.get("foto") or a.get("nota") for a in lista_anexos):
+    # --- 9. SECCIÓN ANEXOS (MÁXIMO 2 POR HOJA CON FOTOS GRANDES Y SALTO AUTOMÁTICO) ---
+    anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
+    if anexos_validos:
         elements.append(PageBreak())
         elements.append(Paragraph("9. ANEXOS Y REGISTRO FOTOGRÁFICO", h2_style))
         elements.append(
             Paragraph(
-                "Evidencia fotográfica complementaria del proceso productivo, testimonios, "
-                "talleres descentralizados, colaboradoras y entrega final.",
+                "Evidencias visuales complementarias del proceso: fotos en taller, colaboradoras, "
+                "acabados y detalles del proyecto.",
                 sub_style,
             )
         )
+        elements.append(Spacer(1, 4))
 
-        data_anexos_pdf = []
-        for idx_a, anexo in enumerate(lista_anexos, 1):
-            img_cell = obtener_imagen_pdf(anexo["foto"], 130, 95)
+        for idx_a, anexo in enumerate(anexos_validos, 1):
+            img_cell = obtener_imagen_pdf(anexo["foto"], width=480, height=215)
             nota_texto = anexo["nota"].strip() if anexo["nota"].strip() else "Sin descripción adicional."
-            texto_cell = Paragraph(f"<b>Evidencia {idx_a}:</b><br/><br/>{nota_texto}", cell_style)
-            data_anexos_pdf.append([img_cell, texto_cell])
 
-        t_anexos = Table(data_anexos_pdf, colWidths=[145, 395])
-        t_anexos.setStyle(
-            TableStyle([
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                ("PADDING", (0, 0), (-1, -1), 6),
-            ])
-        )
-        elements.append(t_anexos)
+            card_data = [
+                [Paragraph(f"<b>Evidencia Fotográfica {idx_a}</b>", cell_bold)],
+                [img_cell],
+                [Paragraph(f"<b>Nota / Descripción:</b> {nota_texto}", cell_style)],
+            ]
+
+            t_card = Table(card_data, colWidths=[520])
+            t_card.setStyle(
+                TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("ALIGN", (0, 1), (0, 1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("PADDING", (0, 0), (-1, -1), 5),
+                ])
+            )
+
+            elements.append(t_card)
+            elements.append(Spacer(1, 8))
+
+            if idx_a % 2 == 0 and idx_a < len(anexos_validos):
+                elements.append(PageBreak())
 
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
