@@ -1970,13 +1970,14 @@ else:
                     label_visibility="collapsed",
                 )
 
-                editar_nom = c_chk.checkbox(
+                # Casilla para habilitar la edición de esa fila
+                editar_fila = c_chk.checkbox(
                     "✅", key=f"ops_chk_{idx}", label_visibility="collapsed"
                 )
                 nom_val = c_nom.text_input(
                     "Nombre",
                     value=p_fijo["nombre"],
-                    disabled=not editar_nom,
+                    disabled=not editar_fila,
                     key=f"ops_nom_{idx}",
                     label_visibility="collapsed",
                 )
@@ -1993,7 +1994,8 @@ else:
                     min_value=0,
                     value=int(val_dias_defecto),
                     step=1,
-                    key=f"ops_dias_dyn_{idx}_{val_dias_defecto}",
+                    disabled=not editar_fila,
+                    key=f"ops_dias_dyn_{idx}_{val_dias_defecto}_{editar_fila}",
                     label_visibility="collapsed",
                 )
                 val_hdia = c_hdia.number_input(
@@ -2001,7 +2003,8 @@ else:
                     min_value=0.0,
                     value=float(val_hdia_defecto),
                     step=0.5,
-                    key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}",
+                    disabled=not editar_fila,
+                    key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}_{editar_fila}",
                     label_visibility="collapsed",
                 )
 
@@ -2174,7 +2177,7 @@ else:
                             "ruc": ruc,
                             "tipo_proyecto": proyecto_nom,
                             "responsable": responsable,
-                            "responsables": responsables_seleccionados,
+                            "responsables":圖=responsables_seleccionados if 'responsables_seleccionados' in locals() else [],
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "estado": "EN_PROCESO",
                             "peso_recibido": peso_total_recibido,
