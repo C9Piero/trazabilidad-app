@@ -5,3 +5,5 @@ supabase
 reportlab
 streamlit-option-menu
 docxtpl
+google-api-python-client
+google-auth
