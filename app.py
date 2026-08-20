@@ -1562,7 +1562,7 @@ else:
             use_container_width=True,
         ):
             if not fast_cliente.strip():
-                st.error("El campo **Cliente / Empresa** is obligatorio.")
+                st.error("El campo **Cliente / Empresa** es obligatorio.")
             elif not fast_ruc.strip() or not re.fullmatch(
                 r"\d{11}", fast_ruc.strip()
             ):
@@ -2074,7 +2074,7 @@ else:
                     "etapa": "Lavado",
                     "fecha": datetime.date.today(),
                     "resp_defecto": "Lavandería",
-                    "peso_defecto": 0.0,  # <-- CORREGIDO: Inicia en 0.0 para ingreso manual o si no hay lavado
+                    "peso_defecto": 0.0,
                     "tipo": "Servicio Externo",
                 },
                 {
@@ -2967,7 +2967,6 @@ else:
                         # Empaquetar todo el estado detallado para su restauración exacta
                         datos_detalle = {
                             "responsables_seleccionados": responsables_seleccionados,
-                            "guia_remision": guia_remision,
                             "origen": origen,
                             "num_items": st.session_state.num_items,
                             "items": [
@@ -3055,7 +3054,6 @@ else:
                             "ruc": ruc,
                             "tipo_proyecto": proyecto_nom,
                             "responsable": responsable,
-                            "guia": guia_remision,
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "estado": "EN_PROCESO",
                             "peso_recibido": peso_total_recibido,
@@ -3103,7 +3101,7 @@ else:
                         st.markdown(f"- {err}")
                 else:
                     with st.spinner(
-                        "Generando Informe Técnico y Constancia Oficial desde Plantilla Word..."
+                        "Generando Informe Técnico y Constancia Oficial..."
                     ):
                         try:
                             # 1. Generar Informe Técnico PDF
@@ -3198,7 +3196,6 @@ else:
                                     "ruc": ruc,
                                     "tipo_proyecto": proyecto_nom,
                                     "responsable": responsable,
-                                    "guia": guia_remision,
                                     "fecha": f"{fe_inicio} - {fe_fin}",
                                     "estado": "COMPLETADO",
                                     "peso_recibido": peso_total_recibido,
@@ -3212,26 +3209,28 @@ else:
                                     "constancia_url": url_constancia if url_constancia else p_edit.get("constancia_url", ""),
                                     "datos_completos": datos_detalle,
                                 }
+                                
                                 if p_edit.get("id"):
                                     supabase.table("proyectos").update(
                                         datos_completado
                                     ).eq("id", p_edit["id"]).execute()
                                 else:
-                                    supabase.table("proyectos").upsert(
+                                    supabase.table("proyectos").insert(
                                         datos_completado
                                     ).execute()
+                                    
+                                # <-- SOLO SI LA BD SE ACTUALIZA CON ÉXITO: 
+                                # Limpiamos el modo edición para que salga de la lista de borradores pendientes
+                                st.session_state.proyecto_editar = {}
+                                st.rerun()
+
                             except Exception as e_bd:
-                                st.warning(
-                                    f"⚠️ Documentos generados, detalle en BD: {e_bd}"
+                                st.error(
+                                    f"⚠️ Documentos creados en la nube, pero falló la actualización en Base de Datos: {e_bd}"
                                 )
 
-                            # <-- CORREGIDO: Limpiamos el modo edición para que salga de pendientes
-                            st.session_state.proyecto_editar = {}
-
-                            st.rerun()
-
                         except Exception as e:
-                            st.error(f"❌ Error al procesar los documentos: {e}")
+                            st.error(f"❌ Error crítico al procesar los documentos o conectarse a la nube: {e}")
 
         # --- SECCIÓN PERSISTENTE DE DESCARGA (NO SE BORRA AL HACER CLIC) ---
         if st.session_state.documentos_descarga:
