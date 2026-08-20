@@ -539,15 +539,55 @@ class ReporteCanvas(canvas.Canvas):
 
 
 # --- GENERADOR DE CONSTANCIA DESDE PLANTILLA WORD DOCX ---
-def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla="plantilla_constancia.docx") -> bytes:
-    """Rellena la plantilla Word oficial y la convierte en PDF respetando el diseño 100%."""
-    if not os.path.exists(ruta_plantilla):
+def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None) -> bytes:
+    """Busca la plantilla Word en el repositorio, la rellena y la convierte a PDF."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cwd_dir = os.getcwd()
+
+    # Lista de posibles rutas exactas y variantes
+    posibles_rutas = [
+        ruta_plantilla if ruta_plantilla else "",
+        os.path.join(base_dir, "plantilla_constancia.docx"),
+        os.path.join(cwd_dir, "plantilla_constancia.docx"),
+        os.path.join(base_dir, "Constancia - Plantilla.docx"),
+        os.path.join(cwd_dir, "Constancia - Plantilla.docx"),
+        os.path.join(base_dir, "Plantilla_constancia.docx"),
+        os.path.join(cwd_dir, "Plantilla_constancia.docx"),
+    ]
+
+    ruta_encontrada = None
+    for r in posibles_rutas:
+        if r and os.path.exists(r) and os.path.isfile(r) and os.path.getsize(r) > 0:
+            ruta_encontrada = r
+            break
+
+    # Búsqueda dinámica de cualquier .docx de plantilla en la carpeta de la app
+    if not ruta_encontrada:
+        for f in os.listdir(base_dir):
+            if f.lower().endswith(".docx") and not f.startswith("~"):
+                candidato = os.path.join(base_dir, f)
+                if os.path.getsize(candidato) > 0:
+                    ruta_encontrada = candidato
+                    break
+
+    # Búsqueda dinámica en el directorio de trabajo
+    if not ruta_encontrada and os.path.exists(cwd_dir):
+        for f in os.listdir(cwd_dir):
+            if f.lower().endswith(".docx") and not f.startswith("~"):
+                candidato = os.path.join(cwd_dir, f)
+                if os.path.getsize(candidato) > 0:
+                    ruta_encontrada = candidato
+                    break
+
+    if not ruta_encontrada:
+        archivos_en_base = os.listdir(base_dir) if os.path.exists(base_dir) else []
         raise FileNotFoundError(
-            f"No se encontró el archivo '{ruta_plantilla}' en el repositorio. "
-            "Asegúrate de subir el archivo .docx a la raíz de tu proyecto en GitHub."
+            f"No se encontró el archivo de plantilla Word (.docx) en el repositorio. "
+            f"Archivos presentes en la carpeta: {archivos_en_base}"
         )
 
-    doc = DocxTemplate(ruta_plantilla)
+    # Cargar y rellenar plantilla Word
+    doc = DocxTemplate(ruta_encontrada)
     doc.render(contexto)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -559,14 +599,14 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla="plan
         resultado = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         pdf_temp = os.path.join(tmpdir, "constancia_generada.pdf")
-        if os.path.exists(pdf_temp):
+        if os.path.exists(pdf_temp) and os.path.getsize(pdf_temp) > 0:
             with open(pdf_temp, "rb") as f:
                 return f.read()
         else:
             detalle_error = resultado.stderr.decode("utf-8", errors="ignore")
             raise RuntimeError(
                 f"Error al convertir DOCX a PDF con LibreOffice. "
-                f"Asegúrate de que 'libreoffice' esté en tu archivo 'packages.txt'. Detalle: {detalle_error}"
+                f"Verifica que 'libreoffice' esté en 'packages.txt'. Detalle: {detalle_error}"
             )
 
 
