@@ -537,7 +537,8 @@ class ReporteCanvas(canvas.Canvas):
 def generar_pdf_constancia(
     cliente: str,
     fe_fin_dt: datetime.date,
-    lista_items: list,
+    peso_recibido_tot: float,
+    mat_transformado: float,
     lista_productos: list,
     co2_neto: float,
     pct_aprovechamiento: float,
@@ -549,10 +550,10 @@ def generar_pdf_constancia(
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=40,
-        rightMargin=40,
-        topMargin=40,
-        bottomMargin=40,
+        leftMargin=42,
+        rightMargin=42,
+        topMargin=45,
+        bottomMargin=45,
     )
 
     styles = getSampleStyleSheet()
@@ -564,7 +565,7 @@ def generar_pdf_constancia(
         fontSize=15,
         textColor=colors.HexColor("#1E293B"),
         alignment=1,
-        spaceAfter=15,
+        spaceAfter=14,
     )
 
     se_otorga_style = ParagraphStyle(
@@ -581,10 +582,10 @@ def generar_pdf_constancia(
         "Empresa",
         parent=styles["Heading2"],
         fontName="Helvetica-Bold",
-        fontSize=16,
+        fontSize=15,
         textColor=colors.HexColor("#0F172A"),
         alignment=1,
-        spaceAfter=15,
+        spaceAfter=16,
     )
 
     body_style = ParagraphStyle(
@@ -592,10 +593,10 @@ def generar_pdf_constancia(
         parent=styles["Normal"],
         fontName="Helvetica",
         fontSize=9.5,
-        leading=14,
+        leading=14.5,
         textColor=colors.HexColor("#334155"),
         alignment=4,
-        spaceAfter=16,
+        spaceAfter=18,
     )
 
     cell_bold = ParagraphStyle(
@@ -623,7 +624,7 @@ def generar_pdf_constancia(
         fontSize=9.5,
         textColor=colors.HexColor("#1E293B"),
         alignment=0,
-        spaceBefore=20,
+        spaceBefore=22,
     )
 
     elements = []
@@ -645,12 +646,9 @@ def generar_pdf_constancia(
         f"para la elaboración de nuevos productos como parte de un modelo de economía circular."
     )
     elements.append(Paragraph(cuerpo_texto, body_style))
-    elements.append(Spacer(1, 6))
+    elements.append(Spacer(1, 4))
 
-    # Cálculos
-    peso_recibido_tot = sum([item["peso_total"] for item in lista_items])
-    unidades_ingreso_tot = sum([item["unidades"] for item in lista_items])
-
+    # Resumen de productos elaborados
     resumen_prods_list = [
         f"{p['producto']} ({p['cantidad']} unid.)"
         for p in lista_productos
@@ -662,7 +660,7 @@ def generar_pdf_constancia(
         else "Productos varios de upcycling"
     )
 
-    # Tabla idéntica a la plantilla
+    # Tabla con las filas y categorías exactas de la plantilla
     data_tabla = [
         [
             Paragraph("<b>CATEGORÍA</b>", cell_bold),
@@ -676,8 +674,8 @@ def generar_pdf_constancia(
         ],
         [
             Paragraph("Ambiental", cell_style),
-            Paragraph("Unidades transformadas", cell_style),
-            Paragraph(f"{unidades_ingreso_tot} unid", cell_bold),
+            Paragraph("Material textil transformado", cell_style),
+            Paragraph(f"{mat_transformado:.2f} kg", cell_bold),
         ],
         [
             Paragraph("Ambiental", cell_style),
@@ -706,7 +704,7 @@ def generar_pdf_constancia(
         ],
     ]
 
-    t_constancia = Table(data_tabla, colWidths=[110, 240, 180])
+    t_constancia = Table(data_tabla, colWidths=[105, 245, 178])
     t_constancia.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F5D0FE")),
@@ -719,7 +717,7 @@ def generar_pdf_constancia(
     elements.append(t_constancia)
     elements.append(Spacer(1, 14))
 
-    # Fecha oficial de cierre
+    # Fecha oficial de término
     fecha_cierre_texto = f"Lima, {fe_fin_dt.day} de {mes_str} de {fe_fin_dt.year}"
     elements.append(Paragraph(fecha_cierre_texto, date_style))
 
@@ -1811,15 +1809,14 @@ else:
     elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
         st.subheader("🗂️ Historial Completo de Proyectos")
         st.caption(
-            "Listado general de todos los proyectos registrados con acceso"
-            " directo a sus Informes Técnicos PDF."
+            "Listado general de todos los proyectos registrados con acceso directo a ambos documentos en la nube."
         )
 
         proyectos_lista = cargar_proyectos()
         if proyectos_lista:
             for p in proyectos_lista:
                 with st.container(border=True):
-                    hc1, hc2, hc3, hc4, hc5 = st.columns([2.8, 1.8, 1.8, 2.0, 1.0])
+                    hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
                     hc1.markdown(f"**{p.get('cliente', 'Sin Nombre')}**")
                     hc1.caption(f"ID/Código: `{p.get('codigo', '')}`")
                     hc2.markdown(f"Estado: **{p.get('estado', 'N/D')}**")
@@ -1832,14 +1829,24 @@ else:
                     pdf_link = p.get("pdf_url")
                     if pdf_link:
                         hc4.link_button(
-                            "📥 Ver / Descargar PDF",
+                            "📄 Informe PDF",
                             pdf_link,
                             use_container_width=True,
                         )
                     else:
-                        hc4.caption("📄 Sin PDF en nube")
+                        hc4.caption("📄 Sin Informe")
 
-                    if hc5.button(
+                    const_link = p.get("constancia_url")
+                    if const_link:
+                        hc5.link_button(
+                            "📜 Constancia PDF",
+                            const_link,
+                            use_container_width=True,
+                        )
+                    else:
+                        hc5.caption("📜 Sin Constancia")
+
+                    if hc6.button(
                         "🗑️",
                         key=f"hist_del_{p.get('id', p.get('codigo'))}",
                         use_container_width=True,
@@ -2894,10 +2901,10 @@ else:
             return errores
 
         with st.container(border=True):
-            col_gen1, col_gen2, col_gen3 = st.columns([1.5, 1.5, 1.2])
+            col_gen1, col_gen2 = st.columns([2, 1])
 
-            if col_gen3.button(
-                "💾 Guardar Borrador", use_container_width=True
+            if col_gen2.button(
+                "💾 Guardar como Borrador", use_container_width=True
             ):
                 try:
                     with st.spinner("Guardando en la base de datos..."):
@@ -2933,9 +2940,9 @@ else:
                 except Exception as e:
                     st.error(f"⚠️ Error al guardar el borrador: {e}")
 
-            # --- BOTÓN 1: INFORME TÉCNICO COMPLETO ---
+            # --- BOTÓN PRINCIPAL QUE GENERA AMBOS DOCUMENTOS EN SIMULTÁNEO ---
             if col_gen1.button(
-                "📄 Generar Informe Técnico PDF",
+                "🚀 Generar Reportes Oficiales (Informe + Constancia)",
                 type="primary",
                 use_container_width=True,
             ):
@@ -2945,16 +2952,17 @@ else:
                 if errores_final:
                     st.error(
                         "⚠️  Por favor, corrige los siguientes errores antes de"
-                        " generar el PDF:"
+                        " generar los reportes:"
                     )
                     for err in errores_final:
                         st.markdown(f"- {err}")
                 else:
                     with st.spinner(
-                        "Generando y sincronizando Informe Técnico PDF..."
+                        "Generando y sincronizando Informe Técnico y Constancia Oficial..."
                     ):
                         try:
-                            pdf_buffer = generar_pdf_oficial(
+                            # 1. Generar Informe Técnico PDF
+                            pdf_informe_buffer = generar_pdf_oficial(
                                 cliente,
                                 ruc,
                                 proyecto_nom,
@@ -2990,25 +2998,31 @@ else:
                                 lista_anexos=lista_anexos,
                             )
 
-                            pdf_bytes = pdf_buffer.getvalue()
-                            nombre_pdf_remoto = f"Informe_{codigo_proy}.pdf"
-                            url_pdf_subido = subir_pdf_supabase(
-                                nombre_pdf_remoto, pdf_bytes
+                            # 2. Generar Constancia Oficial PDF
+                            pdf_constancia_buffer = generar_pdf_constancia(
+                                cliente=cliente,
+                                fe_fin_dt=fe_fin_dt,
+                                peso_recibido_tot=peso_total_recibido,
+                                mat_transformado=mat_transformado,
+                                lista_productos=lista_productos,
+                                co2_neto=co2_neto,
+                                pct_aprovechamiento=pct_aprovechamiento_total,
+                                total_mujeres=total_personas_social,
+                                total_horas=total_horas_social,
                             )
 
-                            st.success(
-                                "✅  ¡Informe Técnico generado y sincronizado con"
-                                " el Histórico!"
-                            )
-                            st.download_button(
-                                label="📥 Descargar Informe Técnico Ahora",
-                                data=pdf_buffer,
-                                file_name=f"Informe_Tecnico_{codigo_proy}.pdf",
-                                mime="application/pdf",
-                                use_container_width=True,
-                                type="primary",
+                            # 3. Subir ambos documentos a Supabase Storage
+                            nombre_informe_remoto = f"Informe_{codigo_proy}.pdf"
+                            url_informe = subir_pdf_supabase(
+                                nombre_informe_remoto, pdf_informe_buffer.getvalue()
                             )
 
+                            nombre_constancia_remoto = f"Constancia_{codigo_proy}.pdf"
+                            url_constancia = subir_pdf_supabase(
+                                nombre_constancia_remoto, pdf_constancia_buffer.getvalue()
+                            )
+
+                            # 4. Actualizar base de datos
                             try:
                                 datos_completado = {
                                     "codigo": codigo_proy,
@@ -3024,11 +3038,8 @@ else:
                                     "horas_totales": total_horas_social,
                                     "productos_unids": total_prod_unid,
                                     "punto_origen": origen,
-                                    "pdf_url": (
-                                        url_pdf_subido
-                                        if url_pdf_subido
-                                        else p_edit.get("pdf_url", "")
-                                    ),
+                                    "pdf_url": url_informe if url_informe else p_edit.get("pdf_url", ""),
+                                    "constancia_url": url_constancia if url_constancia else p_edit.get("constancia_url", ""),
                                 }
                                 if p_edit.get("id"):
                                     supabase.table("proyectos").update(
@@ -3040,58 +3051,31 @@ else:
                                     ).execute()
                             except Exception as e_bd:
                                 st.warning(
-                                    "⚠️ El PDF se generó, pero hubo un detalle"
-                                    f" al actualizar el estado en la BD: {e_bd}"
+                                    f"⚠️ Documentos generados, detalle en BD: {e_bd}"
                                 )
 
-                        except Exception as e:
-                            st.error(f"❌ Error al generar el PDF: {e}")
-
-            # --- BOTÓN 2: CONSTANCIA OFICIAL (IDÉNTICA A PLANTILLA) ---
-            if col_gen2.button(
-                "📜 Generar Constancia PDF",
-                type="secondary",
-                use_container_width=True,
-            ):
-                errores_constancia = []
-                if not cliente.strip():
-                    errores_constancia.append(
-                        "Falta 'Cliente / Empresa' para la constancia."
-                    )
-                if peso_total_recibido <= 0:
-                    errores_constancia.append(
-                        "Debe ingresar al menos un ítem con peso mayor a 0."
-                    )
-
-                if errores_constancia:
-                    for err in errores_constancia:
-                        st.error(f"⚠️ {err}")
-                else:
-                    with st.spinner("Generando Constancia de Transformación..."):
-                        try:
-                            constancia_buffer = generar_pdf_constancia(
-                                cliente=cliente,
-                                fe_fin_dt=fe_fin_dt,
-                                lista_items=lista_items,
-                                lista_productos=lista_productos,
-                                co2_neto=co2_neto,
-                                pct_aprovechamiento=pct_aprovechamiento_total,
-                                total_mujeres=total_personas_social,
-                                total_horas=total_horas_social,
-                            )
-
                             st.success(
-                                "✅ ¡Constancia de Transformación generada"
-                                " exitosamente!"
+                                "✅ ¡Informe Técnico y Constancia de Transformación generados y sincronizados con éxito!"
                             )
-                            st.download_button(
-                                label="📥 Descargar Constancia PDF",
-                                data=constancia_buffer,
-                                file_name=(
-                                    f"Constancia_Transformacion_{codigo_proy}.pdf"
-                                ),
+
+                            # Botones de descarga directa en pantalla
+                            col_d1, col_d2 = st.columns(2)
+                            col_d1.download_button(
+                                label="📥 Descargar Informe Técnico PDF",
+                                data=pdf_informe_buffer,
+                                file_name=f"Informe_Tecnico_{codigo_proy}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                type="primary",
+                            )
+
+                            col_d2.download_button(
+                                label="📜 Descargar Constancia PDF",
+                                data=pdf_constancia_buffer,
+                                file_name=f"Constancia_Transformacion_{codigo_proy}.pdf",
                                 mime="application/pdf",
                                 use_container_width=True,
                             )
-                        except Exception as e_c:
-                            st.error(f"❌ Error al generar la constancia: {e_c}")
+
+                        except Exception as e:
+                            st.error(f"❌ Error al generar los documentos: {e}")
