@@ -246,7 +246,6 @@ DISTANCIAS_LIMA_SJL = {
     "Independencia": 12.0,
     "Jesús María": 12.0,
     "La Molina": 15.0,
-    "La标志Perla (Callao)": 18.0,
     "La Perla (Callao)": 18.0,
     "La Punta (Callao)": 21.0,
     "La Victoria": 9.5,
@@ -1563,7 +1562,7 @@ else:
             use_container_width=True,
         ):
             if not fast_cliente.strip():
-                st.error("El campo **Cliente / Empresa** es obligatorio.")
+                st.error("El campo **Cliente / Empresa** is obligatorio.")
             elif not fast_ruc.strip() or not re.fullmatch(
                 r"\d{11}", fast_ruc.strip()
             ):
@@ -2075,7 +2074,7 @@ else:
                     "etapa": "Lavado",
                     "fecha": datetime.date.today(),
                     "resp_defecto": "Lavandería",
-                    "peso_defecto": peso_total_recibido,
+                    "peso_defecto": 0.0,  # <-- CORREGIDO: Inicia en 0.0 para ingreso manual o si no hay lavado
                     "tipo": "Servicio Externo",
                 },
                 {
@@ -2118,7 +2117,7 @@ else:
                 resp_prev_val = traza_prev.get("responsable", item_fijo["resp_defecto"])
                 peso_prev_val = float(traza_prev.get("peso", item_fijo["peso_defecto"]))
                 tipo_prev_val = traza_prev.get("tipo_registro", item_fijo["tipo"])
-                is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
+                is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"] or (item_fijo["etapa"] == "Lavado" and peso_prev_val > 0))
 
                 e_nom = c_etapa.text_input(
                     "Etapa",
@@ -2144,7 +2143,7 @@ else:
                     key=f"tr_resp_{i}",
                 )
 
-                val_peso_etapa = peso_prev_val if is_edited_prev else float(item_fijo["peso_defecto"])
+                val_peso_etapa = peso_prev_val if (is_edited_prev or item_fijo["etapa"] != "Lavado") else float(item_fijo["peso_defecto"])
                 e_pes_str = c_peso.text_input(
                     "Peso (kg) *",
                     value=f"{val_peso_etapa:.2f}",
@@ -3225,6 +3224,9 @@ else:
                                 st.warning(
                                     f"⚠️ Documentos generados, detalle en BD: {e_bd}"
                                 )
+
+                            # <-- CORREGIDO: Limpiamos el modo edición para que salga de pendientes
+                            st.session_state.proyecto_editar = {}
 
                             st.rerun()
 
