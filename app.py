@@ -24,6 +24,11 @@ from reportlab.platypus import (
 )
 from supabase import Client, create_client
 
+# --- NUEVAS LIBRERÍAS DE GOOGLE DRIVE ---
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+
 # --- DICCIONARIO DE MESES EN ESPAÑOL ---
 MESES_ESPANOL = {
     1: "enero",
@@ -454,6 +459,35 @@ def subir_pdf_supabase(nombre_archivo: str, pdf_bytes: bytes) -> str:
     except Exception as e_url:
         st.error(f"❌ Error al obtener URL pública del PDF: {e_url}")
         return ""
+
+# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE ---
+def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf"):
+    """Sube un archivo directamente a una carpeta específica en Google Drive usando Service Account."""
+    try:
+        if "gcp_service_account" not in st.secrets or "drive" not in st.secrets:
+            return None # Si no hay credenciales, omite este paso silenciosamente
+        
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        credentials = Credentials.from_service_account_info(
+            creds_dict, scopes=["https://www.googleapis.com/auth/drive.file"]
+        )
+        service = build('drive', 'v3', credentials=credentials)
+        folder_id = st.secrets["drive"]["folder_id"]
+        
+        file_metadata = {
+            'name': nombre_archivo,
+            'parents': [folder_id]
+        }
+        
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
+        archivo_subido = service.files().create(
+            body=file_metadata, media_body=media, fields='id'
+        ).execute()
+        
+        return archivo_subido.get('id')
+    except Exception as e:
+        st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
+        return None
 
 
 def cargar_proyectos(estado=None):
@@ -3103,7 +3137,7 @@ else:
                         st.markdown(f"- {err}")
                 else:
                     with st.spinner(
-                        "Generando Informe Técnico y Constancia Oficial..."
+                        "Generando documentos y respaldando en la nube..."
                     ):
                         try:
                             # 1. Generar Informe Técnico PDF
@@ -3181,8 +3215,16 @@ else:
                             url_constancia = subir_pdf_supabase(
                                 nombre_constancia_remoto, bytes_constancia
                             )
+                            
+                            # 6. Subir documentos a GOOGLE DRIVE
+                            try:
+                                subir_a_drive(f"Informe_{codigo_proy}.pdf", bytes_informe, "application/pdf")
+                                subir_a_drive(f"Constancia_{codigo_proy}.pdf", bytes_constancia, "application/pdf")
+                                subir_a_drive(f"Paquete_Completo_{codigo_proy}.zip", bytes_zip, "application/zip")
+                            except Exception as e_drive:
+                                st.caption(f"Aviso interno: No se pudo respaldar en Drive: {e_drive}")
 
-                            # 6. Guardar en session_state para que la descarga esté siempre disponible
+                            # 7. Guardar en session_state para que la descarga esté siempre disponible
                             st.session_state.documentos_descarga = {
                                 "codigo": codigo_proy,
                                 "bytes_informe": bytes_informe,
@@ -3190,7 +3232,7 @@ else:
                                 "bytes_zip": bytes_zip,
                             }
 
-                            # 7. Actualizar base de datos con los datos consolidados y el JSON de respaldo
+                            # 8. Actualizar base de datos con los datos consolidados y el JSON de respaldo
                             try:
                                 datos_detalle = {
                                     "responsables_seleccionados": responsables_seleccionados,
@@ -3320,12 +3362,12 @@ else:
         # --- SECCIÓN PERSISTENTE DE DESCARGA (NO SE BORRA AL HACER CLIC) ---
         if st.session_state.documentos_descarga:
             docs = st.session_state.documentos_descarga
-            st.success("✅ ¡Informe Técnico y Constancia de Transformación listos para descarga!")
+            st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
 
             c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
 
             c_dzip.download_button(
-                label="📦 Descargar Ambos Documentos (.ZIP)",
+                label="📦 Descargar Ambos (.ZIP)",
                 data=docs["bytes_zip"],
                 file_name=f"Documentos_Oficiales_{docs['codigo']}.zip",
                 mime="application/zip",
