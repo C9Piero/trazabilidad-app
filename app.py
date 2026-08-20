@@ -29,6 +29,110 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
+def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
+    """Crea o busca la estructura de carpetas: AÑO / MES / CLIENTE en Google Drive"""
+    try:
+        if "drive_oauth" not in st.secrets:
+            return None
+        creds_data = st.secrets["drive_oauth"]
+        credentials = Credentials(
+            token=None,
+            refresh_token=creds_data["refresh_token"],
+            client_id=creds_data["client_id"],
+            client_secret=creds_data["client_secret"],
+            token_uri="https://oauth2.googleapis.com/token"
+        )
+        service = build('drive', 'v3', credentials=credentials)
+        root_folder_id = creds_data["folder_id"]
+
+        # 1. Determinar el Año y crear/buscar su carpeta
+        nombre_carpeta_anio = str(fecha_fin_dt.year)
+        
+        query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
+        res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
+        if not res_anio.get('files', []):
+            carpeta_anio = service.files().create(
+                body={'name': nombre_carpeta_anio, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [root_folder_id]}, 
+                fields='id'
+            ).execute()
+            id_anio = carpeta_anio.get('id')
+        else:
+            id_anio = res_anio.get('files')[0].get('id')
+
+        # 2. Determinar el Mes y crear/buscar su carpeta ADENTRO del Año
+        meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 
+                 7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
+        nombre_carpeta_mes = meses.get(fecha_fin_dt.month, 'MES')
+        
+        query_mes = f"name='{nombre_carpeta_mes}' and mimeType='application/vnd.google-apps.folder' and '{id_anio}' in parents and trashed=false"
+        res_mes = service.files().list(q=query_mes, fields='files(id)').execute()
+        if not res_mes.get('files', []):
+            carpeta_mes = service.files().create(
+                body={'name': nombre_carpeta_mes, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_anio]}, 
+                fields='id'
+            ).execute()
+            id_mes = carpeta_mes.get('id')
+        else:
+            id_mes = res_mes.get('files')[0].get('id')
+
+        # 3. Determinar el Nombre del Cliente y crear/buscar su carpeta ADENTRO del Mes
+        nombre_cliente = cliente.strip().upper().replace("'", "")
+        
+        query_cli = f"name='{nombre_cliente}' and mimeType='application/vnd.google-apps.folder' and '{id_mes}' in parents and trashed=false"
+        res_cli = service.files().list(q=query_cli, fields='files(id)').execute()
+        if not res_cli.get('files', []):
+            carpeta_cli = service.files().create(
+                body={'name': nombre_cliente, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_mes]}, 
+                fields='id'
+            ).execute()
+            id_cli = carpeta_cli.get('id')
+        else:
+            id_cli = res_cli.get('files')[0].get('id')
+
+        # Retornamos el ID de la carpeta del cliente para guardar los PDF ahí
+        return id_cli
+    except Exception as e:
+        import streamlit as st
+        st.caption(f"Aviso Carpetas Drive: {e}")
+        return None
+
+# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
+def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
+    """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
+    try:
+        if "drive_oauth" not in st.secrets:
+            return None 
+        
+        creds_data = st.secrets["drive_oauth"]
+        credentials = Credentials(
+            token=None,
+            refresh_token=creds_data["refresh_token"],
+            client_id=creds_data["client_id"],
+            client_secret=creds_data["client_secret"],
+            token_uri="https://oauth2.googleapis.com/token"
+        )
+        
+        service = build('drive', 'v3', credentials=credentials)
+        # Si le pasamos un folder_id específico (como el del cliente), lo usa; si no, usa el root.
+        folder_id = custom_folder_id if custom_folder_id else creds_data["folder_id"]
+        
+        file_metadata = {
+            'name': nombre_archivo,
+            'parents': [folder_id]
+        }
+        
+        import io
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
+        archivo_subido = service.files().create(
+            body=file_metadata, media_body=media, fields='id'
+        ).execute()
+        
+        return archivo_subido.get('id')
+    except Exception as e:
+        import streamlit as st
+        st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
+        return None
+
 # --- DICCIONARIO DE MESES EN ESPAÑOL ---
 MESES_ESPANOL = {
     1: "enero",
@@ -429,7 +533,9 @@ try:
     supabase = init_supabase()
 except KeyError:
     st.error(
-        "⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\n"
+        "⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.
+
+"
         "Configura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en "
         "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
         "(Streamlit Cloud)."
@@ -457,41 +563,6 @@ def subir_pdf_supabase(nombre_archivo: str, pdf_bytes: bytes) -> str:
     except Exception as e_url:
         st.error(f"❌ Error al obtener URL pública del PDF: {e_url}")
         return ""
-
-# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
-def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf"):
-    """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
-    try:
-        if "drive_oauth" not in st.secrets:
-            return None 
-        
-        creds_data = st.secrets["drive_oauth"]
-        
-        credentials = Credentials(
-            token=None,
-            refresh_token=creds_data["refresh_token"],
-            client_id=creds_data["client_id"],
-            client_secret=creds_data["client_secret"],
-            token_uri="https://oauth2.googleapis.com/token"
-        )
-        
-        service = build('drive', 'v3', credentials=credentials)
-        folder_id = creds_data["folder_id"]
-        
-        file_metadata = {
-            'name': nombre_archivo,
-            'parents': [folder_id]
-        }
-        
-        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
-        archivo_subido = service.files().create(
-            body=file_metadata, media_body=media, fields='id'
-        ).execute()
-        
-        return archivo_subido.get('id')
-    except Exception as e:
-        st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
-        return None
 
 
 def cargar_proyectos(estado=None):
@@ -524,7 +595,9 @@ def eliminar_proyecto_bd(proyecto_id, codigo_proy):
 @st.dialog("⚠️ Confirmar Eliminación Permanente")
 def modal_confirmar_eliminacion(proyecto):
     st.warning(
-        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\n"
+        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?
+
+"
         "Esta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
     )
     col_confirm, col_cancel = st.columns(2)
@@ -1350,7 +1423,9 @@ try:
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
 except KeyError:
     st.error(
-        "⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\n"
+        "⚠️ Faltan las credenciales de acceso en `st.secrets`.
+
+"
         "Agrega `USUARIO` y `PASSWORD` dentro de `[auth]` en "
         "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
         "(Streamlit Cloud)."
@@ -3220,11 +3295,15 @@ else:
                                 nombre_constancia_remoto, bytes_constancia
                             )
                             
-                            # 6. Subir documentos a GOOGLE DRIVE (USANDO OAUTH)
+                            # 6. Subir documentos a GOOGLE DRIVE (USANDO OAUTH Y CARPETAS)
                             try:
-                                subir_a_drive(f"Informe_{codigo_proy}.pdf", bytes_informe, "application/pdf")
-                                subir_a_drive(f"Constancia_{codigo_proy}.pdf", bytes_constancia, "application/pdf")
-                                subir_a_drive(f"Paquete_Completo_{codigo_proy}.zip", bytes_zip, "application/zip")
+                                # Primero, el sistema entra a Drive y crea/busca las carpetas correspondientes
+                                carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt)
+                                
+                                # Luego, le dice que suba los archivos exactamente adentro de esa nueva carpeta
+                                subir_a_drive(f"Informe_{codigo_proy}.pdf", bytes_informe, "application/pdf", custom_folder_id=carpeta_destino_id)
+                                subir_a_drive(f"Constancia_{codigo_proy}.pdf", bytes_constancia, "application/pdf", custom_folder_id=carpeta_destino_id)
+                                subir_a_drive(f"Paquete_Completo_{codigo_proy}.zip", bytes_zip, "application/zip", custom_folder_id=carpeta_destino_id)
                             except Exception as e_drive:
                                 st.caption(f"Aviso interno: No se pudo respaldar en Drive: {e_drive}")
 
