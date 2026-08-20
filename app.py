@@ -1,7 +1,9 @@
 import datetime
 import io
+import os
 import random
 import re
+import zipfile
 import pandas as pd
 import streamlit as st
 from reportlab.lib import colors
@@ -18,6 +20,37 @@ from reportlab.platypus import (
     TableStyle,
 )
 from supabase import Client, create_client
+
+# --- INTENTO DE REGISTRO DE FUENTE TREBUCHET MS (CON FALLBACK A HELVETICA) ---
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+FONT_FAMILY_BASE = "Helvetica"
+FONT_FAMILY_BOLD = "Helvetica-Bold"
+
+try:
+    rutas_trebuchet = [
+        ("TrebuchetMS", "/usr/share/fonts/truetype/msttcorefonts/trebuc.ttf"),
+        ("TrebuchetMS-Bold", "/usr/share/fonts/truetype/msttcorefonts/trebucbd.ttf"),
+        ("TrebuchetMS", "C:/Windows/Fonts/trebuc.ttf"),
+        ("TrebuchetMS-Bold", "C:/Windows/Fonts/trebucbd.ttf"),
+    ]
+    fuentes_cargadas = 0
+    for name, path in rutas_trebuchet:
+        if os.path.exists(path) and name not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont(name, path))
+            fuentes_cargadas += 1
+
+    if "TrebuchetMS" in pdfmetrics.getRegisteredFontNames():
+        FONT_FAMILY_BASE = "TrebuchetMS"
+        FONT_FAMILY_BOLD = (
+            "TrebuchetMS-Bold"
+            if "TrebuchetMS-Bold" in pdfmetrics.getRegisteredFontNames()
+            else "TrebuchetMS"
+        )
+except Exception:
+    FONT_FAMILY_BASE = "Helvetica"
+    FONT_FAMILY_BOLD = "Helvetica-Bold"
 
 # --- DICCIONARIO DE MESES EN ESPAÑOL ---
 MESES_ESPANOL = {
@@ -538,89 +571,116 @@ def generar_pdf_constancia(
     cliente: str,
     fe_fin_dt: datetime.date,
     peso_recibido_tot: float,
-    mat_transformado: float,
-    lista_productos: list,
+    unidades_transformadas_tot: int,
+    total_prod_unidades: int,
     co2_neto: float,
     pct_aprovechamiento: float,
     total_mujeres: int,
     total_horas: float,
 ):
-    """Genera la constancia idéntica a la plantilla oficial de transformación."""
+    """Genera la constancia con el diseño exacto de la plantilla oficial."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=42,
-        rightMargin=42,
-        topMargin=45,
-        bottomMargin=45,
+        leftMargin=45,
+        rightMargin=45,
+        topMargin=40,
+        bottomMargin=40,
     )
 
     styles = getSampleStyleSheet()
 
-    title_style = ParagraphStyle(
-        "ConstanciaTitle",
-        parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
-        fontSize=15,
-        textColor=colors.HexColor("#1E293B"),
+    logo_title_style = ParagraphStyle(
+        "LogoTitle",
+        parent=styles["Normal"],
+        fontName=FONT_FAMILY_BOLD,
+        fontSize=26,
+        textColor=colors.HexColor("#E06A92"),
+        alignment=1,
+        spaceAfter=0,
+    )
+
+    logo_sub_style = ParagraphStyle(
+        "LogoSub",
+        parent=styles["Normal"],
+        fontName=FONT_FAMILY_BASE,
+        fontSize=17,
+        textColor=colors.HexColor("#6BA08A"),
         alignment=1,
         spaceAfter=14,
+    )
+
+    doc_title_style = ParagraphStyle(
+        "DocTitle",
+        parent=styles["Heading2"],
+        fontName=FONT_FAMILY_BOLD,
+        fontSize=12,
+        textColor=colors.HexColor("#000000"),
+        alignment=1,
+        spaceAfter=16,
     )
 
     se_otorga_style = ParagraphStyle(
         "SeOtorga",
         parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=11,
-        textColor=colors.HexColor("#475569"),
-        alignment=1,
-        spaceAfter=4,
+        fontName=FONT_FAMILY_BASE,
+        fontSize=10.5,
+        textColor=colors.HexColor("#222222"),
+        alignment=0,
+        spaceAfter=3,
     )
 
     empresa_style = ParagraphStyle(
         "Empresa",
-        parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=15,
-        textColor=colors.HexColor("#0F172A"),
-        alignment=1,
-        spaceAfter=16,
+        parent=styles["Normal"],
+        fontName=FONT_FAMILY_BOLD,
+        fontSize=12,
+        textColor=colors.HexColor("#000000"),
+        alignment=0,
+        spaceAfter=14,
     )
 
     body_style = ParagraphStyle(
         "CuerpoConstancia",
         parent=styles["Normal"],
-        fontName="Helvetica",
+        fontName=FONT_FAMILY_BASE,
         fontSize=9.5,
         leading=14.5,
-        textColor=colors.HexColor("#334155"),
+        textColor=colors.HexColor("#333333"),
         alignment=4,
         spaceAfter=18,
     )
 
-    cell_bold = ParagraphStyle(
-        "CellB",
+    th_style = ParagraphStyle(
+        "TH",
         parent=styles["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=FONT_FAMILY_BOLD,
         fontSize=9,
-        textColor=colors.HexColor("#0F172A"),
-        leading=11,
+        textColor=colors.HexColor("#000000"),
     )
 
-    cell_style = ParagraphStyle(
-        "CellN",
+    td_style = ParagraphStyle(
+        "TD",
         parent=styles["Normal"],
-        fontName="Helvetica",
+        fontName=FONT_FAMILY_BASE,
         fontSize=9,
-        textColor=colors.HexColor("#334155"),
-        leading=11,
+        textColor=colors.HexColor("#222222"),
+    )
+
+    td_val_style = ParagraphStyle(
+        "TDVal",
+        parent=styles["Normal"],
+        fontName=FONT_FAMILY_BOLD,
+        fontSize=9,
+        textColor=colors.HexColor("#000000"),
+        alignment=0,
     )
 
     date_style = ParagraphStyle(
         "FechaFinal",
         parent=styles["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=FONT_FAMILY_BASE,
         fontSize=9.5,
         textColor=colors.HexColor("#1E293B"),
         alignment=0,
@@ -629,96 +689,87 @@ def generar_pdf_constancia(
 
     elements = []
 
+    # Cabecera de Logo
+    elements.append(Paragraph("Pequeños", logo_title_style))
+    elements.append(Paragraph("detalles", logo_sub_style))
+
     # Título principal
     elements.append(
-        Paragraph("Constancia de transformación de uniformes en desuso", title_style)
+        Paragraph("Constancia de transformación de uniformes en desuso", doc_title_style)
     )
+
+    # Otorgamiento a Empresa
     elements.append(Paragraph("Se otorga a:", se_otorga_style))
     elements.append(Paragraph(f"“{cliente.upper()}”", empresa_style))
 
-    # Párrafo descriptivo oficial
+    # Párrafo Legal Descriptivo
     mes_str = MESES_ESPANOL.get(fe_fin_dt.month, "")
     año_str = str(fe_fin_dt.year)
     cuerpo_texto = (
         f"Por la transformación de uniformes en desuso realizada durante el mes de "
-        f"<b>{mes_str}</b> de <b>{año_str}</b>, los cuales fueron entregados a la empresa "
-        f"<b>Pequeños Detalles Handmade Perú S.A.C.</b>, identificada con RUC <b>20602573771</b>, "
-        f"para la elaboración de nuevos productos como parte de un modelo de economía circular."
+        f"{mes_str} de {año_str}, los cuales fueron entregados a la empresa "
+        f"Pequeños Detalles Handmade Perú S.A.C., identificada con RUC "
+        f"20602573771, para la elaboración de nuevos productos como parte de un modelo de economía circular."
     )
     elements.append(Paragraph(cuerpo_texto, body_style))
     elements.append(Spacer(1, 4))
 
-    # Resumen de productos elaborados
-    resumen_prods_list = [
-        f"{p['producto']} ({p['cantidad']} unid.)"
-        for p in lista_productos
-        if p["cantidad"] > 0
-    ]
-    resumen_prods_str = (
-        ", ".join(resumen_prods_list)
-        if resumen_prods_list
-        else "Productos varios de upcycling"
-    )
-
-    # Tabla con las filas y categorías exactas de la plantilla
+    # Tabla idéntica a la plantilla
     data_tabla = [
         [
-            Paragraph("<b>CATEGORÍA</b>", cell_bold),
-            Paragraph("<b>DESCRIPCIÓN</b>", cell_bold),
-            Paragraph("<b>VALOR</b>", cell_bold),
+            Paragraph("CATEGORIA", th_style),
+            Paragraph("DESCRIPCIÓN", th_style),
+            Paragraph("VALOR", th_style),
         ],
         [
-            Paragraph("Ambiental", cell_style),
-            Paragraph("Material textil recibido", cell_style),
-            Paragraph(f"{peso_recibido_tot:.2f} kg", cell_bold),
+            Paragraph("Ambiental", td_style),
+            Paragraph("Material textil recibido", td_style),
+            Paragraph(f"{peso_recibido_tot:.1f} kg", td_val_style),
         ],
         [
-            Paragraph("Ambiental", cell_style),
-            Paragraph("Material textil transformado", cell_style),
-            Paragraph(f"{mat_transformado:.2f} kg", cell_bold),
+            Paragraph("Ambiental", td_style),
+            Paragraph("Unidades transformadas", td_style),
+            Paragraph(f"{unidades_transformadas_tot}", td_val_style),
         ],
         [
-            Paragraph("Ambiental", cell_style),
-            Paragraph("Emisiones evitadas", cell_style),
-            Paragraph(f"{co2_neto:.2f} kg CO₂e", cell_bold),
+            Paragraph("Ambiental", td_style),
+            Paragraph("Emisiones evitadas", td_style),
+            Paragraph(f"{co2_neto:.2f} kg CO2e", td_val_style),
         ],
         [
-            Paragraph("Ambiental", cell_style),
-            Paragraph("% de aprovechamiento del material", cell_style),
-            Paragraph(f"{pct_aprovechamiento:.2f}%", cell_bold),
+            Paragraph("Ambiental", td_style),
+            Paragraph("% de aprovechamiento del material", td_style),
+            Paragraph(f"{pct_aprovechamiento:.2f}%", td_val_style),
         ],
         [
-            Paragraph("Social", cell_style),
-            Paragraph("Mujeres participantes en producción", cell_style),
-            Paragraph(f"{total_mujeres}", cell_bold),
+            Paragraph("Social", td_style),
+            Paragraph("Mujeres participantes en producción", td_style),
+            Paragraph(f"{total_mujeres}", td_val_style),
         ],
         [
-            Paragraph("Social", cell_style),
-            Paragraph("Horas de trabajo generadas", cell_style),
-            Paragraph(f"{total_horas:.2f} h", cell_bold),
+            Paragraph("Social", td_style),
+            Paragraph("Horas de trabajo generadas", td_style),
+            Paragraph(f"{int(total_horas)} h", td_val_style),
         ],
         [
-            Paragraph("Circular", cell_style),
-            Paragraph("Productos elaborados", cell_style),
-            Paragraph(resumen_prods_str, cell_style),
+            Paragraph("Circular", td_style),
+            Paragraph("Productos elaborados", td_style),
+            Paragraph(f"{total_prod_unidades}", td_val_style),
         ],
     ]
 
-    t_constancia = Table(data_tabla, colWidths=[105, 245, 178])
+    t_constancia = Table(data_tabla, colWidths=[120, 240, 160])
     t_constancia.setStyle(
         TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F5D0FE")),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#000000")),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("PADDING", (0, 0), (-1, -1), 7),
-            ("ALIGN", (2, 0), (2, -1), "RIGHT"),
+            ("PADDING", (0, 0), (-1, -1), 6),
         ])
     )
     elements.append(t_constancia)
-    elements.append(Spacer(1, 14))
 
-    # Fecha oficial de término
-    fecha_cierre_texto = f"Lima, {fe_fin_dt.day} de {mes_str} de {fe_fin_dt.year}"
+    # Fecha final oficial
+    fecha_cierre_texto = f"Lima, {fe_fin_dt.strftime('%d')} de {mes_str} de {fe_fin_dt.year}"
     elements.append(Paragraph(fecha_cierre_texto, date_style))
 
     doc.build(elements)
@@ -1415,6 +1466,9 @@ if "lista_personal_confeccion" not in st.session_state:
 if "num_anexos" not in st.session_state:
     st.session_state.num_anexos = 1
 
+if "documentos_descarga" not in st.session_state:
+    st.session_state.documentos_descarga = None
+
 if "pct_aprovechamiento_random" not in st.session_state:
     st.session_state.pct_aprovechamiento_random = round(
         random.uniform(0.88, 0.94), 4
@@ -1491,6 +1545,7 @@ else:
             ),
         ):
             st.session_state.proyecto_editar = {}
+            st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
             st.rerun()
 
@@ -1504,6 +1559,7 @@ else:
                 else "secondary"
             ),
         ):
+            st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "⚡     Carga Rápida Histórica"
             st.rerun()
 
@@ -1533,11 +1589,13 @@ else:
                     type="primary" if es_activo else "secondary",
                 ):
                     st.session_state.proyecto_editar = p
+                    st.session_state.documentos_descarga = None
                     st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
                     st.rerun()
 
             st.write("")
             if st.button("📋 Ver Lista en Proceso", use_container_width=True):
+                st.session_state.documentos_descarga = None
                 st.session_state.pestaña_activa = "📋 Proyectos en Proceso"
                 st.rerun()
         else:
@@ -1557,6 +1615,7 @@ else:
                 else "secondary"
             ),
         ):
+            st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "📊 Dashboard 2026"
             st.rerun()
 
@@ -1569,6 +1628,7 @@ else:
                 else "secondary"
             ),
         ):
+            st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "🗂️ Historial Completo"
             st.rerun()
 
@@ -1576,6 +1636,7 @@ else:
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False
             st.session_state.proyecto_editar = {}
+            st.session_state.documentos_descarga = None
             st.rerun()
 
     st.markdown(
@@ -1736,6 +1797,7 @@ else:
                         type="primary",
                     ):
                         st.session_state.proyecto_editar = b
+                        st.session_state.documentos_descarga = None
                         st.session_state.pestaña_activa = (
                             "➕     Nuevo Reporte PDF"
                         )
@@ -1871,6 +1933,7 @@ else:
                 use_container_width=True,
             ):
                 st.session_state.proyecto_editar = {}
+                st.session_state.documentos_descarga = None
                 st.rerun()
 
             if col_elim.button(
@@ -2935,6 +2998,7 @@ else:
 
                     st.success("✅ Borrador guardado exitosamente.")
                     st.session_state.proyecto_editar = {}
+                    st.session_state.documentos_descarga = None
                     st.rerun()
 
                 except Exception as e:
@@ -2942,7 +3006,7 @@ else:
 
             # --- BOTÓN PRINCIPAL QUE GENERA AMBOS DOCUMENTOS EN SIMULTÁNEO ---
             if col_gen1.button(
-                "🚀 Generar Reportes Oficiales (Informe + Constancia)",
+                "🚀 Generar Reporte Oficial (Informe + Constancia)",
                 type="primary",
                 use_container_width=True,
             ):
@@ -2998,31 +3062,50 @@ else:
                                 lista_anexos=lista_anexos,
                             )
 
-                            # 2. Generar Constancia Oficial PDF
+                            # 2. Generar Constancia Oficial PDF con el diseño idéntico
                             pdf_constancia_buffer = generar_pdf_constancia(
                                 cliente=cliente,
                                 fe_fin_dt=fe_fin_dt,
                                 peso_recibido_tot=peso_total_recibido,
-                                mat_transformado=mat_transformado,
-                                lista_productos=lista_productos,
+                                unidades_transformadas_tot=total_piezas_ingresadas,
+                                total_prod_unidades=total_prod_unid,
                                 co2_neto=co2_neto,
                                 pct_aprovechamiento=pct_aprovechamiento_total,
                                 total_mujeres=total_personas_social,
                                 total_horas=total_horas_social,
                             )
 
-                            # 3. Subir ambos documentos a Supabase Storage
+                            bytes_informe = pdf_informe_buffer.getvalue()
+                            bytes_constancia = pdf_constancia_buffer.getvalue()
+
+                            # 3. Empaquetar ambos documentos en un archivo ZIP
+                            zip_buffer = io.BytesIO()
+                            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                                zip_file.writestr(f"Informe_Tecnico_{codigo_proy}.pdf", bytes_informe)
+                                zip_file.writestr(f"Constancia_Transformacion_{codigo_proy}.pdf", bytes_constancia)
+                            zip_buffer.seek(0)
+                            bytes_zip = zip_buffer.getvalue()
+
+                            # 4. Subir ambos documentos a Supabase Storage
                             nombre_informe_remoto = f"Informe_{codigo_proy}.pdf"
                             url_informe = subir_pdf_supabase(
-                                nombre_informe_remoto, pdf_informe_buffer.getvalue()
+                                nombre_informe_remoto, bytes_informe
                             )
 
                             nombre_constancia_remoto = f"Constancia_{codigo_proy}.pdf"
                             url_constancia = subir_pdf_supabase(
-                                nombre_constancia_remoto, pdf_constancia_buffer.getvalue()
+                                nombre_constancia_remoto, bytes_constancia
                             )
 
-                            # 4. Actualizar base de datos
+                            # 5. Guardar en session_state para descargas persistentes
+                            st.session_state.documentos_descarga = {
+                                "codigo": codigo_proy,
+                                "bytes_informe": bytes_informe,
+                                "bytes_constancia": bytes_constancia,
+                                "bytes_zip": bytes_zip,
+                            }
+
+                            # 6. Actualizar base de datos
                             try:
                                 datos_completado = {
                                     "codigo": codigo_proy,
@@ -3054,28 +3137,39 @@ else:
                                     f"⚠️ Documentos generados, detalle en BD: {e_bd}"
                                 )
 
-                            st.success(
-                                "✅ ¡Informe Técnico y Constancia de Transformación generados y sincronizados con éxito!"
-                            )
-
-                            # Botones de descarga directa en pantalla
-                            col_d1, col_d2 = st.columns(2)
-                            col_d1.download_button(
-                                label="📥 Descargar Informe Técnico PDF",
-                                data=pdf_informe_buffer,
-                                file_name=f"Informe_Tecnico_{codigo_proy}.pdf",
-                                mime="application/pdf",
-                                use_container_width=True,
-                                type="primary",
-                            )
-
-                            col_d2.download_button(
-                                label="📜 Descargar Constancia PDF",
-                                data=pdf_constancia_buffer,
-                                file_name=f"Constancia_Transformacion_{codigo_proy}.pdf",
-                                mime="application/pdf",
-                                use_container_width=True,
-                            )
+                            st.rerun()
 
                         except Exception as e:
                             st.error(f"❌ Error al generar los documentos: {e}")
+
+        # --- SECCIÓN PERSISTENTE DE DESCARGA (NO SE BORRA TRAS HACER CLIC) ---
+        if st.session_state.documentos_descarga:
+            docs = st.session_state.documentos_descarga
+            st.success("✅ ¡Informe Técnico y Constancia de Transformación listos para descarga!")
+
+            c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
+
+            c_dzip.download_button(
+                label="📦 Descargar Ambos Documentos (.ZIP)",
+                data=docs["bytes_zip"],
+                file_name=f"Documentos_Oficiales_{docs['codigo']}.zip",
+                mime="application/zip",
+                use_container_width=True,
+                type="primary",
+            )
+
+            c_dinf.download_button(
+                label="📄 Descargar Informe PDF",
+                data=docs["bytes_informe"],
+                file_name=f"Informe_Tecnico_{docs['codigo']}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+
+            c_dconst.download_button(
+                label="📜 Descargar Constancia PDF",
+                data=docs["bytes_constancia"],
+                file_name=f"Constancia_Transformacion_{docs['codigo']}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
