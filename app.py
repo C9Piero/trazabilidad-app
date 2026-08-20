@@ -246,6 +246,7 @@ DISTANCIAS_LIMA_SJL = {
     "Independencia": 12.0,
     "Jesús María": 12.0,
     "La Molina": 15.0,
+    "La标志Perla (Callao)": 18.0,
     "La Perla (Callao)": 18.0,
     "La Punta (Callao)": 21.0,
     "La Victoria": 9.5,
@@ -544,7 +545,6 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
     base_dir = os.path.dirname(os.path.abspath(__file__))
     cwd_dir = os.getcwd()
 
-    # Lista de posibles rutas exactas y variantes
     posibles_rutas = [
         ruta_plantilla if ruta_plantilla else "",
         os.path.join(base_dir, "plantilla_constancia.docx"),
@@ -561,7 +561,6 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
             ruta_encontrada = r
             break
 
-    # Búsqueda dinámica de cualquier .docx de plantilla en la carpeta de la app
     if not ruta_encontrada:
         for f in os.listdir(base_dir):
             if f.lower().endswith(".docx") and not f.startswith("~"):
@@ -570,7 +569,6 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
                     ruta_encontrada = candidato
                     break
 
-    # Búsqueda dinámica en el directorio de trabajo
     if not ruta_encontrada and os.path.exists(cwd_dir):
         for f in os.listdir(cwd_dir):
             if f.lower().endswith(".docx") and not f.startswith("~"):
@@ -586,7 +584,6 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
             f"Archivos presentes en la carpeta: {archivos_en_base}"
         )
 
-    # Cargar y rellenar plantilla Word
     doc = DocxTemplate(ruta_encontrada)
     doc.render(contexto)
 
@@ -594,7 +591,6 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
         docx_temp = os.path.join(tmpdir, "constancia_generada.docx")
         doc.save(docx_temp)
 
-        # Conversión a PDF mediante LibreOffice Headless
         cmd = ["libreoffice", "--headless", "--convert-to", "pdf", docx_temp, "--outdir", tmpdir]
         resultado = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -1755,6 +1751,61 @@ else:
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
+        # Sincronización y persistencia de estado completo
+        target_proj_id = p_edit.get("id") or p_edit.get("codigo") or "__nuevo__"
+        current_loaded = st.session_state.get("_loaded_project_id", None)
+
+        if current_loaded != target_proj_id:
+            st.session_state._loaded_project_id = target_proj_id
+            dc_init = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
+
+            # Restaurar conteos dinámicos
+            if dc_init.get("num_items"):
+                st.session_state.num_items = dc_init["num_items"]
+            elif "items" in dc_init and len(dc_init["items"]) > 0:
+                st.session_state.num_items = len(dc_init["items"])
+            else:
+                st.session_state.num_items = 2
+
+            if dc_init.get("num_prods"):
+                st.session_state.num_prods = dc_init["num_prods"]
+            elif "productos" in dc_init and len(dc_init["productos"]) > 0:
+                st.session_state.num_prods = len(dc_init["productos"])
+            else:
+                st.session_state.num_prods = 2
+
+            if dc_init.get("num_anexos"):
+                st.session_state.num_anexos = dc_init["num_anexos"]
+            elif "anexos" in dc_init and len(dc_init["anexos"]) > 0:
+                st.session_state.num_anexos = len(dc_init["anexos"])
+            else:
+                st.session_state.num_anexos = 1
+
+            # Restaurar conteo de personas por producto en confección
+            conf_num_map = dc_init.get("confeccion_num_pers", {})
+            for k_np, v_np in conf_num_map.items():
+                st.session_state[k_np] = v_np
+
+            # Limpiar llaves de widgets anteriores para asegurar la recarga limpia
+            prefijos_limpiar = [
+                "desc_", "unid_", "tot_input_", "peso_u_", "foto_",
+                "prod_sel_", "prod_cant_", "prod_nuevo_txt_", "prod_dis_", "prod_foto_",
+                "tr_etapa_", "tr_fecha_", "tr_resp_", "chk_edit_", "tr_peso_", "tr_tipo_", "tr_foto_",
+                "soc_rol_", "soc_pers_sel_", "soc_pers_txt_custom_", "soc_cant_", "soc_tunit_", "soc_tunit_calc_", "soc_htot_",
+                "anx_foto_", "anx_nota_", "ops_chk_", "ops_nom_", "ops_dias_", "ops_hdia_", "ops_tot_",
+                "transporte_distrito_origen", "dist_km_manual", "dist_km_auto_",
+                "chk_edit_balance", "bm_mat_transf_", "bm_retazos_", "bm_perdida_",
+                "responsables_proyecto", "nuevo_responsable_proyecto"
+            ]
+            keys_to_del = [
+                k for k in list(st.session_state.keys())
+                if any(k.startswith(pfx) for pfx in prefijos_limpiar)
+            ]
+            for k_del in keys_to_del:
+                del st.session_state[k_del]
+
+        dc = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
+
         if p_edit:
             st.warning(
                 "✏️ **Modo Edición Activo:** Modificando borrador de"
@@ -1863,6 +1914,9 @@ else:
                     if r.strip()
                 ]
 
+            if not responsables_guardados and dc.get("responsables_seleccionados"):
+                responsables_guardados = dc.get("responsables_seleccionados", [])
+
             opciones_responsables = list(
                 dict.fromkeys(RESPONSABLES_BASE + responsables_guardados)
             )
@@ -1894,11 +1948,13 @@ else:
 
             area = c8.text_input("Área", value="Sostenibilidad", disabled=True)
             guia_remision = c9.text_input(
-                "Nº Guía Remisión", value=p_edit.get("guia", "")
+                "Nº Guía Remisión",
+                value=p_edit.get("guia", "") or dc.get("guia_remision", ""),
             )
 
+            origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
             origen = st.text_input(
-                "Punto Origen *", value=p_edit.get("origen", "")
+                "Punto Origen *", value=origen_default
             )
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
 
@@ -1926,25 +1982,34 @@ else:
             total_piezas_ingresadas = 0
             opciones_prendas = sorted(list(FACTORES_CO2.keys()))
 
+            saved_items = dc.get("items", [])
+
             for i in range(st.session_state.num_items):
                 st.markdown(f"**Material {i+1}**")
                 col_desc, col_unid, col_peso, col_tot, col_foto = st.columns(
                     [3, 1.5, 1.5, 1.5, 3]
                 )
 
+                item_prev = saved_items[i] if i < len(saved_items) else {}
+                desc_prev = item_prev.get("descripcion", opciones_prendas[0])
+                idx_desc = opciones_prendas.index(desc_prev) if desc_prev in opciones_prendas else 0
+                unid_prev = int(item_prev.get("unidades", 0))
+                peso_prev = float(item_prev.get("peso_total", 0.0))
+
                 desc = col_desc.selectbox(
                     "Tipo de Producto / Prenda *",
                     opciones_prendas,
+                    index=idx_desc,
                     key=f"desc_{i}",
                 )
                 unid = col_unid.number_input(
-                    "Ingreso (unid.) *", min_value=0, value=0, key=f"unid_{i}"
+                    "Ingreso (unid.) *", min_value=0, value=unid_prev, key=f"unid_{i}"
                 )
 
                 p_total = col_peso.number_input(
                     "Peso Total (kg) *",
                     min_value=0.0,
-                    value=0.0,
+                    value=peso_prev,
                     step=0.05,
                     key=f"tot_input_{i}",
                 )
@@ -2032,11 +2097,28 @@ else:
             peso_lavado_auto = 0.0
             peso_corte_auto = 0.0
 
+            saved_traza = dc.get("trazabilidad", [])
+
             for i, item_fijo in enumerate(etapas_fijas):
                 st.markdown(f"**Etapa {i+1}**")
                 c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = (
                     st.columns([1.5, 1.5, 2, 1, 1.2, 1.8, 2])
                 )
+
+                traza_prev = saved_traza[i] if i < len(saved_traza) else {}
+                fec_prev_str = traza_prev.get("fecha")
+                if fec_prev_str:
+                    try:
+                        fec_val_def = datetime.datetime.strptime(fec_prev_str, "%d/%m/%Y").date()
+                    except Exception:
+                        fec_val_def = item_fijo["fecha"]
+                else:
+                    fec_val_def = item_fijo["fecha"]
+
+                resp_prev_val = traza_prev.get("responsable", item_fijo["resp_defecto"])
+                peso_prev_val = float(traza_prev.get("peso", item_fijo["peso_defecto"]))
+                tipo_prev_val = traza_prev.get("tipo_registro", item_fijo["tipo"])
+                is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
 
                 e_nom = c_etapa.text_input(
                     "Etapa",
@@ -2047,22 +2129,22 @@ else:
 
                 e_fec_val = c_fecha.date_input(
                     "Fecha *",
-                    value=item_fijo["fecha"],
+                    value=fec_val_def,
                     format="DD/MM/YYYY",
                     key=f"tr_fecha_{i}",
                 )
 
                 permitir_editar = c_edit_chk.checkbox(
-                    "✏️ Editar", key=f"chk_edit_{i}"
+                    "✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}"
                 )
                 e_res = c_resp.text_input(
                     "Responsable *",
-                    value=item_fijo["resp_defecto"],
+                    value=resp_prev_val,
                     disabled=not permitir_editar,
                     key=f"tr_resp_{i}",
                 )
 
-                val_peso_etapa = float(item_fijo["peso_defecto"])
+                val_peso_etapa = peso_prev_val if is_edited_prev else float(item_fijo["peso_defecto"])
                 e_pes_str = c_peso.text_input(
                     "Peso (kg) *",
                     value=f"{val_peso_etapa:.2f}",
@@ -2082,7 +2164,7 @@ else:
 
                 e_tip = c_tipo.text_input(
                     "Tipo Registro",
-                    value=item_fijo["tipo"],
+                    value=tipo_prev_val,
                     disabled=True,
                     key=f"tr_tipo_{i}",
                 )
@@ -2102,6 +2184,7 @@ else:
                     "peso": e_pes_num,
                     "tipo_registro": e_tip,
                     "foto": e_fot,
+                    "editado": permitir_editar,
                 })
 
         st.write("")
@@ -2125,6 +2208,7 @@ else:
 
             lista_productos = []
             total_prod_unid = 0
+            saved_prods = dc.get("productos", [])
 
             for i in range(st.session_state.num_prods):
                 st.markdown(f"**Producto {i+1}**")
@@ -2132,9 +2216,23 @@ else:
                     [3, 2.5, 1.5, 3]
                 )
 
+                prod_prev = saved_prods[i] if i < len(saved_prods) else {}
+                prod_nom_prev = prod_prev.get("producto", "")
+                cant_prev = int(prod_prev.get("cantidad", 0))
+
+                if prod_nom_prev and prod_nom_prev not in st.session_state.catalogo_productos:
+                    st.session_state.catalogo_productos.insert(-1, prod_nom_prev)
+
+                idx_psel = (
+                    st.session_state.catalogo_productos.index(prod_nom_prev)
+                    if prod_nom_prev in st.session_state.catalogo_productos
+                    else 0
+                )
+
                 prod_seleccionado = col_psel.selectbox(
                     "Seleccionar Producto Base *",
                     st.session_state.catalogo_productos,
+                    index=idx_psel,
                     key=f"prod_sel_{i}",
                 )
 
@@ -2168,7 +2266,7 @@ else:
                 p_cant = col_pcant.number_input(
                     "Cantidad (Unid.) *",
                     min_value=0,
-                    value=0,
+                    value=cant_prev,
                     key=f"prod_cant_{i}",
                 )
                 p_foto = col_pfoto.file_uploader(
@@ -2207,19 +2305,27 @@ else:
             )
             pct_retazos_auto = pct_aprov_auto - pct_transf_auto
 
-            mat_transf_def = round(peso_total_recibido * pct_transf_auto, 2)
-            retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
-            perdida_def = (
-                round(
-                    peso_total_recibido - mat_transf_def - retazos_def,
-                    2,
+            saved_bm = dc.get("balance", {})
+            editar_balance_prev = saved_bm.get("editar_manual", False)
+
+            if editar_balance_prev:
+                mat_transf_def = float(saved_bm.get("mat_transformado", 0.0))
+                retazos_def = float(saved_bm.get("retazos_aprovechables", 0.0))
+                perdida_def = float(saved_bm.get("perdida_no_aprovechable", 0.0))
+            else:
+                mat_transf_def = round(peso_total_recibido * pct_transf_auto, 2)
+                retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
+                perdida_def = (
+                    round(
+                        peso_total_recibido - mat_transf_def - retazos_def,
+                        2,
+                    )
+                    if peso_total_recibido > 0
+                    else 0.0
                 )
-                if peso_total_recibido > 0
-                else 0.0
-            )
 
             editar_balance = st.checkbox(
-                "✏️ Editar balance manualmente", key="chk_edit_balance"
+                "✏️ Editar balance manualmente", value=editar_balance_prev, key="chk_edit_balance"
             )
 
             col_bm1, col_bm2 = st.columns(2)
@@ -2286,21 +2392,26 @@ else:
                 " (SJL)**"
             )
 
+            saved_trans = dc.get("transporte", {})
+            dist_sel_prev = saved_trans.get("distrito", list(DISTANCIAS_LIMA_SJL.keys())[0])
+            idx_dist = list(DISTANCIAS_LIMA_SJL.keys()).index(dist_sel_prev) if dist_sel_prev in DISTANCIAS_LIMA_SJL else 0
+
             ct1, ct2, ct3, ct4 = st.columns([2.5, 1.2, 1.8, 1.5])
             distrito_sel = ct1.selectbox(
                 "Distrito de Origen (Recojo de Material) *",
                 list(DISTANCIAS_LIMA_SJL.keys()),
-                index=0,
+                index=idx_dist,
                 key="transporte_distrito_origen",
             )
 
-            dist_defecto = float(DISTANCIAS_LIMA_SJL[distrito_sel])
+            dist_defecto = float(DISTANCIAS_LIMA_SJL.get(distrito_sel, 0.0))
+            saved_dist_km = float(saved_trans.get("distancia", dist_defecto)) if dist_sel_prev == distrito_sel else dist_defecto
 
             if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)":
                 distancia_km = ct2.number_input(
                     "Distancia (km) *",
                     min_value=0.0,
-                    value=0.0,
+                    value=saved_dist_km,
                     step=1.0,
                     key="dist_km_manual",
                 )
@@ -2308,16 +2419,22 @@ else:
                 distancia_km = ct2.number_input(
                     "Distancia (km)",
                     min_value=0.0,
-                    value=dist_defecto,
+                    value=saved_dist_km,
                     step=0.5,
                     key=f"dist_km_auto_{distrito_sel}",
                 )
 
+            vehiculo_prev = saved_trans.get("vehiculo", list(FACTORES_TRANSPORTE.keys())[0])
+            idx_veh = list(FACTORES_TRANSPORTE.keys()).index(vehiculo_prev) if vehiculo_prev in FACTORES_TRANSPORTE else 0
+
             vehiculo_sel = ct3.selectbox(
-                "Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys())
+                "Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh
             )
+
+            rec_prev = saved_trans.get("recorrido", "Ida y Vuelta (2)")
+            idx_rec = 0 if "2" in rec_prev else 1
             recorrido_tipo = ct4.selectbox(
-                "Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"]
+                "Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec
             )
 
             factor_veh = FACTORES_TRANSPORTE[vehiculo_sel]
@@ -2353,15 +2470,20 @@ else:
             )
 
             st.markdown("##### 🧵 C. Cálculo de Bordado o Estampado")
+            saved_bord = dc.get("bordado", {})
+            cant_bord_prev = int(saved_bord.get("cantidad", 0))
+            tipo_bord_prev = saved_bord.get("tipo", list(FACTORES_BORDADO.keys())[0])
+            idx_tbord = list(FACTORES_BORDADO.keys()).index(tipo_bord_prev) if tipo_bord_prev in FACTORES_BORDADO else 0
+
             cb1, cb2 = st.columns(2)
             cant_prendas_bordado = cb1.number_input(
                 "Cantidad de prendas que requieren bordado o estampado",
                 min_value=0,
-                value=0,
+                value=cant_bord_prev,
                 step=1,
             )
             tipo_diseno_bordado = cb2.selectbox(
-                "Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys())
+                "Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()), index=idx_tbord
             )
 
             factor_bordado = FACTORES_BORDADO[tipo_diseno_bordado]
@@ -2421,10 +2543,16 @@ else:
 
             st.write("---")
 
+            saved_ops = dc.get("operaciones", [])
+
             for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
                 c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns(
                     [1.5, 2.5, 0.8, 1.2, 1.2, 1.2]
                 )
+
+                op_prev = saved_ops[idx] if idx < len(saved_ops) else {}
+                is_edited_op = op_prev.get("editado", False)
+                nom_prev_op = op_prev.get("nombre", p_fijo["nombre"])
 
                 rol_val = p_fijo["rol"]
                 c_rol.text_input(
@@ -2436,11 +2564,11 @@ else:
                 )
 
                 editar_fila = c_chk.checkbox(
-                    "✅", key=f"ops_chk_{idx}", label_visibility="collapsed"
+                    "✅", value=bool(is_edited_op), key=f"ops_chk_{idx}", label_visibility="collapsed"
                 )
                 nom_val = c_nom.text_input(
                     "Nombre",
-                    value=p_fijo["nombre"],
+                    value=nom_prev_op,
                     disabled=not editar_fila,
                     key=f"ops_nom_{idx}",
                     label_visibility="collapsed",
@@ -2453,10 +2581,13 @@ else:
                     val_dias_defecto = dias_calc_corte
                     val_hdia_defecto = hdia_calc_corte
 
+                dias_init = int(op_prev.get("dias", val_dias_defecto)) if is_edited_op else int(val_dias_defecto)
+                hdia_init = float(op_prev.get("horas_dia", val_hdia_defecto)) if is_edited_op else float(val_hdia_defecto)
+
                 val_dias = c_dias.number_input(
                     "Días",
                     min_value=0,
-                    value=int(val_dias_defecto),
+                    value=dias_init,
                     step=1,
                     disabled=not editar_fila,
                     key=f"ops_dias_dyn_{idx}_{val_dias_defecto}_{editar_fila}",
@@ -2465,7 +2596,7 @@ else:
                 val_hdia = c_hdia.number_input(
                     "Hrs/Día",
                     min_value=0.0,
-                    value=float(val_hdia_defecto),
+                    value=hdia_init,
                     step=0.5,
                     disabled=not editar_fila,
                     key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}_{editar_fila}",
@@ -2489,6 +2620,7 @@ else:
                     "dias": val_dias,
                     "horas_dia": val_hdia,
                     "horas_totales": tot_hrs_pers,
+                    "editado": editar_fila,
                 })
 
             st.write("---")
@@ -2587,6 +2719,7 @@ else:
             lista_confeccion = []
             horas_confeccion_total = 0.0
             personas_confeccion_set = set()
+            saved_conf_list = dc.get("confeccion", [])
 
             for idx, prod in enumerate(lista_productos):
                 p_nom = prod["producto"]
@@ -2614,14 +2747,21 @@ else:
                     st.session_state[key_num_pers] -= 1
                     st.rerun()
 
+                conf_del_prod = [c for c in saved_conf_list if c.get("producto") == p_nom]
+
                 for p_idx in range(st.session_state[key_num_pers]):
                     c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns(
                         [1.8, 3.0, 1.4, 1.8, 1.8]
                     )
 
+                    c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
+                    rol_prev_val = c_item_prev.get("rol", "Confección")
+                    idx_rol = 0 if rol_prev_val == "Confección" else 1
+
                     rol_sel = c_rol.selectbox(
                         "Rol *",
                         ["Confección", "Acabado"],
+                        index=idx_rol,
                         key=f"soc_rol_{idx}_{p_idx}",
                     )
 
@@ -2632,9 +2772,22 @@ else:
                     if opcion_otro not in opciones_personas:
                         opciones_personas.append(opcion_otro)
 
+                    pers_guardada = c_item_prev.get("persona", "")
+                    if pers_guardada and pers_guardada not in opciones_personas and pers_guardada != opcion_otro:
+                        st.session_state.lista_personal_confeccion.append(pers_guardada)
+                        st.session_state.lista_personal_confeccion.sort()
+                        opciones_personas = list(st.session_state.lista_personal_confeccion) + [opcion_otro]
+
+                    idx_pers = (
+                        opciones_personas.index(pers_guardada)
+                        if pers_guardada in opciones_personas
+                        else 0
+                    )
+
                     persona_sel = c_persona.selectbox(
                         "Persona Encargada *",
                         opciones_personas,
+                        index=idx_pers,
                         key=f"soc_pers_sel_{idx}_{p_idx}",
                     )
 
@@ -2666,12 +2819,13 @@ else:
                         if p_cant > 0
                         else 0
                     )
+                    cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
 
                     cant_asig = c_cant_asig.number_input(
                         "Unid. Asignadas *",
                         min_value=0,
-                        max_value=p_cant,
-                        value=cant_sugerida,
+                        max_value=max(p_cant, cant_init),
+                        value=cant_init,
                         key=f"soc_cant_{idx}_{p_idx}",
                     )
 
@@ -2684,10 +2838,11 @@ else:
                             key=f"soc_tunit_calc_{idx}_{p_idx}",
                         )
                     else:
+                        tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
                         tiempo_unitario = c_tiempo.number_input(
                             "Tiempo/Unid (hrs) *",
                             min_value=0.0,
-                            value=float(tiempo_base_ia),
+                            value=tunit_init,
                             step=0.05,
                             key=f"soc_tunit_{idx}_{p_idx}_{p_nom}",
                         )
@@ -2747,6 +2902,8 @@ else:
                 st.rerun()
 
             lista_anexos = []
+            saved_anexos = dc.get("anexos", [])
+
             for a_i in range(st.session_state.num_anexos):
                 st.markdown(f"**Evidencia Anexa {a_i+1}**")
                 col_afoto, col_anota = st.columns([1.5, 3])
@@ -2760,8 +2917,12 @@ else:
                 if foto_anx is not None:
                     col_afoto.image(foto_anx, width=110)
 
+                anx_prev = saved_anexos[a_i] if a_i < len(saved_anexos) else {}
+                nota_prev = anx_prev.get("nota", "")
+
                 nota_anx = col_anota.text_area(
                     "Nota / Descripción de la evidencia",
+                    value=nota_prev,
                     placeholder="Ej. Colaboradora elaborando productos...",
                     key=f"anx_nota_{a_i}",
                     height=90,
@@ -2804,11 +2965,98 @@ else:
             ):
                 try:
                     with st.spinner("Guardando en la base de datos..."):
+                        # Empaquetar todo el estado detallado para su restauración exacta
+                        datos_detalle = {
+                            "responsables_seleccionados": responsables_seleccionados,
+                            "guia_remision": guia_remision,
+                            "origen": origen,
+                            "num_items": st.session_state.num_items,
+                            "items": [
+                                {
+                                    "descripcion": it["descripcion"],
+                                    "unidades": it["unidades"],
+                                    "peso_unitario": it["peso_unitario"],
+                                    "peso_total": it["peso_total"],
+                                }
+                                for it in lista_items
+                            ],
+                            "trazabilidad": [
+                                {
+                                    "etapa": tr["etapa"],
+                                    "fecha": tr["fecha"],
+                                    "responsable": tr["responsable"],
+                                    "peso": tr["peso"],
+                                    "tipo_registro": tr["tipo_registro"],
+                                    "editado": tr.get("editado", False),
+                                }
+                                for tr in lista_trazabilidad
+                            ],
+                            "num_prods": st.session_state.num_prods,
+                            "productos": [
+                                {
+                                    "producto": pr["producto"],
+                                    "cantidad": pr["cantidad"],
+                                }
+                                for pr in lista_productos
+                            ],
+                            "balance": {
+                                "editar_manual": editar_balance,
+                                "mat_transformado": mat_transformado,
+                                "retazos_aprovechables": retazos_aprovechables,
+                                "perdida_no_aprovechable": perdida_no_aprovechable,
+                            },
+                            "transporte": {
+                                "distrito": distrito_sel,
+                                "distancia": distancia_km,
+                                "vehiculo": vehiculo_sel,
+                                "recorrido": recorrido_tipo,
+                            },
+                            "bordado": {
+                                "cantidad": cant_prendas_bordado,
+                                "tipo": tipo_diseno_bordado,
+                            },
+                            "operaciones": [
+                                {
+                                    "rol": op["rol"],
+                                    "nombre": op["nombre"],
+                                    "dias": op["dias"],
+                                    "horas_dia": op["horas_dia"],
+                                    "horas_totales": op["horas_totales"],
+                                    "editado": op.get("editado", False),
+                                }
+                                for op in lista_operaciones
+                            ],
+                            "confeccion_num_pers": {
+                                f"num_pers_prod_{idx_c}": st.session_state.get(f"num_pers_prod_{idx_c}", 1)
+                                for idx_c in range(len(lista_productos))
+                            },
+                            "confeccion": [
+                                {
+                                    "producto": c["producto"],
+                                    "rol": c["rol"],
+                                    "persona": c["persona"],
+                                    "cantidad": c["cantidad"],
+                                    "tiempo_unitario": c["tiempo_unitario"],
+                                    "horas_totales": c["horas_totales"],
+                                }
+                                for c in lista_confeccion
+                            ],
+                            "num_anexos": st.session_state.num_anexos,
+                            "anexos": [
+                                {
+                                    "nota": a["nota"]
+                                }
+                                for a in lista_anexos
+                            ],
+                        }
+
                         datos_borrador = {
                             "codigo": codigo_proy,
                             "cliente": cliente,
                             "ruc": ruc,
                             "tipo_proyecto": proyecto_nom,
+                            "responsable": responsable,
+                            "guia": guia_remision,
                             "fecha": f"{fe_inicio} - {fe_fin}",
                             "estado": "EN_PROCESO",
                             "peso_recibido": peso_total_recibido,
@@ -2818,6 +3066,7 @@ else:
                             "horas_totales": total_horas_social,
                             "productos_unids": total_prod_unid,
                             "punto_origen": origen,
+                            "datos_completos": datos_detalle,
                         }
 
                         if p_edit.get("id"):
@@ -2942,13 +3191,15 @@ else:
                                 "bytes_zip": bytes_zip,
                             }
 
-                            # 7. Actualizar base de datos
+                            # 7. Actualizar base de datos con los datos consolidados y el JSON de respaldo
                             try:
                                 datos_completado = {
                                     "codigo": codigo_proy,
                                     "cliente": cliente,
                                     "ruc": ruc,
                                     "tipo_proyecto": proyecto_nom,
+                                    "responsable": responsable,
+                                    "guia": guia_remision,
                                     "fecha": f"{fe_inicio} - {fe_fin}",
                                     "estado": "COMPLETADO",
                                     "peso_recibido": peso_total_recibido,
@@ -2960,6 +3211,7 @@ else:
                                     "punto_origen": origen,
                                     "pdf_url": url_informe if url_informe else p_edit.get("pdf_url", ""),
                                     "constancia_url": url_constancia if url_constancia else p_edit.get("constancia_url", ""),
+                                    "datos_completos": datos_detalle,
                                 }
                                 if p_edit.get("id"):
                                     supabase.table("proyectos").update(
