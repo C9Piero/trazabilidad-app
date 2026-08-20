@@ -3,9 +3,12 @@ import io
 import os
 import random
 import re
+import subprocess
+import tempfile
 import zipfile
 import pandas as pd
 import streamlit as st
+from docxtpl import DocxTemplate
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -20,37 +23,6 @@ from reportlab.platypus import (
     TableStyle,
 )
 from supabase import Client, create_client
-
-# --- INTENTO DE REGISTRO DE FUENTE TREBUCHET MS (CON FALLBACK A HELVETICA) ---
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-
-FONT_FAMILY_BASE = "Helvetica"
-FONT_FAMILY_BOLD = "Helvetica-Bold"
-
-try:
-    rutas_trebuchet = [
-        ("TrebuchetMS", "/usr/share/fonts/truetype/msttcorefonts/trebuc.ttf"),
-        ("TrebuchetMS-Bold", "/usr/share/fonts/truetype/msttcorefonts/trebucbd.ttf"),
-        ("TrebuchetMS", "C:/Windows/Fonts/trebuc.ttf"),
-        ("TrebuchetMS-Bold", "C:/Windows/Fonts/trebucbd.ttf"),
-    ]
-    fuentes_cargadas = 0
-    for name, path in rutas_trebuchet:
-        if os.path.exists(path) and name not in pdfmetrics.getRegisteredFontNames():
-            pdfmetrics.registerFont(TTFont(name, path))
-            fuentes_cargadas += 1
-
-    if "TrebuchetMS" in pdfmetrics.getRegisteredFontNames():
-        FONT_FAMILY_BASE = "TrebuchetMS"
-        FONT_FAMILY_BOLD = (
-            "TrebuchetMS-Bold"
-            if "TrebuchetMS-Bold" in pdfmetrics.getRegisteredFontNames()
-            else "TrebuchetMS"
-        )
-except Exception:
-    FONT_FAMILY_BASE = "Helvetica"
-    FONT_FAMILY_BOLD = "Helvetica-Bold"
 
 # --- DICCIONARIO DE MESES EN ESPAÑOL ---
 MESES_ESPANOL = {
@@ -566,215 +538,36 @@ class ReporteCanvas(canvas.Canvas):
         self.restoreState()
 
 
-# --- GENERADOR DEL PDF DE CONSTANCIA OFICIAL ---
-def generar_pdf_constancia(
-    cliente: str,
-    fe_fin_dt: datetime.date,
-    peso_recibido_tot: float,
-    unidades_transformadas_tot: int,
-    total_prod_unidades: int,
-    co2_neto: float,
-    pct_aprovechamiento: float,
-    total_mujeres: int,
-    total_horas: float,
-):
-    """Genera la constancia con el diseño exacto de la plantilla oficial."""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=letter,
-        leftMargin=45,
-        rightMargin=45,
-        topMargin=40,
-        bottomMargin=40,
-    )
+# --- GENERADOR DE CONSTANCIA DESDE PLANTILLA WORD DOCX ---
+def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla="plantilla_constancia.docx") -> bytes:
+    """Rellena la plantilla Word oficial y la convierte en PDF respetando el diseño 100%."""
+    if not os.path.exists(ruta_plantilla):
+        raise FileNotFoundError(
+            f"No se encontró el archivo '{ruta_plantilla}' en el repositorio. "
+            "Asegúrate de subir el archivo .docx a la raíz de tu proyecto en GitHub."
+        )
 
-    styles = getSampleStyleSheet()
+    doc = DocxTemplate(ruta_plantilla)
+    doc.render(contexto)
 
-    logo_title_style = ParagraphStyle(
-        "LogoTitle",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BOLD,
-        fontSize=26,
-        textColor=colors.HexColor("#E06A92"),
-        alignment=1,
-        spaceAfter=0,
-    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        docx_temp = os.path.join(tmpdir, "constancia_generada.docx")
+        doc.save(docx_temp)
 
-    logo_sub_style = ParagraphStyle(
-        "LogoSub",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BASE,
-        fontSize=17,
-        textColor=colors.HexColor("#6BA08A"),
-        alignment=1,
-        spaceAfter=14,
-    )
+        # Conversión a PDF mediante LibreOffice Headless
+        cmd = ["libreoffice", "--headless", "--convert-to", "pdf", docx_temp, "--outdir", tmpdir]
+        resultado = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    doc_title_style = ParagraphStyle(
-        "DocTitle",
-        parent=styles["Heading2"],
-        fontName=FONT_FAMILY_BOLD,
-        fontSize=12,
-        textColor=colors.HexColor("#000000"),
-        alignment=1,
-        spaceAfter=16,
-    )
-
-    se_otorga_style = ParagraphStyle(
-        "SeOtorga",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BASE,
-        fontSize=10.5,
-        textColor=colors.HexColor("#222222"),
-        alignment=0,
-        spaceAfter=3,
-    )
-
-    empresa_style = ParagraphStyle(
-        "Empresa",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BOLD,
-        fontSize=12,
-        textColor=colors.HexColor("#000000"),
-        alignment=0,
-        spaceAfter=14,
-    )
-
-    body_style = ParagraphStyle(
-        "CuerpoConstancia",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BASE,
-        fontSize=9.5,
-        leading=14.5,
-        textColor=colors.HexColor("#333333"),
-        alignment=4,
-        spaceAfter=18,
-    )
-
-    th_style = ParagraphStyle(
-        "TH",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BOLD,
-        fontSize=9,
-        textColor=colors.HexColor("#000000"),
-    )
-
-    td_style = ParagraphStyle(
-        "TD",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BASE,
-        fontSize=9,
-        textColor=colors.HexColor("#222222"),
-    )
-
-    td_val_style = ParagraphStyle(
-        "TDVal",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BOLD,
-        fontSize=9,
-        textColor=colors.HexColor("#000000"),
-        alignment=0,
-    )
-
-    date_style = ParagraphStyle(
-        "FechaFinal",
-        parent=styles["Normal"],
-        fontName=FONT_FAMILY_BASE,
-        fontSize=9.5,
-        textColor=colors.HexColor("#1E293B"),
-        alignment=0,
-        spaceBefore=22,
-    )
-
-    elements = []
-
-    # Cabecera de Logo
-    elements.append(Paragraph("Pequeños", logo_title_style))
-    elements.append(Paragraph("detalles", logo_sub_style))
-
-    # Título principal
-    elements.append(
-        Paragraph("Constancia de transformación de uniformes en desuso", doc_title_style)
-    )
-
-    # Otorgamiento a Empresa
-    elements.append(Paragraph("Se otorga a:", se_otorga_style))
-    elements.append(Paragraph(f"“{cliente.upper()}”", empresa_style))
-
-    # Párrafo Legal Descriptivo
-    mes_str = MESES_ESPANOL.get(fe_fin_dt.month, "")
-    año_str = str(fe_fin_dt.year)
-    cuerpo_texto = (
-        f"Por la transformación de uniformes en desuso realizada durante el mes de "
-        f"{mes_str} de {año_str}, los cuales fueron entregados a la empresa "
-        f"Pequeños Detalles Handmade Perú S.A.C., identificada con RUC "
-        f"20602573771, para la elaboración de nuevos productos como parte de un modelo de economía circular."
-    )
-    elements.append(Paragraph(cuerpo_texto, body_style))
-    elements.append(Spacer(1, 4))
-
-    # Tabla idéntica a la plantilla
-    data_tabla = [
-        [
-            Paragraph("CATEGORIA", th_style),
-            Paragraph("DESCRIPCIÓN", th_style),
-            Paragraph("VALOR", th_style),
-        ],
-        [
-            Paragraph("Ambiental", td_style),
-            Paragraph("Material textil recibido", td_style),
-            Paragraph(f"{peso_recibido_tot:.1f} kg", td_val_style),
-        ],
-        [
-            Paragraph("Ambiental", td_style),
-            Paragraph("Unidades transformadas", td_style),
-            Paragraph(f"{unidades_transformadas_tot}", td_val_style),
-        ],
-        [
-            Paragraph("Ambiental", td_style),
-            Paragraph("Emisiones evitadas", td_style),
-            Paragraph(f"{co2_neto:.2f} kg CO2e", td_val_style),
-        ],
-        [
-            Paragraph("Ambiental", td_style),
-            Paragraph("% de aprovechamiento del material", td_style),
-            Paragraph(f"{pct_aprovechamiento:.2f}%", td_val_style),
-        ],
-        [
-            Paragraph("Social", td_style),
-            Paragraph("Mujeres participantes en producción", td_style),
-            Paragraph(f"{total_mujeres}", td_val_style),
-        ],
-        [
-            Paragraph("Social", td_style),
-            Paragraph("Horas de trabajo generadas", td_style),
-            Paragraph(f"{int(total_horas)} h", td_val_style),
-        ],
-        [
-            Paragraph("Circular", td_style),
-            Paragraph("Productos elaborados", td_style),
-            Paragraph(f"{total_prod_unidades}", td_val_style),
-        ],
-    ]
-
-    t_constancia = Table(data_tabla, colWidths=[120, 240, 160])
-    t_constancia.setStyle(
-        TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#000000")),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("PADDING", (0, 0), (-1, -1), 6),
-        ])
-    )
-    elements.append(t_constancia)
-
-    # Fecha final oficial
-    fecha_cierre_texto = f"Lima, {fe_fin_dt.strftime('%d')} de {mes_str} de {fe_fin_dt.year}"
-    elements.append(Paragraph(fecha_cierre_texto, date_style))
-
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
+        pdf_temp = os.path.join(tmpdir, "constancia_generada.pdf")
+        if os.path.exists(pdf_temp):
+            with open(pdf_temp, "rb") as f:
+                return f.read()
+        else:
+            detalle_error = resultado.stderr.decode("utf-8", errors="ignore")
+            raise RuntimeError(
+                f"Error al convertir DOCX a PDF con LibreOffice. "
+                f"Asegúrate de que 'libreoffice' esté en tu archivo 'packages.txt'. Detalle: {detalle_error}"
+            )
 
 
 # --- GENERADOR DEL INFORME TÉCNICO COMPLETO ---
@@ -3004,9 +2797,9 @@ else:
                 except Exception as e:
                     st.error(f"⚠️ Error al guardar el borrador: {e}")
 
-            # --- BOTÓN PRINCIPAL QUE GENERA AMBOS DOCUMENTOS EN SIMULTÁNEO ---
+            # --- BOTÓN PRINCIPAL: GENERA INFORME + CONSTANCIA USANDO LA PLANTILLA WORD ---
             if col_gen1.button(
-                "🚀 Generar Reporte Oficial (Informe + Constancia)",
+                "🚀 Generar Reportes Oficiales (Informe + Constancia)",
                 type="primary",
                 use_container_width=True,
             ):
@@ -3022,7 +2815,7 @@ else:
                         st.markdown(f"- {err}")
                 else:
                     with st.spinner(
-                        "Generando y sincronizando Informe Técnico y Constancia Oficial..."
+                        "Generando Informe Técnico y Constancia Oficial desde Plantilla Word..."
                     ):
                         try:
                             # 1. Generar Informe Técnico PDF
@@ -3061,24 +2854,28 @@ else:
                                 emisiones_bordado,
                                 lista_anexos=lista_anexos,
                             )
-
-                            # 2. Generar Constancia Oficial PDF con el diseño idéntico
-                            pdf_constancia_buffer = generar_pdf_constancia(
-                                cliente=cliente,
-                                fe_fin_dt=fe_fin_dt,
-                                peso_recibido_tot=peso_total_recibido,
-                                unidades_transformadas_tot=total_piezas_ingresadas,
-                                total_prod_unidades=total_prod_unid,
-                                co2_neto=co2_neto,
-                                pct_aprovechamiento=pct_aprovechamiento_total,
-                                total_mujeres=total_personas_social,
-                                total_horas=total_horas_social,
-                            )
-
                             bytes_informe = pdf_informe_buffer.getvalue()
-                            bytes_constancia = pdf_constancia_buffer.getvalue()
 
-                            # 3. Empaquetar ambos documentos en un archivo ZIP
+                            # 2. Preparar el contexto exacto para la plantilla Word
+                            mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
+                            contexto_word = {
+                                "cliente": cliente.upper(),
+                                "mes": mes_fin_nombre,
+                                "anio": str(fe_fin_dt.year),
+                                "peso_recibido": f"{peso_total_recibido:.1f}",
+                                "unidades_ingreso": str(total_piezas_ingresadas),
+                                "co2_evitado": f"{co2_neto:.2f}",
+                                "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
+                                "total_mujeres": str(total_personas_social),
+                                "total_horas": f"{total_horas_social:.1f}",
+                                "productos_elaborados": str(total_prod_unid),
+                                "fecha_cierre": f"{fe_fin_dt.strftime('%d')} de {mes_fin_nombre} de {fe_fin_dt.year}",
+                            }
+
+                            # 3. Generar Constancia Oficial en PDF desde el DOCX de GitHub
+                            bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word)
+
+                            # 4. Empaquetar ambos documentos en un archivo ZIP
                             zip_buffer = io.BytesIO()
                             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                                 zip_file.writestr(f"Informe_Tecnico_{codigo_proy}.pdf", bytes_informe)
@@ -3086,7 +2883,7 @@ else:
                             zip_buffer.seek(0)
                             bytes_zip = zip_buffer.getvalue()
 
-                            # 4. Subir ambos documentos a Supabase Storage
+                            # 5. Subir ambos documentos a Supabase Storage
                             nombre_informe_remoto = f"Informe_{codigo_proy}.pdf"
                             url_informe = subir_pdf_supabase(
                                 nombre_informe_remoto, bytes_informe
@@ -3097,7 +2894,7 @@ else:
                                 nombre_constancia_remoto, bytes_constancia
                             )
 
-                            # 5. Guardar en session_state para descargas persistentes
+                            # 6. Guardar en session_state para que la descarga esté siempre disponible
                             st.session_state.documentos_descarga = {
                                 "codigo": codigo_proy,
                                 "bytes_informe": bytes_informe,
@@ -3105,7 +2902,7 @@ else:
                                 "bytes_zip": bytes_zip,
                             }
 
-                            # 6. Actualizar base de datos
+                            # 7. Actualizar base de datos
                             try:
                                 datos_completado = {
                                     "codigo": codigo_proy,
@@ -3140,9 +2937,9 @@ else:
                             st.rerun()
 
                         except Exception as e:
-                            st.error(f"❌ Error al generar los documentos: {e}")
+                            st.error(f"❌ Error al procesar los documentos: {e}")
 
-        # --- SECCIÓN PERSISTENTE DE DESCARGA (NO SE BORRA TRAS HACER CLIC) ---
+        # --- SECCIÓN PERSISTENTE DE DESCARGA (NO SE BORRA AL HACER CLIC) ---
         if st.session_state.documentos_descarga:
             docs = st.session_state.documentos_descarga
             st.success("✅ ¡Informe Técnico y Constancia de Transformación listos para descarga!")
