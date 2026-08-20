@@ -46,10 +46,11 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         root_folder_id = creds_data["folder_id"]
 
         # 1. Determinar el Año y crear/buscar su carpeta
+        # TRUCO: Quitamos la restricción de buscar dentro del root_folder para evitar el bloqueo de vista
         nombre_carpeta_anio = str(fecha_fin_dt.year)
-        
-        query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
+        query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
+        
         if not res_anio.get('files', []):
             carpeta_anio = service.files().create(
                 body={'name': nombre_carpeta_anio, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [root_folder_id]}, 
@@ -60,12 +61,14 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
             id_anio = res_anio.get('files')[0].get('id')
 
         # 2. Determinar el Mes y crear/buscar su carpeta ADENTRO del Año
+        # Como la app acaba de crear/encontrar el año, ya tiene permiso para ver adentro
         meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 
                  7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
         nombre_carpeta_mes = meses.get(fecha_fin_dt.month, 'MES')
         
         query_mes = f"name='{nombre_carpeta_mes}' and mimeType='application/vnd.google-apps.folder' and '{id_anio}' in parents and trashed=false"
         res_mes = service.files().list(q=query_mes, fields='files(id)').execute()
+        
         if not res_mes.get('files', []):
             carpeta_mes = service.files().create(
                 body={'name': nombre_carpeta_mes, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_anio]}, 
@@ -80,6 +83,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         
         query_cli = f"name='{nombre_cliente}' and mimeType='application/vnd.google-apps.folder' and '{id_mes}' in parents and trashed=false"
         res_cli = service.files().list(q=query_cli, fields='files(id)').execute()
+        
         if not res_cli.get('files', []):
             carpeta_cli = service.files().create(
                 body={'name': nombre_cliente, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_mes]}, 
@@ -89,7 +93,6 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         else:
             id_cli = res_cli.get('files')[0].get('id')
 
-        # Retornamos el ID de la carpeta del cliente para guardar los PDF ahí
         return id_cli
     except Exception as e:
         import streamlit as st
