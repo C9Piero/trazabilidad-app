@@ -2117,7 +2117,7 @@ else:
                 resp_prev_val = traza_prev.get("responsable", item_fijo["resp_defecto"])
                 peso_prev_val = float(traza_prev.get("peso", item_fijo["peso_defecto"]))
                 tipo_prev_val = traza_prev.get("tipo_registro", item_fijo["tipo"])
-                is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"] or (item_fijo["etapa"] == "Lavado" and peso_prev_val > 0))
+                is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
 
                 e_nom = c_etapa.text_input(
                     "Etapa",
@@ -2143,12 +2143,14 @@ else:
                     key=f"tr_resp_{i}",
                 )
 
-                val_peso_etapa = peso_prev_val if (is_edited_prev or item_fijo["etapa"] != "Lavado") else float(item_fijo["peso_defecto"])
+                val_peso_etapa = peso_prev_val
+                deshabilitar_peso = False if item_fijo["etapa"] == "Lavado" else (not permitir_editar)
+
                 e_pes_str = c_peso.text_input(
                     "Peso (kg) *",
                     value=f"{val_peso_etapa:.2f}",
-                    disabled=not permitir_editar,
-                    key=f"tr_peso_{i}_{val_peso_etapa:.2f}_{permitir_editar}",
+                    disabled=deshabilitar_peso,
+                    key=f"tr_peso_{i}_{val_peso_etapa:.2f}_{deshabilitar_peso}",
                 )
 
                 try:
