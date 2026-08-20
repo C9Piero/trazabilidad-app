@@ -1277,7 +1277,7 @@ if not st.session_state.autenticado:
             usuario_input = st.text_input("Usuario")[cite: 1]
             password_input = st.text_input("Contraseña", type="password")[cite: 1]
 
-            if st.button("Ingresar al Sistema", use_container_width=True, type="primary"):[cite: 1]
+           if st.button("Ingresar al Sistema", use_container_width=True, type="primary"):
                 if usuario_input == USUARIO_CORRECTO and password_input == PASSWORD_CORRECTO:[cite: 1]
                     st.session_state.autenticado = True[cite: 1]
                     st.success("¡Bienvenido/a!")[cite: 1]
