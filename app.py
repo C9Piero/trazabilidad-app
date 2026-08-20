@@ -45,8 +45,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
-        # 1. Determinar el Año y crear/buscar su carpeta
-        # TRUCO: Quitamos la restricción de buscar dentro del root_folder para evitar el bloqueo de vista
+        # 1. Determinar el Año
         nombre_carpeta_anio = str(fecha_fin_dt.year)
         query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
@@ -60,12 +59,10 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         else:
             id_anio = res_anio.get('files')[0].get('id')
 
-        # 2. Determinar el Mes y crear/buscar su carpeta ADENTRO del Año
-        # Como la app acaba de crear/encontrar el año, ya tiene permiso para ver adentro
+        # 2. Determinar el Mes 
         meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 
                  7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
         nombre_carpeta_mes = meses.get(fecha_fin_dt.month, 'MES')
-        
         query_mes = f"name='{nombre_carpeta_mes}' and mimeType='application/vnd.google-apps.folder' and '{id_anio}' in parents and trashed=false"
         res_mes = service.files().list(q=query_mes, fields='files(id)').execute()
         
@@ -78,9 +75,8 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         else:
             id_mes = res_mes.get('files')[0].get('id')
 
-        # 3. Determinar el Nombre del Cliente y crear/buscar su carpeta ADENTRO del Mes
+        # 3. Determinar el Nombre del Cliente
         nombre_cliente = cliente.strip().upper().replace("'", "")
-        
         query_cli = f"name='{nombre_cliente}' and mimeType='application/vnd.google-apps.folder' and '{id_mes}' in parents and trashed=false"
         res_cli = service.files().list(q=query_cli, fields='files(id)').execute()
         
@@ -95,8 +91,35 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
 
         return id_cli
     except Exception as e:
-        import streamlit as st
         st.caption(f"Aviso Carpetas Drive: {e}")
+        return None
+
+# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
+def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
+    """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
+    try:
+        if "drive_oauth" not in st.secrets:
+            return None 
+        creds_data = st.secrets["drive_oauth"]
+        credentials = Credentials(
+            token=None,
+            refresh_token=creds_data["refresh_token"],
+            client_id=creds_data["client_id"],
+            client_secret=creds_data["client_secret"],
+            token_uri="https://oauth2.googleapis.com/token"
+        )
+        service = build('drive', 'v3', credentials=credentials)
+        folder_id = custom_folder_id if custom_folder_id else creds_data["folder_id"]
+        
+        file_metadata = {'name': nombre_archivo, 'parents': [folder_id]}
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
+        
+        archivo_subido = service.files().create(
+            body=file_metadata, media_body=media, fields='id'
+        ).execute()
+        return archivo_subido.get('id')
+    except Exception as e:
+        st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
         return None
 
 # --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
