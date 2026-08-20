@@ -24,8 +24,8 @@ from reportlab.platypus import (
 )
 from supabase import Client, create_client
 
-# --- NUEVAS LIBRERÍAS DE GOOGLE DRIVE ---
-from google.oauth2.service_account import Credentials
+# --- NUEVAS LIBRERÍAS DE GOOGLE DRIVE (OAUTH) ---
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
@@ -150,7 +150,6 @@ TIEMPOS_ESTIMADOS_PRODUCTO = {
     "Juguete": 0.75,
 }
 
-
 def estimar_tiempo_unidad(nombre_producto: str) -> float:
     if not nombre_producto:
         return 0.35
@@ -158,7 +157,6 @@ def estimar_tiempo_unidad(nombre_producto: str) -> float:
         if prod_key.lower() in nombre_producto.lower():
             return tiempo
     return 0.35
-
 
 # --- FACTORES DE EMISIÓN DE MATERIALES ---
 FACTORES_CO2 = {
@@ -460,19 +458,25 @@ def subir_pdf_supabase(nombre_archivo: str, pdf_bytes: bytes) -> str:
         st.error(f"❌ Error al obtener URL pública del PDF: {e_url}")
         return ""
 
-# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE ---
+# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
 def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf"):
-    """Sube un archivo directamente a una carpeta específica en Google Drive usando Service Account."""
+    """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
     try:
-        if "gcp_service_account" not in st.secrets or "drive" not in st.secrets:
-            return None # Si no hay credenciales, omite este paso silenciosamente
+        if "drive_oauth" not in st.secrets:
+            return None 
         
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        credentials = Credentials.from_service_account_info(
-            creds_dict, scopes=["https://www.googleapis.com/auth/drive.file"]
+        creds_data = st.secrets["drive_oauth"]
+        
+        credentials = Credentials(
+            token=None,
+            refresh_token=creds_data["refresh_token"],
+            client_id=creds_data["client_id"],
+            client_secret=creds_data["client_secret"],
+            token_uri="https://oauth2.googleapis.com/token"
         )
+        
         service = build('drive', 'v3', credentials=credentials)
-        folder_id = st.secrets["drive"]["folder_id"]
+        folder_id = creds_data["folder_id"]
         
         file_metadata = {
             'name': nombre_archivo,
@@ -3216,7 +3220,7 @@ else:
                                 nombre_constancia_remoto, bytes_constancia
                             )
                             
-                            # 6. Subir documentos a GOOGLE DRIVE
+                            # 6. Subir documentos a GOOGLE DRIVE (USANDO OAUTH)
                             try:
                                 subir_a_drive(f"Informe_{codigo_proy}.pdf", bytes_informe, "application/pdf")
                                 subir_a_drive(f"Constancia_{codigo_proy}.pdf", bytes_constancia, "application/pdf")
