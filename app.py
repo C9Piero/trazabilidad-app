@@ -3190,6 +3190,89 @@ else:
 
                             # 7. Actualizar base de datos con los datos consolidados y el JSON de respaldo
                             try:
+                                datos_detalle = {
+                                    "responsables_seleccionados": responsables_seleccionados,
+                                    "origen": origen,
+                                    "num_items": st.session_state.num_items,
+                                    "items": [
+                                        {
+                                            "descripcion": it["descripcion"],
+                                            "unidades": it["unidades"],
+                                            "peso_unitario": it["peso_unitario"],
+                                            "peso_total": it["peso_total"],
+                                        }
+                                        for it in lista_items
+                                    ],
+                                    "trazabilidad": [
+                                        {
+                                            "etapa": tr["etapa"],
+                                            "fecha": tr["fecha"],
+                                            "responsable": tr["responsable"],
+                                            "peso": tr["peso"],
+                                            "tipo_registro": tr["tipo_registro"],
+                                            "editado": tr.get("editado", False),
+                                        }
+                                        for tr in lista_trazabilidad
+                                    ],
+                                    "num_prods": st.session_state.num_prods,
+                                    "productos": [
+                                        {
+                                            "producto": pr["producto"],
+                                            "cantidad": pr["cantidad"],
+                                        }
+                                        for pr in lista_productos
+                                    ],
+                                    "balance": {
+                                        "editar_manual": editar_balance,
+                                        "mat_transformado": mat_transformado,
+                                        "retazos_aprovechables": retazos_aprovechables,
+                                        "perdida_no_aprovechable": perdida_no_aprovechable,
+                                    },
+                                    "transporte": {
+                                        "distrito": distrito_sel,
+                                        "distancia": distancia_km,
+                                        "vehiculo": vehiculo_sel,
+                                        "recorrido": recorrido_tipo,
+                                    },
+                                    "bordado": {
+                                        "cantidad": cant_prendas_bordado,
+                                        "tipo": tipo_diseno_bordado,
+                                    },
+                                    "operaciones": [
+                                        {
+                                            "rol": op["rol"],
+                                            "nombre": op["nombre"],
+                                            "dias": op["dias"],
+                                            "horas_dia": op["horas_dia"],
+                                            "horas_totales": op["horas_totales"],
+                                            "editado": op.get("editado", False),
+                                        }
+                                        for op in lista_operaciones
+                                    ],
+                                    "confeccion_num_pers": {
+                                        f"num_pers_prod_{idx_c}": st.session_state.get(f"num_pers_prod_{idx_c}", 1)
+                                        for idx_c in range(len(lista_productos))
+                                    },
+                                    "confeccion": [
+                                        {
+                                            "producto": c["producto"],
+                                            "rol": c["rol"],
+                                            "persona": c["persona"],
+                                            "cantidad": c["cantidad"],
+                                            "tiempo_unitario": c["tiempo_unitario"],
+                                            "horas_totales": c["horas_totales"],
+                                        }
+                                        for c in lista_confeccion
+                                    ],
+                                    "num_anexos": st.session_state.num_anexos,
+                                    "anexos": [
+                                        {
+                                            "nota": a["nota"]
+                                        }
+                                        for a in lista_anexos
+                                    ],
+                                }
+
                                 datos_completado = {
                                     "codigo": codigo_proy,
                                     "cliente": cliente,
