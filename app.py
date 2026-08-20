@@ -532,14 +532,7 @@ def init_supabase() -> Client:
 try:
     supabase = init_supabase()
 except KeyError:
-    st.error(
-        "⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.
-
-"
-        "Configura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en "
-        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
-        "(Streamlit Cloud)."
-    )
+    st.error("⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\nConfigura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en `.streamlit/secrets.toml` (local) o en **Settings → Secrets** (Streamlit Cloud).")
     st.stop()
 except Exception as e:
     st.error(f"⚠️ No se pudo conectar con Supabase: {e}")
@@ -595,10 +588,7 @@ def eliminar_proyecto_bd(proyecto_id, codigo_proy):
 @st.dialog("⚠️ Confirmar Eliminación Permanente")
 def modal_confirmar_eliminacion(proyecto):
     st.warning(
-        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?
-
-"
-        "Esta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
+        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\nEsta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
     )
     col_confirm, col_cancel = st.columns(2)
 
@@ -1422,14 +1412,7 @@ try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
 except KeyError:
-    st.error(
-        "⚠️ Faltan las credenciales de acceso en `st.secrets`.
-
-"
-        "Agrega `USUARIO` y `PASSWORD` dentro de `[auth]` en "
-        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
-        "(Streamlit Cloud)."
-    )
+    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\nAgrega `USUARIO` y `PASSWORD` dentro de `[auth]` en `.streamlit/secrets.toml` (local) o en **Settings → Secrets** (Streamlit Cloud).")
     st.stop()
 
 if not st.session_state.autenticado:
