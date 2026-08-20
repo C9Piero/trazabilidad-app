@@ -3430,16 +3430,26 @@ else:
                                 }
                                 
                                 if p_edit.get("id"):
+                             # Verificamos inteligentemente si el proyecto ya existe por su código
+                                proyecto_id = p_edit.get("id")
+                                
+                                # Si no teníamos el ID en la memoria, buscamos si el código ya existe en la nube
+                                if not proyecto_id:
+                                    busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
+                                    if busca_existente.data:
+                                        proyecto_id = busca_existente.data[0]["id"]
+                                
+                                # Si el proyecto ya existe, lo actualizamos. Si no, insertamos uno nuevo.
+                                if proyecto_id:
                                     supabase.table("proyectos").update(
                                         datos_completado
-                                    ).eq("id", p_edit["id"]).execute()
+                                    ).eq("id", proyecto_id).execute()
                                 else:
                                     supabase.table("proyectos").insert(
                                         datos_completado
                                     ).execute()
                                     
                                 # <-- SOLO SI LA BD SE ACTUALIZA CON ÉXITO: 
-                                # Limpiamos el modo edición para que salga de la lista de borradores pendientes
                                 st.session_state.proyecto_editar = {}
                                 st.rerun()
 
