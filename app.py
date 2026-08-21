@@ -1243,12 +1243,16 @@ else:
                 if archivo_cargado is not None:
                     try:
                         if archivo_cargado.name.endswith('.csv'):
-                            df_subido = pd.read_csv(archivo_cargado)
+                            try:
+                                df_subido = pd.read_csv(archivo_cargado, encoding='utf-8')
+                            except UnicodeDecodeError:
+                                archivo_cargado.seek(0)
+                                df_subido = pd.read_csv(archivo_cargado, encoding='latin1')
                         else:
                             try:
                                 df_subido = pd.read_excel(archivo_cargado)
                             except ImportError:
-                                st.error("⚠️ Para archivos Excel (.xlsx) se requiere 'openpyxl'. Por favor, guarda tu archivo como **CSV** y súbelo.")
+                                st.error("⚠️ Para archivos Excel (.xlsx) se requiere la librería 'openpyxl'. Te recomendamos guardarlo como archivo **CSV** para una lectura inmediata.")
                                 df_subido = None
 
                         if df_subido is not None:
