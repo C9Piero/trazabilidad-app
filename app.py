@@ -1149,75 +1149,77 @@ else:
         unsafe_allow_html=True,
     )
 
-    # --- VISTA: CARGA RÁPIDA HISTÓRICA ---
+# --- VISTA: CARGA RÁPIDA HISTÓRICA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos / Pasados")
-        st.caption("Utiliza este formulario simplificado para ingresar rápidamente métricas consolidadas.")
+        st.caption("Ingresa únicamente la Razón Social, el Mes y las métricas necesarias para alimentar tu Dashboard.")
 
         with st.container(border=True):
-            st.markdown("##### 1. Datos Generales del Proyecto")
+            st.markdown("##### 1. Datos Generales")
             
-            rq1, rq2, rq3, rq4 = st.columns(4)
-            fast_cliente = rq1.text_input("Cliente / Empresa *")
-            fast_ruc = rq2.text_input("RUC (11 dígitos) *", max_chars=11)
-            fast_tipo = rq3.selectbox(
-                "Tipo de Proyecto", ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
-            )
-            fast_resp = rq4.text_input("Responsable", value="Sostenibilidad")
+            rq1, rq2, rq3, rq4 = st.columns([2.5, 1.5, 1, 1.5])
+            fast_cliente = rq1.text_input("Cliente / Razón Social *")
+            
+            meses_lista = [m.capitalize() for m in MESES_ESPANOL.values()]
+            mes_actual = datetime.date.today().month
+            fast_mes = rq2.selectbox("Mes del pedido *", meses_lista, index=mes_actual - 1)
+            
+            anios_lista = [2024, 2025, 2026, 2027]
+            anio_actual = datetime.date.today().year
+            idx_anio = anios_lista.index(anio_actual) if anio_actual in anios_lista else 2
+            fast_anio = rq3.selectbox("Año", anios_lista, index=idx_anio)
 
-            rq5, rq6 = st.columns(2)
-            fast_f_ini = rq5.date_input("Fecha Inicio", value=datetime.date.today(), format="DD/MM/YYYY")
-            fast_f_fin = rq6.date_input("Fecha Término", value=datetime.date.today(), format="DD/MM/YYYY")
-
-            fe_ini_str = fast_f_ini.strftime("%d/%m/%Y")
-            fe_fin_str = fast_f_fin.strftime("%d/%m/%Y")
+            fast_tipo = rq4.selectbox("Tipo de Proyecto", ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"])
+            
+            # --- TRUCO: Generar fecha falsa para que el Dashboard lo lea perfecto ---
+            mes_num = meses_lista.index(fast_mes) + 1
+            fe_ini_str = f"01/{mes_num:02d}/{fast_anio}"
+            fe_fin_str = f"28/{mes_num:02d}/{fast_anio}"
             
             cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
-            
-            # --- CÓDIGO INTELIGENTE CON PIN ---
-            fast_codigo = f"{cli_clean}_{fast_f_ini.strftime('%d%m%Y')}-{fast_f_fin.strftime('%d%m%Y')}-{random.randint(1000, 9999)}"
-
-            st.info(f"🆔 **Código Generado:** `{fast_codigo}`")
+            fast_codigo = f"HIST_{cli_clean}_{mes_num:02d}{fast_anio}-{random.randint(1000, 9999)}"
 
         with st.container(border=True):
-            st.markdown("##### 2. Métricas Consolidadas")
+            st.markdown("##### 2. Métricas para el Dashboard")
             rm1, rm2, rm3 = st.columns(3)
-            fast_peso = rm1.number_input("Material Procesado Total (kg) *", min_value=0.0, step=0.1)
+            fast_peso = rm1.number_input("Kg Recibidos (Peso Total) *", min_value=0.0, step=0.1)
             fast_unid_recibidas = rm2.number_input("Unidades Recibidas", min_value=0, step=1)
-            fast_unid = rm3.number_input("Unidades Producidas *", min_value=0, step=1)
+            fast_unid = rm3.number_input("Productos Creados *", min_value=0, step=1)
 
-            rm4, rm5, rm6, rm7 = st.columns(4)
-            fast_co2 = rm4.number_input("CO₂e Neto Evitado (kg) *", min_value=0.0, step=0.1)
+            rm4, rm5, rm6 = st.columns(3)
+            fast_co2 = rm4.number_input("CO₂e Evitado (kg) *", min_value=0.0, step=0.1)
             fast_horas = rm5.number_input("Horas de Trabajo *", min_value=0.0, step=0.5)
             fast_personas = rm6.number_input("Participantes *", min_value=0, step=1)
-            fast_aprovechamiento = rm7.number_input("% Aprovechamiento *", min_value=0.0, max_value=100.0, value=100.0, step=0.1)
-
-            fast_origen = st.text_input("Punto Origen", value="Sede Central")
 
         st.write("")
 
-        if st.button("🚀 Guardar Proyecto Histórico Directamente", type="primary", use_container_width=True):
+        if st.button("🚀 Guardar Proyecto Histórico", type="primary", use_container_width=True):
             if not fast_cliente.strip():
-                st.error("El campo **Cliente / Empresa** es obligatorio.")
-            elif not fast_ruc.strip() or not re.fullmatch(r"\d{11}", fast_ruc.strip()):
-                st.error("El **RUC** es obligatorio y debe tener 11 dígitos.")
+                st.error("El campo **Cliente / Razón Social** es obligatorio.")
             else:
                 try:
                     with st.spinner("Registrando proyecto histórico..."):
                         supabase.table("proyectos").upsert({
-                            "codigo": fast_codigo, "cliente": fast_cliente, "ruc": fast_ruc,
-                            "tipo_proyecto": fast_tipo, "responsable": fast_resp,
-                            "fecha": f"{fe_ini_str} - {fe_fin_str}", "estado": "COMPLETADO",
-                            "peso_recibido": fast_peso, "peso_transformado": fast_peso,
-                            "aprovechamiento": fast_aprovechamiento, "co2_neto": fast_co2,
-                            "horas_totales": fast_horas, "productos_unids": fast_unid,
-                            "punto_origen": fast_origen,
+                            "codigo": fast_codigo, 
+                            "cliente": fast_cliente, 
+                            "ruc": "00000000000", # RUC genérico para evitar errores en otras vistas
+                            "tipo_proyecto": fast_tipo, 
+                            "responsable": "Sostenibilidad (Histórico)",
+                            "fecha": f"{fe_ini_str} - {fe_fin_str}", 
+                            "estado": "COMPLETADO",
+                            "peso_recibido": fast_peso, 
+                            "peso_transformado": fast_peso,
+                            "aprovechamiento": 100.0, 
+                            "co2_neto": fast_co2,
+                            "horas_totales": fast_horas, 
+                            "productos_unids": fast_unid,
+                            "punto_origen": "Histórico",
                             "datos_completos": {
                                 "participantes": fast_personas, 
                                 "unidades_recibidas": fast_unid_recibidas
                             }
                         }).execute()
-                    st.success(f"✅ ¡Proyecto **{fast_cliente}** registrado exitosamente en el Histórico!")
+                    st.success(f"✅ ¡Proyecto **{fast_cliente}** ({fast_mes} {fast_anio}) registrado exitosamente en el Histórico!")
                     st.toast("⚡ Guardado rápido completado")
                 except Exception as e:
                     st.error(f"⚠️ Error al registrar el proyecto: {e}")
