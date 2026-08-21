@@ -180,6 +180,7 @@ def estimar_tiempo_unidad(nombre_producto: str) -> float:
         return 0.35
     
     nombre_lower = nombre_producto.lower().strip()
+    
     tiempo_costura = 0.40
     encontrado = False
     
@@ -756,7 +757,7 @@ def generar_pdf_oficial(
     elements.append(t_prendas)
     elements.append(Spacer(1, 8))
 
-    elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EM UPCYCLING", h2_style))
+    elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
     elements.append(Paragraph("Seguimiento del material a través de cada etapa del proceso.", sub_style))
     data_traza_pdf = [[
         Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold), Paragraph("Responsable", cell_bold),
@@ -1032,6 +1033,7 @@ if "pct_aprovechamiento_random" not in st.session_state:
 if "pct_transformado_ratio" not in st.session_state:
     st.session_state.pct_transformado_ratio = round(random.uniform(0.78, 0.83), 4)
 
+# --- INICIALIZADOR DE PIN ÚNICO AUTOMÁTICO ---
 if "uid_proyecto" not in st.session_state:
     st.session_state.uid_proyecto = str(random.randint(1000, 9999))
 
@@ -1039,7 +1041,7 @@ try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
 except KeyError:
-    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.")
+    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\nAgrega `USUARIO` y `PASSWORD` dentro de `[auth]` en `.streamlit/secrets.toml`.")
     st.stop()
 
 if not st.session_state.autenticado:
@@ -1163,139 +1165,79 @@ else:
         unsafe_allow_html=True,
     )
 
-    # --- VISTA: CARGA RÁPIDA HISTÓRICA (CON CARGA MASIVA) ---
+    # --- VISTA: CARGA RÁPIDA HISTÓRICA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
-        st.subheader("⚡ Carga Rápida de Proyectos Históricos")
-        st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
+        st.subheader("⚡ Carga Rápida de Proyectos Históricos / Pasados")
+        st.caption("Ingresa únicamente la Razón Social, el Mes y las métricas necesarias para alimentar tu Dashboard.")
 
-        tab_manual, tab_masiva = st.tabs(["✍️ Carga Manual Individual", "📂 Carga Masiva (Excel / CSV)"])
+        with st.container(border=True):
+            st.markdown("##### 1. Datos Generales")
+            
+            rq1, rq2, rq3, rq4 = st.columns([2.5, 1.5, 1, 1.5])
+            fast_cliente = rq1.text_input("Cliente / Razón Social *")
+            
+            meses_lista = [m.capitalize() for m in MESES_ESPANOL.values()]
+            mes_actual = datetime.date.today().month
+            fast_mes = rq2.selectbox("Mes del pedido *", meses_lista, index=mes_actual - 1)
+            
+            anios_lista = [2024, 2025, 2026, 2027]
+            anio_actual = datetime.date.today().year
+            idx_anio = anios_lista.index(anio_actual) if anio_actual in anios_lista else 2
+            fast_anio = rq3.selectbox("Año", anios_lista, index=idx_anio)
 
-        with tab_manual:
-            with st.container(border=True):
-                st.markdown("##### 1. Datos Generales")
-                rq1, rq2, rq3, rq4 = st.columns([2.5, 1.5, 1, 1.5])
-                fast_cliente = rq1.text_input("Cliente / Razón Social *")
-                
-                meses_lista = [m.capitalize() for m in MESES_ESPANOL.values()]
-                mes_actual = datetime.date.today().month
-                fast_mes = rq2.selectbox("Mes del pedido *", meses_lista, index=mes_actual - 1)
-                
-                anios_lista = [2024, 2025, 2026, 2027]
-                anio_actual = datetime.date.today().year
-                idx_anio = anios_lista.index(anio_actual) if anio_actual in anios_lista else 2
-                fast_anio = rq3.selectbox("Año", anios_lista, index=idx_anio)
+            fast_tipo = rq4.selectbox("Tipo de Proyecto", ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"])
+            
+            mes_num = meses_lista.index(fast_mes) + 1
+            fe_ini_str = f"01/{mes_num:02d}/{fast_anio}"
+            fe_fin_str = f"28/{mes_num:02d}/{fast_anio}"
+            
+            cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
+            fast_codigo = f"HIST_{cli_clean}_{mes_num:02d}{fast_anio}-{random.randint(1000, 9999)}"
 
-                fast_tipo = rq4.selectbox("Tipo de Proyecto", ["UPCYCLING", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
-                
-                mes_num = meses_lista.index(fast_mes) + 1
-                fe_ini_str = f"01/{mes_num:02d}/{fast_anio}"
-                fe_fin_str = f"28/{mes_num:02d}/{fast_anio}"
-                
-                cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
-                fast_codigo = f"HIST_{cli_clean}_{mes_num:02d}{fast_anio}-{random.randint(1000, 9999)}"
+        with st.container(border=True):
+            st.markdown("##### 2. Métricas para el Dashboard")
+            rm1, rm2, rm3 = st.columns(3)
+            fast_peso = rm1.number_input("Kg Recibidos (Peso Total) *", min_value=0.0, step=0.1)
+            fast_unid_recibidas = rm2.number_input("Unidades Recibidas", min_value=0, step=1)
+            fast_unid = rm3.number_input("Productos Creados *", min_value=0, step=1)
 
-            with st.container(border=True):
-                st.markdown("##### 2. Métricas para el Dashboard")
-                rm1, rm2, rm3 = st.columns(3)
-                fast_peso = rm1.number_input("Kg Recibidos (Peso Total) *", min_value=0.0, step=0.1)
-                fast_unid_recibidas = rm2.number_input("Unidades Recibidas", min_value=0, step=1)
-                fast_unid = rm3.number_input("Productos Creados *", min_value=0, step=1)
+            rm4, rm5, rm6 = st.columns(3)
+            fast_co2 = rm4.number_input("CO₂e Evitado (kg) *", min_value=0.0, step=0.1)
+            fast_horas = rm5.number_input("Horas de Trabajo *", min_value=0.0, step=0.5)
+            fast_personas = rm6.number_input("Participantes *", min_value=0, step=1)
 
-                rm4, rm5, rm6 = st.columns(3)
-                fast_co2 = rm4.number_input("CO₂e Evitado (kg) *", min_value=0.0, step=0.1)
-                fast_horas = rm5.number_input("Horas de Trabajo *", min_value=0.0, step=0.5)
-                fast_personas = rm6.number_input("Participantes *", min_value=0, step=1)
+        st.write("")
 
-            st.write("")
-
-            if st.button("🚀 Guardar Proyecto Histórico", type="primary", use_container_width=True):
-                if not fast_cliente.strip():
-                    st.error("El campo **Cliente / Razón Social** es obligatorio.")
-                else:
-                    try:
-                        with st.spinner("Registrando proyecto..."):
-                            supabase.table("proyectos").upsert({
-                                "codigo": fast_codigo, "cliente": fast_cliente, "ruc": "00000000000", 
-                                "tipo_proyecto": fast_tipo, "responsable": "Sostenibilidad (Histórico)",
-                                "fecha": f"{fe_ini_str} - {fe_fin_str}", "estado": "COMPLETADO",
-                                "peso_recibido": fast_peso, "peso_transformado": fast_peso,
-                                "aprovechamiento": 100.0, "co2_neto": fast_co2, "horas_totales": fast_horas, 
-                                "productos_unids": fast_unid, "punto_origen": "Histórico",
-                                "datos_completos": {"participantes": fast_personas, "unidades_recibidas": fast_unid_recibidas}
-                            }).execute()
-                        st.success(f"✅ ¡Proyecto **{fast_cliente}** registrado con éxito!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"⚠️ Error: {e}")
-
-        with tab_masiva:
-            with st.container(border=True):
-                st.markdown("##### 📂 Importación Masiva de Proyectos")
-                st.markdown("""
-                Sube un archivo **Excel (`.xlsx`)** o **CSV** que contenga exactamente las mismas columnas de tu tabla:
-                * **Cliente** (o Razón Social)
-                * **Mes** (Ej: Enero, Febrero...)
-                * **Unidades recibidas**
-                * **Kg recibidos**
-                * **CO2 evitado** (o CO2e)
-                * **Horas**
-                * **Productos**
-                * **Participantes**
-                * **TIPO DE PROYECTO**
-                """)
-
-                archivo_cargado = st.file_uploader("Selecciona tu archivo Excel o CSV", type=["xlsx", "csv"])
-                
-                anio_masivo = st.selectbox("Año aplicable para todos los proyectos del archivo", [2024, 2025, 2026, 2027], index=2)
-
-                if archivo_cargado is not None:
-                    try:
-                        if archivo_cargado.name.endswith('.csv'):
-                            df_subido = pd.read_csv(archivo_cargado)
-                        else:
-                            df_subido = pd.read_excel(archivo_cargado)
-
-                        st.write("Vista previa de los datos detectados:", df_subido.head())
-
-                        if st.button("🚀 Importar Todos los Proyectos al Sistema", type="primary", use_container_width=True):
-                            with st.spinner("Importando proyectos masivamente a Supabase..."):
-                                meses_map = {m.lower(): i for i, m in MESES_ESPANOL.items()}
-                                
-                                count_exito = 0
-                                for _, row in df_subido.iterrows():
-                                    cli = str(row.get("Cliente", row.get("cliente", "CLIENTE"))).strip()
-                                    mes_txt = str(row.get("Mes", row.get("mes", "enero"))).strip().lower()
-                                    mes_n = meses_map.get(mes_txt, 1)
-                                    
-                                    fe_i = f"01/{mes_n:02d}/{anio_masivo}"
-                                    fe_f = f"28/{mes_n:02d}/{anio_masivo}"
-                                    
-                                    unid_rec = int(row.get("Unidades recibidas", row.get("unidades_recibidas", 0)) or 0)
-                                    kg_rec = float(row.get("Kg recibidos", row.get("kg_recibidos", 0)) or 0.0)
-                                    co2_val = float(row.get("CO₂ evitado", row.get("CO2 evitado", row.get("co2_evitado", 0))) or 0.0)
-                                    horas_val = float(row.get("Horas", row.get("horas", 0)) or 0.0)
-                                    prod_val = int(row.get("Productos", row.get("productos", 0)) or 0)
-                                    part_val = int(row.get("Participantes", row.get("participantes", 0)) or 0)
-                                    tipo_proy = str(row.get("TIPO DE PROYECTO", row.get("tipo_proyecto", "UPCYCLING"))).upper()
-
-                                    codigo_H = f"MASIVO_{cli[:10]}_{mes_n:02d}{anio_masivo}-{random.randint(100,999)}"
-
-                                    supabase.table("proyectos").upsert({
-                                        "codigo": codigo_H, "cliente": cli, "ruc": "00000000000",
-                                        "tipo_proyecto": tipo_proy, "responsable": "Sostenibilidad (Histórico)",
-                                        "fecha": f"{fe_i} - {fe_f}", "estado": "COMPLETADO",
-                                        "peso_recibido": kg_rec, "peso_transformado": kg_rec,
-                                        "aprovechamiento": 100.0, "co2_neto": co2_val,
-                                        "horas_totales": horas_val, "productos_unids": prod_val,
-                                        "punto_origen": "Histórico Masivo",
-                                        "datos_completos": {"participantes": part_val, "unidades_recibidas": unid_rec}
-                                    }).execute()
-                                    count_exito += 1
-
-                                st.success(f"🎉 ¡Se han importado exitosamente **{count_exito} proyectos** a tu Dashboard!")
-                                st.balloons()
-                    except Exception as e:
-                        st.error(f"❌ Error al leer o importar el archivo: {e}")
+        if st.button("🚀 Guardar Proyecto Histórico", type="primary", use_container_width=True):
+            if not fast_cliente.strip():
+                st.error("El campo **Cliente / Razón Social** es obligatorio.")
+            else:
+                try:
+                    with st.spinner("Registrando proyecto histórico..."):
+                        supabase.table("proyectos").upsert({
+                            "codigo": fast_codigo, 
+                            "cliente": fast_cliente, 
+                            "ruc": "00000000000", 
+                            "tipo_proyecto": fast_tipo, 
+                            "responsable": "Sostenibilidad (Histórico)",
+                            "fecha": f"{fe_ini_str} - {fe_fin_str}", 
+                            "estado": "COMPLETADO",
+                            "peso_recibido": fast_peso, 
+                            "peso_transformado": fast_peso,
+                            "aprovechamiento": 100.0, 
+                            "co2_neto": fast_co2,
+                            "horas_totales": fast_horas, 
+                            "productos_unids": fast_unid,
+                            "punto_origen": "Histórico",
+                            "datos_completos": {
+                                "participantes": fast_personas, 
+                                "unidades_recibidas": fast_unid_recibidas
+                            }
+                        }).execute()
+                    st.success(f"✅ ¡Proyecto **{fast_cliente}** ({fast_mes} {fast_anio}) registrado exitosamente en el Histórico!")
+                    st.toast("⚡ Guardado rápido completado")
+                except Exception as e:
+                    st.error(f"⚠️ Error al registrar el proyecto: {e}")
 
     # --- VISTA: PROYECTOS EN PROCESO ---
     elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
@@ -1309,13 +1251,19 @@ else:
             for b in borradores:
                 with st.container(border=True):
                     bc1, bc2, bc3 = st.columns([3, 2, 2])
+                    
                     nombre_cli_ui = b.get('cliente', 'Sin Nombre')
                     bc1.markdown(f"**Cliente:** {nombre_cli_ui}")
                     bc1.caption(f"Código: `{b.get('codigo', '')}`")
                     bc2.markdown(f"**Tipo:** {b.get('tipo_proyecto', 'Upcycling')}")
                     bc2.caption(f"Fecha: {b.get('fecha', '')}")
 
-                    if bc3.button("✏️ Retomar Edición", key=f"retomar_{b.get('id', b.get('codigo'))}", use_container_width=True, type="primary"):
+                    if bc3.button(
+                        "✏️ Retomar Edición",
+                        key=f"retomar_{b.get('id', b.get('codigo'))}",
+                        use_container_width=True,
+                        type="primary",
+                    ):
                         st.session_state.proyecto_editar = b
                         st.session_state.documentos_descarga = None
                         st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
@@ -1392,6 +1340,7 @@ else:
                 })
                 
             df_tabla = pd.DataFrame(tabla_data)
+            
             max_kg = float(df_tabla["Kg recibidos"].max()) if not df_tabla.empty else 100.0
             max_co2 = float(df_tabla["CO₂ evitado"].max()) if not df_tabla.empty else 100.0
             
@@ -1403,8 +1352,20 @@ else:
                     "Cliente": st.column_config.TextColumn("Cliente", width="medium"),
                     "Mes": st.column_config.TextColumn("Mes", alignment="center"),
                     "Unidades recibidas": st.column_config.NumberColumn("Unidades recibidas", format="%d", alignment="center"),
-                    "Kg recibidos": st.column_config.ProgressColumn("Kg recibidos", format="%.2f kg", min_value=0, max_value=max_kg),
-                    "CO₂ evitado": st.column_config.ProgressColumn("CO₂ evitado", format="%.2f kg", min_value=0, max_value=max_co2),
+                    "Kg recibidos": st.column_config.ProgressColumn(
+                        "Kg recibidos",
+                        help="Peso total procesado",
+                        format="%.2f kg",
+                        min_value=0,
+                        max_value=max_kg,
+                    ),
+                    "CO₂ evitado": st.column_config.ProgressColumn(
+                        "CO₂ evitado",
+                        help="Impacto ambiental neto",
+                        format="%.2f kg",
+                        min_value=0,
+                        max_value=max_co2,
+                    ),
                     "Horas": st.column_config.NumberColumn("Horas", format="%.2f hrs", alignment="center"),
                     "Productos": st.column_config.NumberColumn("Productos", format="%d unid", alignment="center"),
                     "Participantes": st.column_config.NumberColumn("Participantes", format="%d", alignment="center"),
@@ -1424,6 +1385,7 @@ else:
             for p in proyectos_lista:
                 with st.container(border=True):
                     hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
+                    
                     nombre_cli_ui = p.get('cliente', 'Sin Nombre')
 
                     hc1.markdown(f"**{nombre_cli_ui}**")
@@ -1445,7 +1407,12 @@ else:
                     else:
                         hc5.caption("📜 Sin Constancia")
 
-                    if hc6.button("🗑️", key=f"hist_del_{p.get('id', p.get('codigo'))}", use_container_width=True, help="Eliminar proyecto"):
+                    if hc6.button(
+                        "🗑️",
+                        key=f"hist_del_{p.get('id', p.get('codigo'))}",
+                        use_container_width=True,
+                        help="Eliminar proyecto",
+                    ):
                         modal_confirmar_eliminacion(p)
         else:
             st.info("📭 No hay proyectos registrados en el historial.")
@@ -1453,6 +1420,7 @@ else:
     # --- VISTA: NUEVO REPORTE PDF ---
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
+
         target_proj_id = p_edit.get("id") or p_edit.get("codigo") or "__nuevo__"
         current_loaded = st.session_state.get("_loaded_project_id", None)
 
@@ -1460,9 +1428,26 @@ else:
             st.session_state._loaded_project_id = target_proj_id
             dc_init = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
 
-            st.session_state.num_items = dc_init.get("num_items", len(dc_init.get("items", [])) or 2)
-            st.session_state.num_prods = dc_init.get("num_prods", len(dc_init.get("productos", [])) or 2)
-            st.session_state.num_anexos = dc_init.get("num_anexos", len(dc_init.get("anexos", [])) or 1)
+            if dc_init.get("num_items"):
+                st.session_state.num_items = dc_init["num_items"]
+            elif "items" in dc_init and len(dc_init["items"]) > 0:
+                st.session_state.num_items = len(dc_init["items"])
+            else:
+                st.session_state.num_items = 2
+
+            if dc_init.get("num_prods"):
+                st.session_state.num_prods = dc_init["num_prods"]
+            elif "productos" in dc_init and len(dc_init["productos"]) > 0:
+                st.session_state.num_prods = len(dc_init["productos"])
+            else:
+                st.session_state.num_prods = 2
+
+            if dc_init.get("num_anexos"):
+                st.session_state.num_anexos = dc_init["num_anexos"]
+            elif "anexos" in dc_init and len(dc_init["anexos"]) > 0:
+                st.session_state.num_anexos = len(dc_init["anexos"])
+            else:
+                st.session_state.num_anexos = 1
 
             conf_num_map = dc_init.get("confeccion_num_pers", {})
             for k_np, v_np in conf_num_map.items():
@@ -1478,13 +1463,16 @@ else:
                 "chk_edit_balance", "bm_mat_transf_", "bm_retazos_", "bm_perdida_",
                 "responsables_proyecto", "nuevo_responsable_proyecto"
             ]
-            for k_del in [k for k in list(st.session_state.keys()) if any(k.startswith(pfx) for pfx in prefijos_limpiar)]:
+            keys_to_del = [k for k in list(st.session_state.keys()) if any(k.startswith(pfx) for pfx in prefijos_limpiar)]
+            for k_del in keys_to_del:
                 del st.session_state[k_del]
 
         dc = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
 
         if p_edit:
-            st.warning(f"✏️ **Modo Edición Activo:** Modificando borrador de **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)")
+            st.warning(
+                f"✏️ **Modo Edición Activo:** Modificando borrador de **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
+            )
             col_desc, col_elim = st.columns([2, 2])
             if col_desc.button("❌ Descartar selección y limpiar formulario", use_container_width=True):
                 st.session_state.proyecto_editar = {}
@@ -1494,56 +1482,81 @@ else:
             if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
                 modal_confirmar_eliminacion(p_edit)
 
+        # --- SECCIÓN 1: FICHA GENERAL (CON TOOLTIPS DE AYUDA) ---
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
+
             fechas_raw = p_edit.get("fecha", " - ").split(" - ")
             try: def_f_ini = datetime.datetime.strptime(fechas_raw[0].strip(), "%d/%m/%Y").date()
             except Exception: def_f_ini = datetime.date.today()
+
             try: def_f_fin = datetime.datetime.strptime(fechas_raw[1].strip(), "%d/%m/%Y").date()
             except Exception: def_f_fin = datetime.date.today()
 
             c1, c2, c5, c6 = st.columns(4)
             cliente = c1.text_input("Cliente / Empresa *", value=p_edit.get("cliente", ""), help="Nombre de la empresa o cliente corporativo.")
             ruc = c2.text_input("RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11, help="RUC de 11 dígitos de la empresa cliente.")
+            
             fe_inicio_dt = c5.date_input("Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY", help="Fecha en la que se recibieron los uniformes o materiales.")
             fe_fin_dt = c6.date_input("Fecha Término *", value=def_f_fin, format="DD/MM/YYYY", help="Fecha de culminación y entrega final del proceso.")
 
             fe_inicio = fe_inicio_dt.strftime("%d/%m/%Y")
             fe_fin = fe_fin_dt.strftime("%d/%m/%Y")
+
             str_empresa = cliente.strip() if cliente.strip() else "EMPRESA"
-            codigo_proy = p_edit["codigo"] if p_edit.get("codigo") else f"{str_empresa}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}-{st.session_state.uid_proyecto}"
+            
+            if p_edit.get("codigo"):
+                codigo_proy = p_edit["codigo"]
+            else:
+                codigo_proy = f"{str_empresa}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}-{st.session_state.uid_proyecto}"
 
             st.info(f"🆔 **Código del Proyecto (Generado automáticamente):** `{codigo_proy}`")
 
             c4, c7, c8, c9 = st.columns(4)
             opciones_tipo_proyecto = ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
             tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
-            proyecto_nom = c4.selectbox("Tipo de Proyecto *", opciones_tipo_proyecto, index=opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0, help="Clasificación del tipo de servicio realizado.")
+            idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
+
+            proyecto_nom = c4.selectbox("Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo, help="Clasificación del tipo de servicio realizado.")
 
             RESPONSABLES_BASE = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado"]
             responsables_guardados = p_edit.get("responsables", [])
             if not isinstance(responsables_guardados, list):
                 responsables_guardados = [r.strip() for r in str(responsables_guardados).split(",") if r.strip()]
+
             responsable_anterior = p_edit.get("responsable", "")
             if responsable_anterior and not responsables_guardados:
                 responsables_guardados = [r.strip() for r in str(responsable_anterior).split(",") if r.strip()]
+
             if not responsables_guardados and dc.get("responsables_seleccionados"):
                 responsables_guardados = dc.get("responsables_seleccionados", [])
 
             opciones_responsables = list(dict.fromkeys(RESPONSABLES_BASE + responsables_guardados))
-            responsables_seleccionados = c7.multiselect("Responsable *", options=opciones_responsables, default=[r for r in responsables_guardados if r in opciones_responsables], placeholder="Selecciona uno o más", key="responsables_proyecto", help="Responsable(s) internos a cargo del proyecto.")
-            
+
+            responsables_seleccionados = c7.multiselect(
+                "Responsable *",
+                options=opciones_responsables,
+                default=[r for r in responsables_guardados if r in opciones_responsables],
+                placeholder="Selecciona uno o más",
+                key="responsables_proyecto",
+                help="Responsable(s) internos a cargo del proyecto.",
+            )
+
             nuevo_responsable = c7.text_input("➕ Agregar otro responsable", placeholder="Nombre completo", key="nuevo_responsable_proyecto")
-            if nuevo_responsable.strip() and nuevo_responsable.strip() not in responsables_seleccionados:
-                responsables_seleccionados.append(nuevo_responsable.strip())
+
+            if nuevo_responsable.strip():
+                if nuevo_responsable.strip() not in responsables_seleccionados:
+                    responsables_seleccionados.append(nuevo_responsable.strip())
 
             responsable = ", ".join(responsables_seleccionados)
             area = c8.text_input("Área", value="Sostenibilidad", disabled=True, help="Área interna encargada.")
             guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia", "") or dc.get("guia_remision", ""), help="Guía de remisión con la que llegaron los uniformes.")
 
             origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
+            
             st.markdown("**Punto Origen \*** <span style='font-weight: normal; color: #64748B; font-size: 0.85rem;'>(Lugar o dirección de donde vinieron los uniformes)</span>", unsafe_allow_html=True)
             origen = st.text_input("Punto Origen *", value=origen_default, label_visibility="collapsed")
+            
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
 
         st.write("")
@@ -1566,23 +1579,34 @@ else:
             co2_evitado_total = 0.0
             total_piezas_ingresadas = 0
             opciones_prendas = sorted(list(FACTORES_CO2.keys()))
+
             saved_items = dc.get("items", [])
 
             for i in range(st.session_state.num_items):
                 st.markdown(f"**Material {i+1}**")
                 col_desc, col_unid, col_peso, col_tot, col_foto = st.columns([3, 1.5, 1.5, 1.5, 3])
+
                 item_prev = saved_items[i] if i < len(saved_items) else {}
                 desc_prev = item_prev.get("descripcion", opciones_prendas[0])
-                
-                desc = col_desc.selectbox("Tipo de Producto / Prenda *", opciones_prendas, index=opciones_prendas.index(desc_prev) if desc_prev in opciones_prendas else 0, key=f"desc_{i}")
-                unid = col_unid.number_input("Ingreso (unid.) *", min_value=0, value=int(item_prev.get("unidades", 0)), key=f"unid_{i}")
-                p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=float(item_prev.get("peso_total", 0.0)), step=0.05, key=f"tot_input_{i}")
+                idx_desc = opciones_prendas.index(desc_prev) if desc_prev in opciones_prendas else 0
+                unid_prev = int(item_prev.get("unidades", 0))
+                peso_prev = float(item_prev.get("peso_total", 0.0))
+                foto_url_prev = item_prev.get("foto_url", "")
+
+                desc = col_desc.selectbox("Tipo de Producto / Prenda *", opciones_prendas, index=idx_desc, key=f"desc_{i}")
+                unid = col_unid.number_input("Ingreso (unid.) *", min_value=0, value=unid_prev, key=f"unid_{i}")
+
+                p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=peso_prev, step=0.05, key=f"tot_input_{i}")
                 peso_u = p_total / unid if unid > 0 else 0.0
+
                 col_tot.text_input("Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}_{unid}_{p_total}")
 
                 foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
-                if foto is not None: col_foto.image(foto, width=80)
-                elif item_prev.get("foto_url", ""): col_foto.image(item_prev.get("foto_url", ""), width=80)
+
+                if foto is not None:
+                    col_foto.image(foto, width=80)
+                elif foto_url_prev:
+                    col_foto.image(foto_url_prev, width=80)
 
                 factor = FACTORES_CO2.get(desc, 6.575)
                 co2_item = p_total * factor
@@ -1592,16 +1616,17 @@ else:
 
                 lista_items.append({
                     "descripcion": desc, "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total,
-                    "foto_up": foto, "foto_url": item_prev.get("foto_url", ""), "foto": foto if foto is not None else item_prev.get("foto_url", ""),
+                    "foto_up": foto, "foto_url": foto_url_prev, "foto": foto if foto is not None else foto_url_prev,
                     "co2_evitado": co2_item,
                 })
 
-            st.info(f"⚖️ **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
+            st.info(f"⚖️     **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
 
         st.write("")
 
         with st.container(border=True):
             st.subheader("3. Trazabilidad del Proceso en Upcycling")
+
             peso_corte_conf_auto = round(peso_total_recibido * st.session_state.pct_aprovechamiento_random, 2)
 
             etapas_fijas = [
@@ -1613,53 +1638,84 @@ else:
             lista_trazabilidad = []
             peso_lavado_auto = 0.0
             peso_corte_auto = 0.0
+
             saved_traza = dc.get("trazabilidad", [])
 
             for i, item_fijo in enumerate(etapas_fijas):
                 st.markdown(f"**Etapa {i+1}**")
                 c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = st.columns([1.5, 1.5, 2, 1.2, 1.2, 1.6, 2])
+
                 traza_prev = saved_traza[i] if i < len(saved_traza) else {}
+                fec_prev_str = traza_prev.get("fecha")
+                no_aplica_prev = traza_prev.get("no_aplica", False)
                 
-                fec_val_def = fe_inicio_dt if item_fijo["etapa"] == "Clasificación" else (datetime.datetime.strptime(traza_prev.get("fecha"), "%d/%m/%Y").date() if traza_prev.get("fecha") else item_fijo["fecha"])
+                if item_fijo["etapa"] == "Clasificación":
+                    fec_val_def = fe_inicio_dt
+                else:
+                    if fec_prev_str:
+                        try: fec_val_def = datetime.datetime.strptime(fec_prev_str, "%d/%m/%Y").date()
+                        except Exception: fec_val_def = item_fijo["fecha"]
+                    else:
+                        fec_val_def = item_fijo["fecha"]
+
                 resp_prev_val = traza_prev.get("responsable", item_fijo["resp_defecto"])
                 peso_prev_val = float(traza_prev.get("peso", item_fijo["peso_defecto"]))
+                tipo_prev_val = traza_prev.get("tipo_registro", item_fijo["tipo"])
+                is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
+                foto_url_prev = traza_prev.get("foto_url", "")
 
                 if item_fijo["etapa"] == "Lavado":
-                    no_aplica = c_edit_chk.checkbox("🚫 No aplica", value=bool(traza_prev.get("no_aplica", False)), key=f"chk_no_aplica_{i}")
-                    permitir_editar, deshabilitar_peso = not no_aplica, no_aplica
+                    no_aplica = c_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}")
+                    permitir_editar = not no_aplica
+                    deshabilitar_peso = no_aplica
                 else:
                     no_aplica = False
-                    permitir_editar = c_edit_chk.checkbox("✏️ Editar", value=bool(traza_prev.get("editado", False)), key=f"chk_edit_{i}")
+                    permitir_editar = c_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
                     deshabilitar_peso = not permitir_editar
 
-                resp_val_ui, peso_val_ui, tipo_val_ui = ("N/A", 0.0, "N/A") if no_aplica else (resp_prev_val, peso_prev_val, traza_prev.get("tipo_registro", item_fijo["tipo"]))
+                if no_aplica:
+                    resp_val_ui = "N/A"
+                    peso_val_ui = 0.0
+                    tipo_val_ui = "N/A"
+                else:
+                    resp_val_ui = resp_prev_val
+                    peso_val_ui = peso_prev_val
+                    tipo_val_ui = tipo_prev_val
 
-                c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
-                e_fec_val = c_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=(item_fijo["etapa"] == "Clasificación") or no_aplica, key=f"tr_fecha_{i}")
-                e_res = c_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}")
+                e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
                 
+                deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
+                e_fec_val = c_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
+
+                e_res = c_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}")
+
                 e_pes_str = c_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_{peso_val_ui:.2f}_{deshabilitar_peso}")
+
                 try: e_pes_num = float(e_pes_str)
                 except ValueError: e_pes_num = 0.0
 
-                if item_fijo["etapa"] == "Lavado": peso_lavado_auto = 0.0 if no_aplica else e_pes_num
-                elif item_fijo["etapa"] == "Corte": peso_corte_auto = e_pes_num
+                if item_fijo["etapa"] == "Lavado":
+                    peso_lavado_auto = 0.0 if no_aplica else e_pes_num
+                elif item_fijo["etapa"] == "Corte": 
+                    peso_corte_auto = e_pes_num
 
-                c_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}")
+                e_tip = c_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}")
                 
                 if no_aplica:
                     e_fot = None
                     c_foto.info("No aplica")
                 else:
                     e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
-                    if e_fot is not None: c_foto.image(e_fot, width=70)
-                    elif traza_prev.get("foto_url", ""): c_foto.image(traza_prev.get("foto_url", ""), width=70)
+                    if e_fot is not None:
+                        c_foto.image(e_fot, width=70)
+                    elif foto_url_prev:
+                        c_foto.image(foto_url_prev, width=70)
 
                 lista_trazabilidad.append({
-                    "etapa": item_fijo["etapa"], "fecha": e_fec_val.strftime("%d/%m/%Y"), "responsable": e_res,
-                    "peso": e_pes_num, "tipo_registro": tipo_val_ui, "editado": permitir_editar, "no_aplica": no_aplica,
-                    "foto_up": e_fot, "foto_url": traza_prev.get("foto_url", "") if not no_aplica else "", 
-                    "foto": e_fot if e_fot is not None else (traza_prev.get("foto_url", "") if not no_aplica else "")
+                    "etapa": e_nom, "fecha": e_fec_val.strftime("%d/%m/%Y"), "responsable": e_res,
+                    "peso": e_pes_num, "tipo_registro": e_tip, "editado": permitir_editar, "no_aplica": no_aplica,
+                    "foto_up": e_fot, "foto_url": foto_url_prev if not no_aplica else "", 
+                    "foto": e_fot if e_fot is not None else (foto_url_prev if not no_aplica else "")
                 })
 
         st.write("")
@@ -1706,11 +1762,16 @@ else:
                             st.toast(f"🗑️ Producto eliminado: {prod_a_borrar}")
                             st.rerun()
 
-            if "num_prods" not in st.session_state: st.session_state.num_prods = 2
+            if "num_prods" not in st.session_state:
+                st.session_state.num_prods = 2
 
             cp_btn1, cp_btn2, _ = st.columns([1, 1, 4])
-            if cp_btn1.button("➕     Agregar Ítem de Producto"): st.session_state.num_prods += 1; st.rerun()
-            if cp_btn2.button("➖     Quitar Ítem de Producto") and st.session_state.num_prods > 1: st.session_state.num_prods -= 1; st.rerun()
+            if cp_btn1.button("➕     Agregar Ítem de Producto"):
+                st.session_state.num_prods += 1
+                st.rerun()
+            if cp_btn2.button("➖     Quitar Ítem de Producto") and st.session_state.num_prods > 1:
+                st.session_state.num_prods -= 1
+                st.rerun()
 
             lista_productos = []
             total_prod_unid = 0
@@ -1719,13 +1780,18 @@ else:
             for i in range(st.session_state.num_prods):
                 st.markdown(f"**Producto {i+1}**")
                 col_psel, col_pnom_nuevo, col_pcant, col_pfoto = st.columns([3, 2.5, 1.5, 3])
+
                 prod_prev = saved_prods[i] if i < len(saved_prods) else {}
                 prod_nom_prev = prod_prev.get("producto", "")
+                cant_prev = int(prod_prev.get("cantidad", 0))
+                foto_url_prev = prod_prev.get("foto_url", "")
 
                 if prod_nom_prev and prod_nom_prev not in st.session_state.catalogo_productos:
                     st.session_state.catalogo_productos.insert(-1, prod_nom_prev)
 
-                prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, index=st.session_state.catalogo_productos.index(prod_nom_prev) if prod_nom_prev in st.session_state.catalogo_productos else 0, key=f"prod_sel_{i}")
+                idx_psel = st.session_state.catalogo_productos.index(prod_nom_prev) if prod_nom_prev in st.session_state.catalogo_productos else 0
+
+                prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, index=idx_psel, key=f"prod_sel_{i}")
 
                 if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
                     nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}")
@@ -1736,16 +1802,18 @@ else:
                     col_pnom_nuevo.text_input("Producto", value=prod_seleccionado, disabled=True, key=f"prod_dis_{i}_{prod_seleccionado}")
                     nombre_final = prod_seleccionado
 
-                p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=int(prod_prev.get("cantidad", 0)), key=f"prod_cant_{i}")
+                p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=cant_prev, key=f"prod_cant_{i}")
                 p_foto = col_pfoto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}")
 
-                if p_foto is not None: col_pfoto.image(p_foto, width=80)
-                elif prod_prev.get("foto_url", ""): col_pfoto.image(prod_prev.get("foto_url", ""), width=80)
+                if p_foto is not None:
+                    col_pfoto.image(p_foto, width=80)
+                elif foto_url_prev:
+                    col_pfoto.image(foto_url_prev, width=80)
 
                 total_prod_unid += p_cant
                 lista_productos.append({
                     "producto": nombre_final, "cantidad": p_cant,
-                    "foto_up": p_foto, "foto_url": prod_prev.get("foto_url", ""), "foto": p_foto if p_foto is not None else prod_prev.get("foto_url", "")
+                    "foto_up": p_foto, "foto_url": foto_url_prev, "foto": p_foto if p_foto is not None else foto_url_prev
                 })
 
             st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
@@ -1754,17 +1822,19 @@ else:
 
         with st.container(border=True):
             st.subheader("5. Balance de Material")
-            st.info(f"⚖️ **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
+            st.info(f"⚖️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
 
             pct_aprov_auto = st.session_state.pct_aprovechamiento_random
             pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
-            pct_retazos_auto = pct_aprovechamiento_total = pct_aprov_auto - pct_transf_auto
+            pct_retazos_auto = pct_aprov_auto - pct_transf_auto
 
             saved_bm = dc.get("balance", {})
             editar_balance_prev = saved_bm.get("editar_manual", False)
 
             if editar_balance_prev:
-                mat_transf_def, retazos_def, perdida_def = float(saved_bm.get("mat_transformado", 0.0)), float(saved_bm.get("retazos_aprovechables", 0.0)), float(saved_bm.get("perdida_no_aprovechable", 0.0))
+                mat_transf_def = float(saved_bm.get("mat_transformado", 0.0))
+                retazos_def = float(saved_bm.get("retazos_aprovechables", 0.0))
+                perdida_def = float(saved_bm.get("perdida_no_aprovechable", 0.0))
             else:
                 mat_transf_def = round(peso_total_recibido * pct_transf_auto, 2)
                 retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
@@ -1773,15 +1843,32 @@ else:
             editar_balance = st.checkbox("✏️ Editar balance manualmente", value=editar_balance_prev, key="chk_edit_balance")
 
             col_bm1, col_bm2 = st.columns(2)
-            mat_transformado = col_bm1.number_input("Material transformado en productos (kg)", min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance, key=f"bm_mat_transf_{peso_total_recibido:.2f}_{editar_balance}")
-            retazos_aprovechables = col_bm2.number_input("Retazos aprovechables (kg)", min_value=0.0, value=float(retazos_def), step=0.1, disabled=not editar_balance, key=f"bm_retazos_{peso_total_recibido:.2f}_{editar_balance}")
+            mat_transformado = col_bm1.number_input(
+                "Material transformado en productos (kg)",
+                min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance,
+                key=f"bm_mat_transf_{peso_total_recibido:.2f}_{editar_balance}",
+            )
+            retazos_aprovechables = col_bm2.number_input(
+                "Retazos aprovechables (kg)",
+                min_value=0.0, value=float(retazos_def), step=0.1, disabled=not editar_balance,
+                key=f"bm_retazos_{peso_total_recibido:.2f}_{editar_balance}",
+            )
 
             col_bm3, _ = st.columns([1, 1])
-            perdida_no_aprovechable = col_bm3.number_input("Pérdida no aprovechable (kg)", min_value=0.0, value=float(perdida_def), step=0.1, disabled=not editar_balance, key=f"bm_perdida_{peso_total_recibido:.2f}_{editar_balance}")
+            perdida_no_aprovechable = col_bm3.number_input(
+                "Pérdida no aprovechable (kg)",
+                min_value=0.0, value=float(perdida_def), step=0.1, disabled=not editar_balance,
+                key=f"bm_perdida_{peso_total_recibido:.2f}_{editar_balance}",
+            )
 
             total_procesado = mat_transformado + retazos_aprovechables + perdida_no_aprovechable
-            pct_aprovechamiento_total = ((mat_transformado + retazos_aprovechables) / peso_total_recibido) * 100 if peso_total_recibido > 0 else 0.0
-            pct_perdida = (perdida_no_aprovechable / peso_total_recibido) * 100 if peso_total_recibido > 0 else 0.0
+
+            if peso_total_recibido > 0:
+                pct_aprovechamiento_total = ((mat_transformado + retazos_aprovechables) / peso_total_recibido) * 100
+                pct_perdida = (perdida_no_aprovechable / peso_total_recibido) * 100
+            else:
+                pct_aprovechamiento_total = 0.0
+                pct_perdida = 0.0
 
             st.markdown("##### Resumen de Indicadores")
             ind1, ind2, ind3 = st.columns(3)
@@ -1798,162 +1885,393 @@ else:
 
             saved_trans = dc.get("transporte", {})
             dist_sel_prev = saved_trans.get("distrito", list(DISTANCIAS_LIMA_SJL.keys())[0])
+            idx_dist = list(DISTANCIAS_LIMA_SJL.keys()).index(dist_sel_prev) if dist_sel_prev in DISTANCIAS_LIMA_SJL else 0
+
             ct1, ct2, ct3, ct4 = st.columns([2.5, 1.2, 1.8, 1.5])
-            distrito_sel = ct1.selectbox("Distrito de Origen *", list(DISTANCIAS_LIMA_SJL.keys()), index=list(DISTANCIAS_LIMA_SJL.keys()).index(dist_sel_prev) if dist_sel_prev in DISTANCIAS_LIMA_SJL else 0, key="transporte_distrito_origen")
+            distrito_sel = ct1.selectbox(
+                "Distrito de Origen (Recojo de Material) *", list(DISTANCIAS_LIMA_SJL.keys()), index=idx_dist, key="transporte_distrito_origen"
+            )
 
             dist_defecto = float(DISTANCIAS_LIMA_SJL.get(distrito_sel, 0.0))
-            distancia_km = ct2.number_input("Distancia (km)", min_value=0.0, value=float(saved_trans.get("distancia", dist_defecto)), step=0.5, key="dist_km_manual" if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)" else f"dist_km_auto_{distrito_sel}")
+            saved_dist_km = float(saved_trans.get("distancia", dist_defecto)) if dist_sel_prev == distrito_sel else dist_defecto
 
-            vehiculo_sel = ct3.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=list(FACTORES_TRANSPORTE.keys()).index(saved_trans.get("vehiculo", list(FACTORES_TRANSPORTE.keys())[0])) if saved_trans.get("vehiculo") in FACTORES_TRANSPORTE else 0)
-            recorrido_tipo = ct4.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=0 if "2" in saved_trans.get("recorrido", "Ida y Vuelta (2)") else 1)
+            if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)":
+                distancia_km = ct2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key="dist_km_manual")
+            else:
+                distancia_km = ct2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_{distrito_sel}")
+
+            vehiculo_prev = saved_trans.get("vehiculo", list(FACTORES_TRANSPORTE.keys())[0])
+            idx_veh = list(FACTORES_TRANSPORTE.keys()).index(vehiculo_prev) if vehiculo_prev in FACTORES_TRANSPORTE else 0
+
+            vehiculo_sel = ct3.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh)
+
+            rec_prev = saved_trans.get("recorrido", "Ida y Vuelta (2)")
+            idx_rec = 0 if "2" in rec_prev else 1
+            recorrido_tipo = ct4.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec)
 
             factor_veh = FACTORES_TRANSPORTE[vehiculo_sel]
-            emisiones_transporte = distancia_km * (2.0 if "2" in recorrido_tipo else 1.0) * factor_veh["consumo"] * factor_veh["factor"]
+            mult_recorrido = 2.0 if "2" in recorrido_tipo else 1.0
+            emisiones_transporte = distancia_km * mult_recorrido * factor_veh["consumo"] * factor_veh["factor"]
 
-            st.markdown("##### ✂️ B. Lavandería y Taller de Corte")
-            emisiones_lavado, emisiones_corte = peso_lavado_auto * 0.30, peso_corte_auto * 0.05
+            st.caption(f"Distancia considerada: **{distancia_km:.1f} km** ({recorrido_tipo}) | Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
+
+            st.markdown("##### ✂️  B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
+            emisiones_lavado = peso_lavado_auto * 0.30
+            emisiones_corte = peso_corte_auto * 0.05
+
             clav, ccort = st.columns(2)
-            clav.info(f"**Lavandería ({peso_lavado_auto:.2f} kg):** {emisiones_lavado:.2f} kg CO₂e")
-            ccort.info(f"**Corte ({peso_corte_auto:.2f} kg):** {emisiones_corte:.2f} kg CO₂e")
+            clav.info(f"**Lavandería ({peso_lavado_auto:.2f} kg):** {emisiones_lavado:.2f} kg CO₂e *(Factor: 0.30)*")
+            ccort.info(f"**Corte ({peso_corte_auto:.2f} kg):** {emisiones_corte:.2f} kg CO₂e *(Factor: 0.05)*")
 
             st.markdown("##### 🧵 C. Cálculo de Bordado o Estampado")
             saved_bord = dc.get("bordado", {})
+            cant_bord_prev = int(saved_bord.get("cantidad", 0))
+            tipo_bord_prev = saved_bord.get("tipo", list(FACTORES_BORDADO.keys())[0])
+            idx_tbord = list(FACTORES_BORDADO.keys()).index(tipo_bord_prev) if tipo_bord_prev in FACTORES_BORDADO else 0
+
             cb1, cb2 = st.columns(2)
-            cant_prendas_bordado = cb1.number_input("Cantidad de prendas con bordado", min_value=0, value=int(saved_bord.get("cantidad", 0)), step=1)
-            tipo_diseno_bordado = cb2.selectbox("Tipo de Diseño", list(FACTORES_BORDADO.keys()), index=list(FACTORES_BORDADO.keys()).index(saved_bord.get("tipo", list(FACTORES_BORDADO.keys())[0])) if saved_bord.get("tipo") in FACTORES_BORDADO else 0)
-            
-            emisiones_bordado = cant_prendas_bordado * FACTORES_BORDADO[tipo_diseno_bordado]
+            cant_prendas_bordado = cb1.number_input("Cantidad de prendas que requieren bordado o estampado", min_value=0, value=cant_bord_prev, step=1)
+            tipo_diseno_bordado = cb2.selectbox("Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()), index=idx_tbord)
+
+            factor_bordado = FACTORES_BORDADO[tipo_diseno_bordado]
+            emisiones_bordado = cant_prendas_bordado * factor_bordado
+
+            st.caption(f"Emisión estimada (Bordado/Estampado): **{emisiones_bordado:.2f} kg CO₂e**")
+
             emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
             co2_neto = co2_evitado_total - emisiones_proceso
 
-            st.warning(f"🌍 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Neto Evitado:** {co2_neto:.2f} kg CO₂e")
+            st.warning(f"🌍 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
 
         st.write("")
 
         with st.container(border=True):
             st.subheader("7. Equipo de Trabajo y Generación de Horas")
-            dias_calc_corte = max(1, int(peso_total_recibido / 25)) if peso_total_recibido > 10 else 1
-            hdia_calc_corte = 8.0 if peso_total_recibido > 50 else (6.0 if peso_total_recibido > 10 else 3.0)
+
+            if peso_total_recibido <= 10:
+                dias_calc_corte, hdia_calc_corte = 1, 3.0
+                dias_calc_log, hdia_calc_log = 1, 2.0
+            elif peso_total_recibido <= 30:
+                dias_calc_corte, hdia_calc_corte = 1, 6.0
+                dias_calc_log, hdia_calc_log = 1, 3.0
+            elif peso_total_recibido <= 50:
+                dias_calc_corte, hdia_calc_corte = 2, 6.0
+                dias_calc_log, hdia_calc_log = 2, 3.0
+            else:
+                dias_calc_corte = max(2, int(peso_total_recibido / 25))
+                hdia_calc_corte = 8.0
+                dias_calc_log = max(2, int(peso_total_recibido / 25))
+                hdia_calc_log = 4.0
 
             st.markdown("#### Operaciones – Corte y Logística")
             lista_operaciones = []
             total_horas_ops = 0.0
+
+            h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
+            h_col1.markdown("**Rol**")
+            h_col2.markdown("**Nombre**")
+            h_col3.markdown("**Editar**")
+            h_col4.markdown("**Días trabajados**")
+            h_col5.markdown("**Hora/día**")
+            h_col6.markdown("**Horas totales**")
+
+            st.write("---")
+
             saved_ops = dc.get("operaciones", [])
 
             for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
                 c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
-                op_prev = saved_ops[idx] if idx < len(saved_ops) else {}
-                
-                c_rol.text_input("Rol", value=p_fijo["rol"], disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
-                editar_fila = c_chk.checkbox("✅", value=bool(op_prev.get("editado", False)), key=f"ops_chk_{idx}", label_visibility="collapsed")
-                nom_val = c_nom.text_input("Nombre", value=op_prev.get("nombre", p_fijo["nombre"]), disabled=not editar_fila, key=f"ops_nom_{idx}", label_visibility="collapsed")
 
-                val_dias = c_dias.number_input("Días", min_value=0, value=int(op_prev.get("dias", dias_calc_corte)) if editar_fila else dias_calc_corte, step=1, disabled=not editar_fila, key=f"ops_dias_{idx}", label_visibility="collapsed")
-                val_hdia = c_hdia.number_input("Hrs/Día", min_value=0.0, value=float(op_prev.get("horas_dia", hdia_calc_corte)) if editar_fila else hdia_calc_corte, step=0.5, disabled=not editar_fila, key=f"ops_hdia_{idx}", label_visibility="collapsed")
-                
-                tot_hrs_pers = val_dias * val_hdia
-                c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_{idx}", label_visibility="collapsed")
-                
+                op_prev = saved_ops[idx] if idx < len(saved_ops) else {}
+                is_edited_op = op_prev.get("editado", False)
+                nom_prev_op = op_prev.get("nombre", p_fijo["nombre"])
+
+                rol_val = p_fijo["rol"]
+                c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
+
+                editar_fila = c_chk.checkbox("✅", value=bool(is_edited_op), key=f"ops_chk_{idx}", label_visibility="collapsed")
+                nom_val = c_nom.text_input("Nombre", value=nom_prev_op, disabled=not editar_fila, key=f"ops_nom_{idx}", label_visibility="collapsed")
+
+                if rol_val == "Logística":
+                    val_dias_defecto = dias_calc_log
+                    val_hdia_defecto = hdia_calc_log
+                else:
+                    val_dias_defecto = dias_calc_corte
+                    val_hdia_defecto = hdia_calc_corte
+
+                dias_init = int(op_prev.get("dias", val_dias_defecto)) if is_edited_op else int(val_dias_defecto)
+                hdia_init = float(op_prev.get("horas_dia", val_hdia_defecto)) if is_edited_op else float(val_hdia_defecto)
+
+                val_dias = c_dias.number_input(
+                    "Días", min_value=0, value=dias_init, step=1, disabled=not editar_fila,
+                    key=f"ops_dias_dyn_{idx}_{val_dias_defecto}_{editar_fila}", label_visibility="collapsed"
+                )
+                val_hdia = c_hdia.number_input(
+                    "Hrs/Día", min_value=0.0, value=hdia_init, step=0.5, disabled=not editar_fila,
+                    key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}_{editar_fila}", label_visibility="collapsed"
+                )
+
+                tot_hrs_pers = float(val_dias) * float(val_hdia)
+
+                c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_{idx}_{val_dias}_{val_hdia}", label_visibility="collapsed")
+
                 total_horas_ops += tot_hrs_pers
-                lista_operaciones.append({"rol": p_fijo["rol"], "nombre": nom_val, "dias": val_dias, "horas_dia": val_hdia, "horas_totales": tot_hrs_pers, "editado": editar_fila})
+                lista_operaciones.append({
+                    "rol": rol_val, "nombre": nom_val, "dias": val_dias, "horas_dia": val_hdia,
+                    "horas_totales": tot_hrs_pers, "editado": editar_fila,
+                })
 
             st.write("---")
+
             st.markdown("#### Confección y Acabado – Asignación de Personal")
-            
+            with st.expander("⚙️ Administrar Catálogo de Personal (Agregar, Modificar o Eliminar)"):
+                tab_add, tab_edit, tab_del = st.tabs(["➕ Agregar Personal", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
+
+                with tab_add:
+                    c_a1, c_a2 = st.columns([3, 1])
+                    nuevo_integrante = c_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key="adm_input_add")
+                    if c_a2.button("Guardar en Lista", use_container_width=True):
+                        n_limpio = nuevo_integrante.strip()
+                        if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.append(n_limpio)
+                            st.session_state.lista_personal_confeccion.sort()
+                            st.toast(f"✅ Agregado/a: {n_limpio}")
+                            st.rerun()
+
+                with tab_edit:
+                    c_e1, c_e2, c_e3 = st.columns([2, 2, 1])
+                    pers_a_mod = c_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key="adm_sel_mod")
+                    nombre_modificado = c_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_{pers_a_mod}")
+                    if c_e3.button("Actualizar", use_container_width=True):
+                        if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
+                            idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
+                            st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
+                            st.session_state.lista_personal_confeccion.sort()
+                            st.toast(f"✅ Actualizado: {nombre_modificado.strip()}")
+                            st.rerun()
+
+                with tab_del:
+                    c_d1, c_d2 = st.columns([3, 1])
+                    pers_a_borrar = c_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key="adm_sel_del")
+                    if c_d2.button("Eliminar", use_container_width=True):
+                        if pers_a_borrar in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
+                            st.toast(f"🗑️ Eliminado/a: {pers_a_borrar}")
+                            st.rerun()
+
             lista_confeccion = []
             horas_confeccion_total = 0.0
             personas_confeccion_set = set()
             saved_conf_list = dc.get("confeccion", [])
 
             for idx, prod in enumerate(lista_productos):
-                p_nom, p_cant = prod["producto"], prod["cantidad"]
+                p_nom = prod["producto"]
+                p_cant = prod["cantidad"]
+
                 tiempo_base_ia = estimar_tiempo_unidad(p_nom)
 
-                st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Total: {p_cant} unid | Costura Pura IA: {tiempo_base_ia:.2f} hrs/unid)*")
+                st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Costura Pura IA: {tiempo_base_ia:.2f} hrs/unid)*")
+
                 key_num_pers = f"num_pers_prod_{idx}"
-                if key_num_pers not in st.session_state: st.session_state[key_num_pers] = 1
+                if key_num_pers not in st.session_state:
+                    st.session_state[key_num_pers] = 1
 
                 col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
-                if col_b1.button("➕ Persona", key=f"add_pers_{idx}"): st.session_state[key_num_pers] += 1; st.rerun()
-                if col_b2.button("➖ Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1: st.session_state[key_num_pers] -= 1; st.rerun()
+                if col_b1.button("➕  Persona", key=f"add_pers_{idx}"):
+                    st.session_state[key_num_pers] += 1
+                    st.rerun()
+                if col_b2.button("➖  Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
+                    st.session_state[key_num_pers] -= 1
+                    st.rerun()
 
                 conf_del_prod = [c for c in saved_conf_list if c.get("producto") == p_nom]
 
                 for p_idx in range(st.session_state[key_num_pers]):
                     c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([1.8, 3.0, 1.4, 1.8, 1.8])
+
                     c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
+                    rol_prev_val = c_item_prev.get("rol", "Confección")
+                    idx_rol = 0 if rol_prev_val == "Confección" else 1
 
-                    rol_sel = c_rol.selectbox("Rol *", ["Confección", "Acabado"], index=0 if c_item_prev.get("rol", "Confección") == "Confección" else 1, key=f"soc_rol_{idx}_{p_idx}")
-                    
-                    opciones_personas = list(st.session_state.lista_personal_confeccion) + ["➕ Otro (Escribir nuevo nombre)"]
+                    rol_sel = c_rol.selectbox("Rol *", ["Confección", "Acabado"], index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
+
+                    opciones_personas = list(st.session_state.lista_personal_confeccion)
+                    opcion_otro = "➕ Otro (Escribir nuevo nombre)"
+                    if opcion_otro not in opciones_personas:
+                        opciones_personas.append(opcion_otro)
+
                     pers_guardada = c_item_prev.get("persona", "")
-                    if pers_guardada and pers_guardada not in opciones_personas: st.session_state.lista_personal_confeccion.append(pers_guardada)
+                    if pers_guardada and pers_guardada not in opciones_personas and pers_guardada != opcion_otro:
+                        st.session_state.lista_personal_confeccion.append(pers_guardada)
+                        st.session_state.lista_personal_confeccion.sort()
+                        opciones_personas = list(st.session_state.lista_personal_confeccion) + [opcion_otro]
 
-                    persona_sel = c_persona.selectbox("Persona *", opciones_personas, index=opciones_personas.index(pers_guardada) if pers_guardada in opciones_personas else 0, key=f"soc_pers_sel_{idx}_{p_idx}")
-                    persona_nom = c_persona.text_input("Escribe el nombre *", key=f"soc_pers_txt_{idx}_{p_idx}") if persona_sel == "➕ Otro (Escribir nuevo nombre)" else persona_sel
+                    idx_pers = opciones_personas.index(pers_guardada) if pers_guardada in opciones_personas else 0
 
-                    cant_asig = c_cant_asig.number_input("Unid *", min_value=0, value=int(c_item_prev.get("cantidad", max(1, int(p_cant / st.session_state[key_num_pers])))), key=f"soc_cant_{idx}_{p_idx}")
-                    
+                    persona_sel = c_persona.selectbox("Persona Encargada *", opciones_personas, index=idx_pers, key=f"soc_pers_sel_{idx}_{p_idx}")
+
+                    if persona_sel == opcion_otro:
+                        nuevo_nombre_escrito = c_persona.text_input("Escribe el nombre *", placeholder="Nombre y Apellido", key=f"soc_pers_txt_custom_{idx}_{p_idx}")
+                        persona_nom = nuevo_nombre_escrito.strip() if nuevo_nombre_escrito.strip() else f"Persona {p_idx+1}"
+                        if nuevo_nombre_escrito.strip() and nuevo_nombre_escrito.strip() not in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.append(nuevo_nombre_escrito.strip())
+                            st.session_state.lista_personal_confeccion.sort()
+                    else:
+                        persona_nom = persona_sel
+
+                    cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
+                    cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
+
+                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=max(p_cant, cant_init), value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
+
                     if rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                        c_tiempo.text_input("Tiempo/Unid [20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acabado 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
                     else:
-                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid *", min_value=0.0, value=float(c_item_prev.get("tiempo_unitario", tiempo_base_ia)), step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
+                        tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
+                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
 
                     horas_persona = cant_asig * tiempo_unitario
-                    c_tot.text_input("Total", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}")
+
+                    c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}")
 
                     horas_confeccion_total += horas_persona
-                    if persona_nom.strip(): personas_confeccion_set.add(persona_nom.strip())
-                    lista_confeccion.append({"producto": p_nom, "rol": rol_sel, "persona": persona_nom, "cantidad": cant_asig, "tiempo_unitario": tiempo_unitario, "horas_totales": horas_persona})
+                    if persona_nom.strip():
+                        personas_confeccion_set.add(persona_nom.strip())
+
+                    lista_confeccion.append({
+                        "producto": p_nom, "rol": rol_sel, "persona": persona_nom,
+                        "cantidad": cant_asig, "tiempo_unitario": tiempo_unitario, "horas_totales": horas_persona,
+                    })
 
             total_horas_social = total_horas_ops + horas_confeccion_total
             total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(personas_confeccion_set)
+
             st.info(f"🧑‍🤝‍🧑 **Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas.")
 
         st.write("")
 
+        # --- SECCIÓN 8: ANEXOS ---
         with st.container(border=True):
             st.subheader("8. Anexos (Registro Fotográfico Adicional)")
+            st.caption("Agrega fotografías adicionales de colaboradoras con sus productos, procesos en taller, etc.")
+
             col_anx1, col_anx2, _ = st.columns([1, 1, 4])
-            if col_anx1.button("➕ Agregar Anexo"): st.session_state.num_anexos += 1; st.rerun()
-            if col_anx2.button("➖ Quitar Anexo") and st.session_state.num_anexos > 0: st.session_state.num_anexos -= 1; st.rerun()
+            if col_anx1.button("➕     Agregar Anexo"):
+                st.session_state.num_anexos += 1
+                st.rerun()
+            if col_anx2.button("➖     Quitar Anexo") and st.session_state.num_anexos > 0:
+                st.session_state.num_anexos -= 1
+                st.rerun()
 
             lista_anexos = []
             saved_anexos = dc.get("anexos", [])
+
             for a_i in range(st.session_state.num_anexos):
                 st.markdown(f"**Evidencia Anexa {a_i+1}**")
                 col_afoto, col_anota = st.columns([1.5, 3])
+
                 anx_prev = saved_anexos[a_i] if a_i < len(saved_anexos) else {}
-                foto_anx = col_afoto.file_uploader("Fotografía", type=["jpg", "png", "jpeg"], key=f"anx_foto_{a_i}")
-                if foto_anx is not None: col_afoto.image(foto_anx, width=110)
-                elif anx_prev.get("foto_url", ""): col_afoto.image(anx_prev.get("foto_url", ""), width=110)
-                
-                nota_anx = col_anota.text_area("Descripción", value=anx_prev.get("nota", ""), key=f"anx_nota_{a_i}", height=90)
-                lista_anexos.append({"foto_up": foto_anx, "foto_url": anx_prev.get("foto_url", ""), "nota": nota_anx, "foto": foto_anx if foto_anx is not None else anx_prev.get("foto_url", "")})
+                nota_prev = anx_prev.get("nota", "")
+                foto_url_prev = anx_prev.get("foto_url", "")
+
+                foto_anx = col_afoto.file_uploader("Fotografía de Evidencia", type=["jpg", "png", "jpeg"], key=f"anx_foto_{a_i}")
+
+                if foto_anx is not None:
+                    col_afoto.image(foto_anx, width=110)
+                elif foto_url_prev:
+                    col_afoto.image(foto_url_prev, width=110)
+
+                nota_anx = col_anota.text_area("Nota / Descripción de la evidencia", value=nota_prev, placeholder="Ej. Colaboradora elaborando productos...", key=f"anx_nota_{a_i}", height=90)
+
+                lista_anexos.append({
+                    "foto_up": foto_anx, "foto_url": foto_url_prev, "nota": nota_anx, "foto": foto_anx if foto_anx is not None else foto_url_prev
+                })
 
         st.write("")
 
         def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, items_val):
             errores = []
-            if not cliente_val.strip(): errores.append("Falta 'Cliente / Empresa'.")
-            if not ruc_val.strip() or not re.fullmatch(r"\d{11}", ruc_val.strip()): errores.append("El 'RUC' debe tener 11 dígitos.")
-            if not responsable_val.strip(): errores.append("Falta 'Responsable'.")
-            if not origen_val.strip(): errores.append("Falta 'Punto Origen'.")
+            if not cliente_val.strip(): errores.append("Falta 'Cliente / Empresa' en Ficha General.")
+            if not ruc_val.strip() or not re.fullmatch(r"\d{11}", ruc_val.strip()): errores.append("El 'RUC' debe tener 11 dígitos numéricos.")
+            if not responsable_val.strip(): errores.append("Falta 'Responsable' en Ficha General.")
+            if not origen_val.strip(): errores.append("Falta 'Punto Origen' en Ficha General.")
+            for i_item, v_item in enumerate(items_val, 1):
+                if v_item["unidades"] <= 0 or v_item["peso_total"] <= 0:
+                    errores.append(f"En Ingreso de Material (Ítem {i_item}), las unidades y el peso total deben ser mayores a 0.")
             return errores
 
         def procesar_fotos_y_armar_detalle():
             import time
             ts = int(time.time())
+            
+            items_db = []
+            for idx, it in enumerate(lista_items):
+                url = it["foto_url"]
+                if it["foto_up"] is not None:
+                    it["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/item_{idx}_{ts}.jpg", it["foto_up"].read())
+                items_db.append({
+                    "descripcion": it["descripcion"], "unidades": it["unidades"],
+                    "peso_unitario": it["peso_unitario"], "peso_total": it["peso_total"], "foto_url": url
+                })
+                
+            traza_db = []
+            for idx, tr in enumerate(lista_trazabilidad):
+                url = tr["foto_url"]
+                if tr["foto_up"] is not None:
+                    tr["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/traza_{idx}_{ts}.jpg", tr["foto_up"].read())
+                traza_db.append({
+                    "etapa": tr["etapa"], "fecha": tr["fecha"], "responsable": tr["responsable"],
+                    "peso": tr["peso"], "tipo_registro": tr["tipo_registro"], "editado": tr.get("editado", False), 
+                    "no_aplica": tr.get("no_aplica", False), "foto_url": url
+                })
+
+            prods_db = []
+            for idx, pr in enumerate(lista_productos):
+                url = pr["foto_url"]
+                if pr["foto_up"] is not None:
+                    pr["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/prod_{idx}_{ts}.jpg", pr["foto_up"].read())
+                prods_db.append({
+                    "producto": pr["producto"], "cantidad": pr["cantidad"], "foto_url": url
+                })
+                
+            anexos_db = []
+            for idx, ax in enumerate(lista_anexos):
+                url = ax["foto_url"]
+                if ax.get("foto_up") is not None:
+                    ax["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/anexo_{idx}_{ts}.jpg", ax["foto_up"].read())
+                anexos_db.append({
+                    "nota": ax["nota"], "foto_url": url
+                })
+
             return {
-                "responsables_seleccionados": responsables_seleccionados, "origen": origen,
-                "num_items": st.session_state.num_items, "items": [{"descripcion": it["descripcion"], "unidades": it["unidades"], "peso_unitario": it["peso_unitario"], "peso_total": it["peso_total"], "foto_url": subir_imagen_supabase(f"fotos/{codigo_proy}/item_{i}_{ts}.jpg", it["foto_up"].read()) if it["foto_up"] else it["foto_url"]} for i, it in enumerate(lista_items)],
-                "trazabilidad": [{"etapa": tr["etapa"], "fecha": tr["fecha"], "responsable": tr["responsable"], "peso": tr["peso"], "tipo_registro": tr["tipo_registro"], "no_aplica": tr["no_aplica"], "foto_url": subir_imagen_supabase(f"fotos/{codigo_proy}/traza_{i}_{ts}.jpg", tr["foto_up"].read()) if tr["foto_up"] else tr["foto_url"]} for i, tr in enumerate(lista_trazabilidad)],
-                "productos": [{"producto": pr["producto"], "cantidad": pr["cantidad"], "foto_url": subir_imagen_supabase(f"fotos/{codigo_proy}/prod_{i}_{ts}.jpg", pr["foto_up"].read()) if pr["foto_up"] else pr["foto_url"]} for i, pr in enumerate(lista_productos)],
-                "balance": {"editar_manual": editar_balance, "mat_transformado": mat_transformado, "retazos_aprovechables": retazos_aprovechables, "perdida_no_aprovechable": perdida_no_aprovechable},
-                "transporte": {"distrito": distrito_sel, "distancia": distancia_km, "vehiculo": vehiculo_sel, "recorrido": recorrido_tipo},
+                "responsables_seleccionados": responsables_seleccionados,
+                "origen": origen, "num_items": st.session_state.num_items,
+                "items": items_db, "trazabilidad": traza_db, "num_prods": st.session_state.num_prods,
+                "productos": prods_db,
+                "balance": {
+                    "editar_manual": editar_balance, "mat_transformado": mat_transformado,
+                    "retazos_aprovechables": retazos_aprovechables, "perdida_no_aprovechable": perdida_no_aprovechable,
+                },
+                "transporte": {
+                    "distrito": distrito_sel, "distancia": distancia_km, "vehiculo": vehiculo_sel, "recorrido": recorrido_tipo,
+                },
                 "bordado": {"cantidad": cant_prendas_bordado, "tipo": tipo_diseno_bordado},
-                "operaciones": lista_operaciones, "confeccion": lista_confeccion, "anexos": [{"nota": ax["nota"], "foto_url": subir_imagen_supabase(f"fotos/{codigo_proy}/anexo_{i}_{ts}.jpg", ax["foto_up"].read()) if ax.get("foto_up") else ax["foto_url"]} for i, ax in enumerate(lista_anexos)]
+                "operaciones": [
+                    {"rol": op["rol"], "nombre": op["nombre"], "dias": op["dias"], "horas_dia": op["horas_dia"], "horas_totales": op["horas_totales"], "editado": op.get("editado", False)}
+                    for op in lista_operaciones
+                ],
+                "confeccion_num_pers": {f"num_pers_prod_{idx_c}": st.session_state.get(f"num_pers_prod_{idx_c}", 1) for idx_c in range(len(lista_productos))},
+                "confeccion": [
+                    {"producto": c["producto"], "rol": c["rol"], "persona": c["persona"], "cantidad": c["cantidad"], "tiempo_unitario": c["tiempo_unitario"], "horas_totales": c["horas_totales"]}
+                    for c in lista_confeccion
+                ],
+                "num_anexos": st.session_state.num_anexos,
+                "anexos": anexos_db,
             }
 
         with st.container(border=True):
@@ -1961,57 +2279,148 @@ else:
 
             if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
                 try:
-                    with st.spinner("Guardando borrador..."):
-                        det = procesar_fotos_y_armar_detalle()
-                        supabase.table("proyectos").upsert({
-                            "codigo": codigo_proy, "cliente": cliente, "ruc": ruc, "tipo_proyecto": proyecto_nom,
-                            "responsable": responsable, "fecha": f"{fe_inicio} - {fe_fin}", "estado": "EN_PROCESO",
-                            "peso_recibido": peso_total_recibido, "peso_transformado": mat_transformado,
-                            "aprovechamiento": pct_aprovechamiento_total, "co2_neto": co2_neto,
-                            "horas_totales": total_horas_social, "productos_unids": total_prod_unid,
-                            "punto_origen": origen, "datos_completos": det
-                        }).execute()
-                    st.success("✅ Borrador guardado con éxito.")
+                    with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
+                        datos_detalle = procesar_fotos_y_armar_detalle()
+
+                        datos_borrador = {
+                            "codigo": codigo_proy,
+                            "cliente": cliente,
+                            "ruc": ruc,
+                            "tipo_proyecto": proyecto_nom,
+                            "responsable": responsable,
+                            "fecha": f"{fe_inicio} - {fe_fin}",
+                            "estado": "EN_PROCESO",
+                            "peso_recibido": peso_total_recibido,
+                            "peso_transformado": mat_transformado,
+                            "aprovechamiento": pct_aprovechamiento_total,
+                            "co2_neto": co2_neto,
+                            "horas_totales": total_horas_social,
+                            "productos_unids": total_prod_unid,
+                            "punto_origen": origen,
+                            "datos_completos": datos_detalle,
+                        }
+
+                        proyecto_id = p_edit.get("id")
+                        if not proyecto_id:
+                            busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
+                            if busca_existente.data:
+                                proyecto_id = busca_existente.data[0]["id"]
+                        
+                        if proyecto_id:
+                            supabase.table("proyectos").update(datos_borrador).eq("id", proyecto_id).execute()
+                        else:
+                            supabase.table("proyectos").insert(datos_borrador).execute()
+
+                    st.success("✅ Borrador y fotos guardados exitosamente en la nube.")
                     st.session_state.proyecto_editar = {}
+                    st.session_state.documentos_descarga = None
                     st.rerun()
+
                 except Exception as e:
-                    st.error(f"⚠️ Error: {e}")
+                    st.error(f"⚠️ Error al guardar el borrador: {e}")
 
-            if col_gen1.button("🚀 Generar Reportes Oficiales", type="primary", use_container_width=True):
-                errs = _validar_informe_final(cliente, ruc, responsable, origen, lista_items)
-                if errs:
-                    for e in errs: st.error(e)
+            if col_gen1.button("🚀 Generar Reportes Oficiales (Informe + Constancia)", type="primary", use_container_width=True):
+                errores_final = _validar_informe_final(cliente, ruc, responsable, origen, lista_items)
+                if errores_final:
+                    st.error("⚠️  Por favor, corrige los siguientes errores antes de generar los reportes:")
+                    for err in errores_final: st.markdown(f"- {err}")
                 else:
-                    with st.spinner("Generando documentos..."):
+                    with st.spinner("Generando documentos, subiendo fotos y respaldando en la nube..."):
                         try:
-                            pdf_buf = generar_pdf_oficial(cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area, "Textiles", "Upcycling", "kg", guia_remision, origen, destino, lista_items, lista_trazabilidad, lista_productos, mat_transformado, retazos_aprovechables, perdida_no_aprovechable, total_procesado, pct_aprovechamiento_total, pct_perdida, lista_operaciones, lista_confeccion, total_horas_social, total_personas_social, co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado, lista_anexos=lista_anexos)
-                            bytes_inf = pdf_buf.getvalue()
-                            
-                            mes_f_nom = MESES_ESPANOL.get(fe_fin_dt.month, "")
-                            bytes_cons = generar_constancia_desde_plantilla_word({"cliente": cliente.upper(), "mes": mes_f_nom, "anio": str(fe_fin_dt.year), "peso_recibido": f"{peso_total_recibido:.1f}", "unidades_ingreso": str(total_piezas_ingresadas), "co2_evitado": f"{co2_neto:.2f}", "aprovechamiento": f"{pct_aprovechamiento_total:.2f}", "total_mujeres": str(total_personas_social), "total_horas": f"{total_horas_social:.1f}", "productos_elaborados": str(total_prod_unid), "fecha_cierre": f"{fe_fin_dt.strftime('%d')} de {mes_f_nom} de {fe_fin_dt.year}"})
+                            pdf_informe_buffer = generar_pdf_oficial(
+                                cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
+                                "Textiles en desuso", "Upcycling", "Kilogramos (kg)", guia_remision, origen, destino,
+                                lista_items, lista_trazabilidad, lista_productos, mat_transformado, retazos_aprovechables,
+                                perdida_no_aprovechable, total_procesado, pct_aprovechamiento_total, pct_perdida,
+                                lista_operaciones, lista_confeccion, total_horas_social, total_personas_social,
+                                co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado,
+                                lista_anexos=lista_anexos,
+                            )
+                            bytes_informe = pdf_informe_buffer.getvalue()
 
-                            cli_limp = cliente.strip().replace("/", "-")
-                            url_inf = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_inf)
-                            url_cons = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_cons)
+                            mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
+                            contexto_word = {
+                                "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
+                                "peso_recibido": f"{peso_total_recibido:.1f}", "unidades_ingreso": str(total_piezas_ingresadas),
+                                "co2_evitado": f"{co2_neto:.2f}", "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
+                                "total_mujeres": str(total_personas_social), "total_horas": f"{total_horas_social:.1f}",
+                                "productos_elaborados": str(total_prod_unid),
+                                "fecha_cierre": f"{fe_fin_dt.strftime('%d')} de {mes_fin_nombre} de {fe_fin_dt.year}",
+                            }
+                            bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word)
+
+                            cliente_limpio = cliente.strip().replace("/", "-")
+                            nombre_informe_limpio = f"Informe_Tecnico_{cliente_limpio}.pdf"
+                            nombre_constancia_limpia = f"Constancia_{cliente_limpio}.pdf"
+                            nombre_zip_limpio = f"Documentos_{cliente_limpio}.zip"
+
+                            zip_buffer = io.BytesIO()
+                            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                                zip_file.writestr(nombre_informe_limpio, bytes_informe)
+                                zip_file.writestr(nombre_constancia_limpia, bytes_constancia)
+                            zip_buffer.seek(0)
+                            bytes_zip = zip_buffer.getvalue()
+
+                            url_informe = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_informe)
+                            url_constancia = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_constancia)
+                            
+                            try:
+                                nombre_subcarpeta = f"Pedido {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})"
+                                carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt, nombre_subcarpeta)
+                                
+                                subir_a_drive(nombre_informe_limpio, bytes_informe, "application/pdf", custom_folder_id=carpeta_destino_id)
+                                subir_a_drive(nombre_constancia_limpia, bytes_constancia, "application/pdf", custom_folder_id=carpeta_destino_id)
+                                subir_a_drive(nombre_zip_limpio, bytes_zip, "application/zip", custom_folder_id=carpeta_destino_id)
+                            except Exception as e_drive:
+                                st.caption(f"Aviso interno: No se pudo respaldar en Drive: {e_drive}")
+
+                            st.session_state.documentos_descarga = {
+                                "codigo": codigo_proy, 
+                                "cliente_limpio": cliente_limpio,
+                                "bytes_informe": bytes_informe,
+                                "bytes_constancia": bytes_constancia, 
+                                "bytes_zip": bytes_zip,
+                            }
 
                             try:
-                                cid = obtener_carpeta_destino_drive(cliente, fe_fin_dt, f"Pedido {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})")
-                                subir_a_drive(f"Informe_Tecnico_{cli_limp}.pdf", bytes_inf, "application/pdf", custom_folder_id=cid)
-                                subir_a_drive(f"Constancia_{cli_limp}.pdf", bytes_cons, "application/pdf", custom_folder_id=cid)
-                            except: pass
+                                datos_detalle = procesar_fotos_y_armar_detalle()
 
-                            st.session_state.documentos_descarga = {"cliente_limpio": cli_limp, "bytes_informe": bytes_inf, "bytes_constancia": bytes_cons, "bytes_zip": io.BytesIO().getvalue()}
-                            
-                            det = procesar_fotos_y_armar_detalle()
-                            supabase.table("proyectos").upsert({
-                                "codigo": codigo_proy, "cliente": cliente, "ruc": ruc, "tipo_proyecto": proyecto_nom,
-                                "responsable": responsable, "fecha": f"{fe_inicio} - {fe_fin}", "estado": "COMPLETADO",
-                                "peso_recibido": peso_total_recibido, "peso_transformado": mat_transformado,
-                                "aprovechamiento": pct_aprovechamiento_total, "co2_neto": co2_neto,
-                                "horas_totales": total_horas_social, "productos_unids": total_prod_unid,
-                                "punto_origen": origen, "pdf_url": url_inf, "constancia_url": url_cons, "datos_completos": det
-                            }).execute()
-                            st.session_state.proyecto_editar = {}
-                            st.rerun()
+                                datos_completado = {
+                                    "codigo": codigo_proy, "cliente": cliente, "ruc": ruc, "tipo_proyecto": proyecto_nom,
+                                    "responsable": responsable, "fecha": f"{fe_inicio} - {fe_fin}", "estado": "COMPLETADO",
+                                    "peso_recibido": peso_total_recibido, "peso_transformado": mat_transformado,
+                                    "aprovechamiento": pct_aprovechamiento_total, "co2_neto": co2_neto,
+                                    "horas_totales": total_horas_social, "productos_unids": total_prod_unid,
+                                    "punto_origen": origen, "pdf_url": url_informe if url_informe else p_edit.get("pdf_url", ""),
+                                    "constancia_url": url_constancia if url_constancia else p_edit.get("constancia_url", ""),
+                                    "datos_completos": datos_detalle,
+                                }
+                                
+                                proyecto_id = p_edit.get("id")
+                                if not proyecto_id:
+                                    busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
+                                    if busca_existente.data: proyecto_id = busca_existente.data[0]["id"]
+                                
+                                if proyecto_id:
+                                    supabase.table("proyectos").update(datos_completado).eq("id", proyecto_id).execute()
+                                else:
+                                    supabase.table("proyectos").insert(datos_completado).execute()
+                                    
+                                st.session_state.proyecto_editar = {}
+                                st.session_state.uid_proyecto = str(random.randint(1000, 9999))
+                                st.rerun()
+
+                            except Exception as e_bd:
+                                st.error(f"⚠️ Documentos creados, pero falló la actualización de BD: {e_bd}")
+
                         except Exception as e:
-                            st.error(f"Error: {e}")
+                            st.error(f"❌ Error crítico al procesar los documentos: {e}")
+
+        if st.session_state.documentos_descarga:
+            docs = st.session_state.documentos_descarga
+            st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
+
+            c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
+            c_dzip.download_button("📦 Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
+            c_dinf.download_button("📄 Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
+            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
