@@ -391,6 +391,20 @@ def subir_pdf_supabase(nombre_archivo: str, pdf_bytes: bytes) -> str:
         return ""
 
 
+# --- NUEVA FUNCIÓN DE SUBIDA DE IMÁGENES A SUPABASE ---
+def subir_imagen_supabase(nombre_archivo: str, img_bytes: bytes) -> str:
+    """Sube una imagen al Storage de Supabase (para borradores) y retorna su URL."""
+    try:
+        supabase.storage.from_("reportes").upload(
+            path=nombre_archivo,
+            file=img_bytes,
+            file_options={"content-type": "image/jpeg", "upsert": "true"},
+        )
+        return supabase.storage.from_("reportes").get_public_url(nombre_archivo)
+    except Exception as e:
+        return ""
+
+
 def cargar_proyectos(estado=None):
     """Carga proyectos desde Supabase."""
     try:
@@ -668,15 +682,25 @@ def generar_pdf_oficial(
     elements.append(t_ficha)
     elements.append(Spacer(1, 8))
 
-    def obtener_imagen_pdf(foto_file, width, height):
-        if foto_file is not None:
+    # --- NUEVA FUNCIÓN PARA LEER IMÁGENES DESDE LA NUBE O ARCHIVO ---
+    def obtener_imagen_pdf(foto_data, width, height):
+        if foto_data is not None and foto_data != "":
+            import urllib.request
             try:
-                foto_file.seek(0)
-                img_data = io.BytesIO(foto_file.read())
-                foto_file.seek(0)
-                return Image(img_data, width=width, height=height)
+                # Si es un enlace guardado en la nube
+                if isinstance(foto_data, str) and foto_data.startswith("http"):
+                    req = urllib.request.Request(foto_data, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req) as response:
+                        img_data = io.BytesIO(response.read())
+                    return Image(img_data, width=width, height=height)
+                # Si es un archivo recien subido (bytes)
+                elif hasattr(foto_data, 'read'):
+                    foto_data.seek(0)
+                    img_data = io.BytesIO(foto_data.read())
+                    foto_data.seek(0)
+                    return Image(img_data, width=width, height=height)
             except Exception:
-                return Paragraph("Sin foto", cell_style)
+                pass
         return Paragraph("Sin foto", cell_style)
 
     elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
@@ -917,7 +941,6 @@ def generar_pdf_oficial(
     """
     elements.append(Paragraph(texto_conclusion, conclusion_style))
 
-    # --- 9. SECCIÓN ANEXOS ---
     anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
     if anexos_validos:
         elements.append(PageBreak())
@@ -1677,6 +1700,7 @@ else:
                 idx_desc = opciones_prendas.index(desc_prev) if desc_prev in opciones_prendas else 0
                 unid_prev = int(item_prev.get("unidades", 0))
                 peso_prev = float(item_prev.get("peso_total", 0.0))
+                foto_url_prev = item_prev.get("foto_url", "")
 
                 desc = col_desc.selectbox(
                     "Tipo de Producto / Prenda *",
@@ -1712,6 +1736,8 @@ else:
 
                 if foto is not None:
                     col_foto.image(foto, width=80)
+                elif foto_url_prev:
+                    col_foto.image(foto_url_prev, width=80)
 
                 factor = FACTORES_CO2.get(desc, 6.575)
                 co2_item = p_total * factor
@@ -1724,7 +1750,9 @@ else:
                     "unidades": unid,
                     "peso_unitario": peso_u,
                     "peso_total": p_total,
-                    "foto": foto,
+                    "foto_up": foto,
+                    "foto_url": foto_url_prev,
+                    "foto": foto if foto is not None else foto_url_prev,
                     "co2_evitado": co2_item,
                 })
 
@@ -1801,6 +1829,7 @@ else:
                 peso_prev_val = float(traza_prev.get("peso", item_fijo["peso_defecto"]))
                 tipo_prev_val = traza_prev.get("tipo_registro", item_fijo["tipo"])
                 is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
+                foto_url_prev = traza_prev.get("foto_url", "")
 
                 e_nom = c_etapa.text_input(
                     "Etapa",
@@ -1852,6 +1881,7 @@ else:
                     disabled=True,
                     key=f"tr_tipo_{i}",
                 )
+                
                 e_fot = c_foto.file_uploader(
                     "Evidencia",
                     type=["jpg", "png", "jpeg"],
@@ -1860,6 +1890,8 @@ else:
 
                 if e_fot is not None:
                     c_foto.image(e_fot, width=70)
+                elif foto_url_prev:
+                    c_foto.image(foto_url_prev, width=70)
 
                 lista_trazabilidad.append({
                     "etapa": e_nom,
@@ -1867,8 +1899,10 @@ else:
                     "responsable": e_res,
                     "peso": e_pes_num,
                     "tipo_registro": e_tip,
-                    "foto": e_fot,
                     "editado": permitir_editar,
+                    "foto_up": e_fot,
+                    "foto_url": foto_url_prev,
+                    "foto": e_fot if e_fot is not None else foto_url_prev
                 })
 
         st.write("")
@@ -1903,6 +1937,7 @@ else:
                 prod_prev = saved_prods[i] if i < len(saved_prods) else {}
                 prod_nom_prev = prod_prev.get("producto", "")
                 cant_prev = int(prod_prev.get("cantidad", 0))
+                foto_url_prev = prod_prev.get("foto_url", "")
 
                 if prod_nom_prev and prod_nom_prev not in st.session_state.catalogo_productos:
                     st.session_state.catalogo_productos.insert(-1, prod_nom_prev)
@@ -1953,6 +1988,7 @@ else:
                     value=cant_prev,
                     key=f"prod_cant_{i}",
                 )
+                
                 p_foto = col_pfoto.file_uploader(
                     "Evidencia Foto",
                     type=["jpg", "png", "jpeg"],
@@ -1961,12 +1997,16 @@ else:
 
                 if p_foto is not None:
                     col_pfoto.image(p_foto, width=80)
+                elif foto_url_prev:
+                    col_pfoto.image(foto_url_prev, width=80)
 
                 total_prod_unid += p_cant
                 lista_productos.append({
                     "producto": nombre_final,
                     "cantidad": p_cant,
-                    "foto": p_foto,
+                    "foto_up": p_foto,
+                    "foto_url": foto_url_prev,
+                    "foto": p_foto if p_foto is not None else foto_url_prev
                 })
 
             st.success(
@@ -2592,6 +2632,10 @@ else:
                 st.markdown(f"**Evidencia Anexa {a_i+1}**")
                 col_afoto, col_anota = st.columns([1.5, 3])
 
+                anx_prev = saved_anexos[a_i] if a_i < len(saved_anexos) else {}
+                nota_prev = anx_prev.get("nota", "")
+                foto_url_prev = anx_prev.get("foto_url", "")
+
                 foto_anx = col_afoto.file_uploader(
                     "Fotografía de Evidencia",
                     type=["jpg", "png", "jpeg"],
@@ -2600,9 +2644,8 @@ else:
 
                 if foto_anx is not None:
                     col_afoto.image(foto_anx, width=110)
-
-                anx_prev = saved_anexos[a_i] if a_i < len(saved_anexos) else {}
-                nota_prev = anx_prev.get("nota", "")
+                elif foto_url_prev:
+                    col_afoto.image(foto_url_prev, width=110)
 
                 nota_anx = col_anota.text_area(
                     "Nota / Descripción de la evidencia",
@@ -2613,8 +2656,10 @@ else:
                 )
 
                 lista_anexos.append({
-                    "foto": foto_anx,
+                    "foto_up": foto_anx,
+                    "foto_url": foto_url_prev,
                     "nota": nota_anx,
+                    "foto": foto_anx if foto_anx is not None else foto_url_prev
                 })
 
         st.write("")
@@ -2641,97 +2686,86 @@ else:
                     )
             return errores
 
+        # --- FUNCIÓN AYUDANTE: SUBIR TODAS LAS FOTOS A SUPABASE Y ARMAR DICCIONARIO ---
+        def procesar_fotos_y_armar_detalle():
+            import time
+            ts = int(time.time())
+            
+            items_db = []
+            for idx, it in enumerate(lista_items):
+                url = it["foto_url"]
+                if it["foto_up"] is not None:
+                    it["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/item_{idx}_{ts}.jpg", it["foto_up"].read())
+                items_db.append({
+                    "descripcion": it["descripcion"], "unidades": it["unidades"],
+                    "peso_unitario": it["peso_unitario"], "peso_total": it["peso_total"], "foto_url": url
+                })
+                
+            traza_db = []
+            for idx, tr in enumerate(lista_trazabilidad):
+                url = tr["foto_url"]
+                if tr["foto_up"] is not None:
+                    tr["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/traza_{idx}_{ts}.jpg", tr["foto_up"].read())
+                traza_db.append({
+                    "etapa": tr["etapa"], "fecha": tr["fecha"], "responsable": tr["responsable"],
+                    "peso": tr["peso"], "tipo_registro": tr["tipo_registro"], "editado": tr.get("editado", False), "foto_url": url
+                })
+
+            prods_db = []
+            for idx, pr in enumerate(lista_productos):
+                url = pr["foto_url"]
+                if pr["foto_up"] is not None:
+                    pr["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/prod_{idx}_{ts}.jpg", pr["foto_up"].read())
+                prods_db.append({
+                    "producto": pr["producto"], "cantidad": pr["cantidad"], "foto_url": url
+                })
+                
+            anexos_db = []
+            for idx, ax in enumerate(lista_anexos):
+                url = ax["foto_url"]
+                if ax.get("foto_up") is not None:
+                    ax["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/anexo_{idx}_{ts}.jpg", ax["foto_up"].read())
+                anexos_db.append({
+                    "nota": ax["nota"], "foto_url": url
+                })
+
+            return {
+                "responsables_seleccionados": responsables_seleccionados,
+                "origen": origen, "num_items": st.session_state.num_items,
+                "items": items_db, "trazabilidad": traza_db, "num_prods": st.session_state.num_prods,
+                "productos": prods_db,
+                "balance": {
+                    "editar_manual": editar_balance, "mat_transformado": mat_transformado,
+                    "retazos_aprovechables": retazos_aprovechables, "perdida_no_aprovechable": perdida_no_aprovechable,
+                },
+                "transporte": {
+                    "distrito": distrito_sel, "distancia": distancia_km, "vehiculo": vehiculo_sel, "recorrido": recorrido_tipo,
+                },
+                "bordado": {"cantidad": cant_prendas_bordado, "tipo": tipo_diseno_bordado},
+                "operaciones": [
+                    {"rol": op["rol"], "nombre": op["nombre"], "dias": op["dias"], "horas_dia": op["horas_dia"], "horas_totales": op["horas_totales"], "editado": op.get("editado", False)}
+                    for op in lista_operaciones
+                ],
+                "confeccion_num_pers": {f"num_pers_prod_{idx_c}": st.session_state.get(f"num_pers_prod_{idx_c}", 1) for idx_c in range(len(lista_productos))},
+                "confeccion": [
+                    {"producto": c["producto"], "rol": c["rol"], "persona": c["persona"], "cantidad": c["cantidad"], "tiempo_unitario": c["tiempo_unitario"], "horas_totales": c["horas_totales"]}
+                    for c in lista_confeccion
+                ],
+                "num_anexos": st.session_state.num_anexos,
+                "anexos": anexos_db,
+            }
+
         with st.container(border=True):
             col_gen1, col_gen2 = st.columns([2, 1])
 
-            if col_gen2.button(
-                "💾 Guardar como Borrador", use_container_width=True
-            ):
+            if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
                 try:
-                    with st.spinner("Guardando en la base de datos..."):
-                        # Empaquetar todo el estado detallado para su restauración exacta
-                        datos_detalle = {
-                            "responsables_seleccionados": responsables_seleccionados,
-                            "origen": origen,
-                            "num_items": st.session_state.num_items,
-                            "items": [
-                                {
-                                    "descripcion": it["descripcion"],
-                                    "unidades": it["unidades"],
-                                    "peso_unitario": it["peso_unitario"],
-                                    "peso_total": it["peso_total"],
-                                }
-                                for it in lista_items
-                            ],
-                            "trazabilidad": [
-                                {
-                                    "etapa": tr["etapa"],
-                                    "fecha": tr["fecha"],
-                                    "responsable": tr["responsable"],
-                                    "peso": tr["peso"],
-                                    "tipo_registro": tr["tipo_registro"],
-                                    "editado": tr.get("editado", False),
-                                }
-                                for tr in lista_trazabilidad
-                            ],
-                            "num_prods": st.session_state.num_prods,
-                            "productos": [
-                                {
-                                    "producto": pr["producto"],
-                                    "cantidad": pr["cantidad"],
-                                }
-                                for pr in lista_productos
-                            ],
-                            "balance": {
-                                "editar_manual": editar_balance,
-                                "mat_transformado": mat_transformado,
-                                "retazos_aprovechables": retazos_aprovechables,
-                                "perdida_no_aprovechable": perdida_no_aprovechable,
-                            },
-                            "transporte": {
-                                "distrito": distrito_sel,
-                                "distancia": distancia_km,
-                                "vehiculo": vehiculo_sel,
-                                "recorrido": recorrido_tipo,
-                            },
-                            "bordado": {
-                                "cantidad": cant_prendas_bordado,
-                                "tipo": tipo_diseno_bordado,
-                            },
-                            "operaciones": [
-                                {
-                                    "rol": op["rol"],
-                                    "nombre": op["nombre"],
-                                    "dias": op["dias"],
-                                    "horas_dia": op["horas_dia"],
-                                    "horas_totales": op["horas_totales"],
-                                    "editado": op.get("editado", False),
-                                }
-                                for op in lista_operaciones
-                            ],
-                            "confeccion_num_pers": {
-                                f"num_pers_prod_{idx_c}": st.session_state.get(f"num_pers_prod_{idx_c}", 1)
-                                for idx_c in range(len(lista_productos))
-                            },
-                            "confeccion": [
-                                {
-                                    "producto": c["producto"],
-                                    "rol": c["rol"],
-                                    "persona": c["persona"],
-                                    "cantidad": c["cantidad"],
-                                    "tiempo_unitario": c["tiempo_unitario"],
-                                    "horas_totales": c["horas_totales"],
-                                }
-                                for c in lista_confeccion
-                            ],
-                            "num_anexos": st.session_state.num_anexos,
-                            "anexos": [
-                                {
-                                    "nota": a["nota"]
-                                }
-                                for a in lista_anexos
-                            ],
-                        }
+                    with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
+                        datos_detalle = procesar_fotos_y_armar_detalle()
 
                         datos_borrador = {
                             "codigo": codigo_proy,
@@ -2759,15 +2793,11 @@ else:
                                 proyecto_id = busca_existente.data[0]["id"]
                         
                         if proyecto_id:
-                            supabase.table("proyectos").update(
-                                datos_borrador
-                            ).eq("id", proyecto_id).execute()
+                            supabase.table("proyectos").update(datos_borrador).eq("id", proyecto_id).execute()
                         else:
-                            supabase.table("proyectos").insert(
-                                datos_borrador
-                            ).execute()
+                            supabase.table("proyectos").insert(datos_borrador).execute()
 
-                    st.success("✅ Borrador guardado exitosamente.")
+                    st.success("✅ Borrador y fotos guardados exitosamente en la nube.")
                     st.session_state.proyecto_editar = {}
                     st.session_state.documentos_descarga = None
                     st.rerun()
@@ -2775,85 +2805,40 @@ else:
                 except Exception as e:
                     st.error(f"⚠️ Error al guardar el borrador: {e}")
 
-            # --- BOTÓN PRINCIPAL: GENERA INFORME + CONSTANCIA USANDO LA PLANTILLA WORD ---
-            if col_gen1.button(
-                "🚀 Generar Reportes Oficiales (Informe + Constancia)",
-                type="primary",
-                use_container_width=True,
-            ):
-                errores_final = _validar_informe_final(
-                    cliente, ruc, responsable, origen, lista_items
-                )
+            # --- BOTÓN PRINCIPAL: GENERA INFORME + CONSTANCIA ---
+            if col_gen1.button("🚀 Generar Reportes Oficiales (Informe + Constancia)", type="primary", use_container_width=True):
+                errores_final = _validar_informe_final(cliente, ruc, responsable, origen, lista_items)
                 if errores_final:
-                    st.error(
-                        "⚠️  Por favor, corrige los siguientes errores antes de"
-                        " generar los reportes:"
-                    )
-                    for err in errores_final:
-                        st.markdown(f"- {err}")
+                    st.error("⚠️  Por favor, corrige los siguientes errores antes de generar los reportes:")
+                    for err in errores_final: st.markdown(f"- {err}")
                 else:
-                    with st.spinner(
-                        "Generando documentos y respaldando en la nube..."
-                    ):
+                    with st.spinner("Generando documentos, subiendo fotos y respaldando en la nube..."):
                         try:
                             # 1. Generar Informe Técnico PDF
                             pdf_informe_buffer = generar_pdf_oficial(
-                                cliente,
-                                ruc,
-                                proyecto_nom,
-                                codigo_proy,
-                                fe_inicio,
-                                fe_fin,
-                                responsable,
-                                area,
-                                "Textiles en desuso",
-                                "Upcycling",
-                                "Kilogramos (kg)",
-                                guia_remision,
-                                origen,
-                                destino,
-                                lista_items,
-                                lista_trazabilidad,
-                                lista_productos,
-                                mat_transformado,
-                                retazos_aprovechables,
-                                perdida_no_aprovechable,
-                                total_procesado,
-                                pct_aprovechamiento_total,
-                                pct_perdida,
-                                lista_operaciones,
-                                lista_confeccion,
-                                total_horas_social,
-                                total_personas_social,
-                                co2_evitado_total,
-                                emisiones_transporte,
-                                emisiones_lavado,
-                                emisiones_corte,
-                                emisiones_bordado,
+                                cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
+                                "Textiles en desuso", "Upcycling", "Kilogramos (kg)", guia_remision, origen, destino,
+                                lista_items, lista_trazabilidad, lista_productos, mat_transformado, retazos_aprovechables,
+                                perdida_no_aprovechable, total_procesado, pct_aprovechamiento_total, pct_perdida,
+                                lista_operaciones, lista_confeccion, total_horas_social, total_personas_social,
+                                co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado,
                                 lista_anexos=lista_anexos,
                             )
                             bytes_informe = pdf_informe_buffer.getvalue()
 
-                            # 2. Preparar el contexto exacto para la plantilla Word
+                            # 2. Generar Constancia Oficial PDF
                             mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                             contexto_word = {
-                                "cliente": cliente.upper(),
-                                "mes": mes_fin_nombre,
-                                "anio": str(fe_fin_dt.year),
-                                "peso_recibido": f"{peso_total_recibido:.1f}",
-                                "unidades_ingreso": str(total_piezas_ingresadas),
-                                "co2_evitado": f"{co2_neto:.2f}",
-                                "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
-                                "total_mujeres": str(total_personas_social),
-                                "total_horas": f"{total_horas_social:.1f}",
+                                "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
+                                "peso_recibido": f"{peso_total_recibido:.1f}", "unidades_ingreso": str(total_piezas_ingresadas),
+                                "co2_evitado": f"{co2_neto:.2f}", "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
+                                "total_mujeres": str(total_personas_social), "total_horas": f"{total_horas_social:.1f}",
                                 "productos_elaborados": str(total_prod_unid),
                                 "fecha_cierre": f"{fe_fin_dt.strftime('%d')} de {mes_fin_nombre} de {fe_fin_dt.year}",
                             }
-
-                            # 3. Generar Constancia Oficial en PDF desde el DOCX de GitHub
                             bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word)
 
-                            # 4. Empaquetar ambos documentos en un archivo ZIP
+                            # 3. Empaquetar en ZIP
                             zip_buffer = io.BytesIO()
                             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                                 zip_file.writestr(f"Informe_Tecnico_{codigo_proy}.pdf", bytes_informe)
@@ -2861,201 +2846,63 @@ else:
                             zip_buffer.seek(0)
                             bytes_zip = zip_buffer.getvalue()
 
-                            # 5. Subir ambos documentos a Supabase Storage
-                            nombre_informe_remoto = f"Informe_{codigo_proy}.pdf"
-                            url_informe = subir_pdf_supabase(
-                                nombre_informe_remoto, bytes_informe
-                            )
-
-                            nombre_constancia_remoto = f"Constancia_{codigo_proy}.pdf"
-                            url_constancia = subir_pdf_supabase(
-                                nombre_constancia_remoto, bytes_constancia
-                            )
+                            # 4. Subir a Supabase Storage (PDFs)
+                            url_informe = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_informe)
+                            url_constancia = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_constancia)
                             
-                            # 6. Subir documentos a GOOGLE DRIVE (USANDO OAUTH Y CARPETAS)
+                            # 5. Subir a GOOGLE DRIVE
                             try:
-                                # Primero, el sistema entra a Drive y crea/busca las carpetas correspondientes
                                 carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt)
-                                
-                                # Luego, le dice que suba los archivos exactamente adentro de esa nueva carpeta
                                 subir_a_drive(f"Informe_{codigo_proy}.pdf", bytes_informe, "application/pdf", custom_folder_id=carpeta_destino_id)
                                 subir_a_drive(f"Constancia_{codigo_proy}.pdf", bytes_constancia, "application/pdf", custom_folder_id=carpeta_destino_id)
                                 subir_a_drive(f"Paquete_Completo_{codigo_proy}.zip", bytes_zip, "application/zip", custom_folder_id=carpeta_destino_id)
                             except Exception as e_drive:
                                 st.caption(f"Aviso interno: No se pudo respaldar en Drive: {e_drive}")
 
-                            # 7. Guardar en session_state para que la descarga esté siempre disponible
                             st.session_state.documentos_descarga = {
-                                "codigo": codigo_proy,
-                                "bytes_informe": bytes_informe,
-                                "bytes_constancia": bytes_constancia,
-                                "bytes_zip": bytes_zip,
+                                "codigo": codigo_proy, "bytes_informe": bytes_informe,
+                                "bytes_constancia": bytes_constancia, "bytes_zip": bytes_zip,
                             }
 
-                            # 8. Actualizar base de datos con los datos consolidados y el JSON de respaldo
+                            # 6. Procesar Fotos y Actualizar DB
                             try:
-                                datos_detalle = {
-                                    "responsables_seleccionados": responsables_seleccionados,
-                                    "origen": origen,
-                                    "num_items": st.session_state.num_items,
-                                    "items": [
-                                        {
-                                            "descripcion": it["descripcion"],
-                                            "unidades": it["unidades"],
-                                            "peso_unitario": it["peso_unitario"],
-                                            "peso_total": it["peso_total"],
-                                        }
-                                        for it in lista_items
-                                    ],
-                                    "trazabilidad": [
-                                        {
-                                            "etapa": tr["etapa"],
-                                            "fecha": tr["fecha"],
-                                            "responsable": tr["responsable"],
-                                            "peso": tr["peso"],
-                                            "tipo_registro": tr["tipo_registro"],
-                                            "editado": tr.get("editado", False),
-                                        }
-                                        for tr in lista_trazabilidad
-                                    ],
-                                    "num_prods": st.session_state.num_prods,
-                                    "productos": [
-                                        {
-                                            "producto": pr["producto"],
-                                            "cantidad": pr["cantidad"],
-                                        }
-                                        for pr in lista_productos
-                                    ],
-                                    "balance": {
-                                        "editar_manual": editar_balance,
-                                        "mat_transformado": mat_transformado,
-                                        "retazos_aprovechables": retazos_aprovechables,
-                                        "perdida_no_aprovechable": perdida_no_aprovechable,
-                                    },
-                                    "transporte": {
-                                        "distrito": distrito_sel,
-                                        "distancia": distancia_km,
-                                        "vehiculo": vehiculo_sel,
-                                        "recorrido": recorrido_tipo,
-                                    },
-                                    "bordado": {
-                                        "cantidad": cant_prendas_bordado,
-                                        "tipo": tipo_diseno_bordado,
-                                    },
-                                    "operaciones": [
-                                        {
-                                            "rol": op["rol"],
-                                            "nombre": op["nombre"],
-                                            "dias": op["dias"],
-                                            "horas_dia": op["horas_dia"],
-                                            "horas_totales": op["horas_totales"],
-                                            "editado": op.get("editado", False),
-                                        }
-                                        for op in lista_operaciones
-                                    ],
-                                    "confeccion_num_pers": {
-                                        f"num_pers_prod_{idx_c}": st.session_state.get(f"num_pers_prod_{idx_c}", 1)
-                                        for idx_c in range(len(lista_productos))
-                                    },
-                                    "confeccion": [
-                                        {
-                                            "producto": c["producto"],
-                                            "rol": c["rol"],
-                                            "persona": c["persona"],
-                                            "cantidad": c["cantidad"],
-                                            "tiempo_unitario": c["tiempo_unitario"],
-                                            "horas_totales": c["horas_totales"],
-                                        }
-                                        for c in lista_confeccion
-                                    ],
-                                    "num_anexos": st.session_state.num_anexos,
-                                    "anexos": [
-                                        {
-                                            "nota": a["nota"]
-                                        }
-                                        for a in lista_anexos
-                                    ],
-                                }
+                                datos_detalle = procesar_fotos_y_armar_detalle()
 
                                 datos_completado = {
-                                    "codigo": codigo_proy,
-                                    "cliente": cliente,
-                                    "ruc": ruc,
-                                    "tipo_proyecto": proyecto_nom,
-                                    "responsable": responsable,
-                                    "fecha": f"{fe_inicio} - {fe_fin}",
-                                    "estado": "COMPLETADO",
-                                    "peso_recibido": peso_total_recibido,
-                                    "peso_transformado": mat_transformado,
-                                    "aprovechamiento": pct_aprovechamiento_total,
-                                    "co2_neto": co2_neto,
-                                    "horas_totales": total_horas_social,
-                                    "productos_unids": total_prod_unid,
-                                    "punto_origen": origen,
-                                    "pdf_url": url_informe if url_informe else p_edit.get("pdf_url", ""),
+                                    "codigo": codigo_proy, "cliente": cliente, "ruc": ruc, "tipo_proyecto": proyecto_nom,
+                                    "responsable": responsable, "fecha": f"{fe_inicio} - {fe_fin}", "estado": "COMPLETADO",
+                                    "peso_recibido": peso_total_recibido, "peso_transformado": mat_transformado,
+                                    "aprovechamiento": pct_aprovechamiento_total, "co2_neto": co2_neto,
+                                    "horas_totales": total_horas_social, "productos_unids": total_prod_unid,
+                                    "punto_origen": origen, "pdf_url": url_informe if url_informe else p_edit.get("pdf_url", ""),
                                     "constancia_url": url_constancia if url_constancia else p_edit.get("constancia_url", ""),
                                     "datos_completos": datos_detalle,
                                 }
                                 
-                                # --- GUARDADO INTELIGENTE FINAL ---
                                 proyecto_id = p_edit.get("id")
-                                
-                                # Si no tiene ID asignado, busca si ya existe en la nube por el código
                                 if not proyecto_id:
                                     busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
-                                    if busca_existente.data:
-                                        proyecto_id = busca_existente.data[0]["id"]
+                                    if busca_existente.data: proyecto_id = busca_existente.data[0]["id"]
                                 
                                 if proyecto_id:
-                                    supabase.table("proyectos").update(
-                                        datos_completado
-                                    ).eq("id", proyecto_id).execute()
+                                    supabase.table("proyectos").update(datos_completado).eq("id", proyecto_id).execute()
                                 else:
-                                    supabase.table("proyectos").insert(
-                                        datos_completado
-                                    ).execute()
+                                    supabase.table("proyectos").insert(datos_completado).execute()
                                     
-                                # <-- SOLO SI LA BD SE ACTUALIZA CON ÉXITO: 
-                                # Limpiamos el modo edición para que salga de la lista de borradores pendientes
                                 st.session_state.proyecto_editar = {}
                                 st.rerun()
 
                             except Exception as e_bd:
-                                st.error(
-                                    f"⚠️ Documentos creados en la nube, pero falló la actualización en Base de Datos: {e_bd}"
-                                )
+                                st.error(f"⚠️ Documentos creados, pero falló la actualización de BD: {e_bd}")
 
                         except Exception as e:
-                            st.error(f"❌ Error crítico al procesar los documentos o conectarse a la nube: {e}")
+                            st.error(f"❌ Error crítico al procesar los documentos: {e}")
 
-        # --- SECCIÓN PERSISTENTE DE DESCARGA (NO SE BORRA AL HACER CLIC) ---
         if st.session_state.documentos_descarga:
             docs = st.session_state.documentos_descarga
             st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
 
             c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
-
-            c_dzip.download_button(
-                label="📦 Descargar Ambos (.ZIP)",
-                data=docs["bytes_zip"],
-                file_name=f"Documentos_Oficiales_{docs['codigo']}.zip",
-                mime="application/zip",
-                use_container_width=True,
-                type="primary",
-            )
-
-            c_dinf.download_button(
-                label="📄 Descargar Informe PDF",
-                data=docs["bytes_informe"],
-                file_name=f"Informe_Tecnico_{docs['codigo']}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-
-            c_dconst.download_button(
-                label="📜 Descargar Constancia PDF",
-                data=docs["bytes_constancia"],
-                file_name=f"Constancia_Transformacion_{docs['codigo']}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
+            c_dzip.download_button("📦 Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_Oficiales_{docs['codigo']}.zip", mime="application/zip", use_container_width=True, type="primary")
+            c_dinf.download_button("📄 Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['codigo']}.pdf", mime="application/pdf", use_container_width=True)
+            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_Transformacion_{docs['codigo']}.pdf", mime="application/pdf", use_container_width=True)
