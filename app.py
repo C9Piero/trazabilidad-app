@@ -45,7 +45,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
-        # 1. Determinar el Año (Quitamos restricción del root para evitar bloqueos)
+        # 1. Determinar el Año
         nombre_carpeta_anio = str(fecha_fin_dt.year)
         query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
@@ -94,7 +94,6 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         st.caption(f"Aviso Carpetas Drive: {e}")
         return None
 
-# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
 def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
     """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
     try:
@@ -732,12 +731,23 @@ def generar_pdf_oficial(
     ]]
 
     for t_item in lista_trazabilidad:
-        img_cell = obtener_imagen_pdf(t_item["foto"], 45, 35)
-        data_traza_pdf.append([
-            Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style),
-            Paragraph(t_item["responsable"], cell_style), Paragraph(f"{t_item['peso']:.2f}", cell_style),
-            Paragraph(t_item["tipo_registro"], cell_style), img_cell,
-        ])
+        # --- VERIFICAR SI LA ETAPA NO APLICA (OMITIDA) ---
+        if t_item.get("no_aplica"):
+            data_traza_pdf.append([
+                Paragraph(t_item["etapa"], cell_style), 
+                Paragraph("-", cell_style),
+                Paragraph("No aplica (Sin lavado)", cell_style), 
+                Paragraph("-", cell_style),
+                Paragraph("-", cell_style), 
+                Paragraph("-", cell_style),
+            ])
+        else:
+            img_cell = obtener_imagen_pdf(t_item["foto"], 45, 35)
+            data_traza_pdf.append([
+                Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style),
+                Paragraph(t_item["responsable"], cell_style), Paragraph(f"{t_item['peso']:.2f}", cell_style),
+                Paragraph(t_item["tipo_registro"], cell_style), img_cell,
+            ])
 
     t_traza = Table(data_traza_pdf, colWidths=[90, 70, 130, 60, 100, 90])
     t_traza.setStyle(
@@ -1059,7 +1069,6 @@ else:
                 cli_nombre = p.get("cliente", "Sin Nombre")
                 fecha_proy = p.get("fecha", "")
                 
-                # --- CAMBIO 1: ESTÉTICA DEL MENÚ LATERAL ---
                 if fecha_proy:
                     label_btn = f"📁 {cli_nombre} ({fecha_proy})"
                 else:
@@ -1332,7 +1341,7 @@ else:
             prefijos_limpiar = [
                 "desc_", "unid_", "tot_input_", "peso_u_", "foto_",
                 "prod_sel_", "prod_cant_", "prod_nuevo_txt_", "prod_dis_", "prod_foto_",
-                "tr_etapa_", "tr_fecha_", "tr_resp_", "chk_edit_", "tr_peso_", "tr_tipo_", "tr_foto_",
+                "tr_etapa_", "tr_fecha_", "tr_resp_", "chk_edit_", "chk_no_aplica_", "tr_peso_", "tr_tipo_", "tr_foto_",
                 "soc_rol_", "soc_pers_sel_", "soc_pers_txt_custom_", "soc_cant_", "soc_tunit_", "soc_tunit_calc_", "soc_htot_",
                 "anx_foto_", "anx_nota_", "ops_chk_", "ops_nom_", "ops_dias_", "ops_hdia_", "ops_tot_",
                 "transporte_distrito_origen", "dist_km_manual", "dist_km_auto_",
@@ -1495,7 +1504,6 @@ else:
 
             peso_corte_conf_auto = round(peso_total_recibido * st.session_state.pct_aprovechamiento_random, 2)
 
-            # --- CAMBIO 2: SINCRONIZACIÓN DE FECHAS ---
             etapas_fijas = [
                 {"etapa": "Clasificación", "fecha": fe_inicio_dt, "resp_defecto": "Evelyn Prada Vizarreta", "peso_defecto": peso_total_recibido, "tipo": "Registro interno"},
                 {"etapa": "Lavado", "fecha": datetime.date.today(), "resp_defecto": "Lavandería", "peso_defecto": 0.0, "tipo": "Servicio Externo"},
@@ -1510,10 +1518,11 @@ else:
 
             for i, item_fijo in enumerate(etapas_fijas):
                 st.markdown(f"**Etapa {i+1}**")
-                c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = st.columns([1.5, 1.5, 2, 1, 1.2, 1.8, 2])
+                c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = st.columns([1.5, 1.5, 2, 1.2, 1.2, 1.6, 2])
 
                 traza_prev = saved_traza[i] if i < len(saved_traza) else {}
                 fec_prev_str = traza_prev.get("fecha")
+                no_aplica_prev = traza_prev.get("no_aplica", False)
                 
                 # --- Aseguramos que la Etapa 1 siempre tenga la fecha de inicio ---
                 if item_fijo["etapa"] == "Clasificación":
@@ -1531,39 +1540,61 @@ else:
                 is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
                 foto_url_prev = traza_prev.get("foto_url", "")
 
+                # --- Lógica Especial para Etapa de Lavado (No aplica) ---
+                if item_fijo["etapa"] == "Lavado":
+                    no_aplica = c_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}")
+                    permitir_editar = not no_aplica
+                    deshabilitar_peso = no_aplica
+                else:
+                    no_aplica = False
+                    permitir_editar = c_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
+                    deshabilitar_peso = not permitir_editar
+
+                # --- Si no aplica el lavado, reseteamos los valores mostrados en UI ---
+                if no_aplica:
+                    resp_val_ui = "N/A"
+                    peso_val_ui = 0.0
+                    tipo_val_ui = "N/A"
+                else:
+                    resp_val_ui = resp_prev_val
+                    peso_val_ui = peso_prev_val
+                    tipo_val_ui = tipo_prev_val
+
                 e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
                 
-                # --- Bloqueamos la edición de la fecha solo en la Etapa 1 ---
-                deshabilitar_fec = (item_fijo["etapa"] == "Clasificación")
+                # --- Bloqueamos la edición de la fecha en la Etapa 1 o si "No Aplica" ---
+                deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
                 e_fec_val = c_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
 
-                permitir_editar = c_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
-                e_res = c_resp.text_input("Responsable *", value=resp_prev_val, disabled=not permitir_editar, key=f"tr_resp_{i}")
+                e_res = c_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}")
 
-                val_peso_etapa = peso_prev_val
-                deshabilitar_peso = False if item_fijo["etapa"] == "Lavado" else (not permitir_editar)
-
-                e_pes_str = c_peso.text_input("Peso (kg) *", value=f"{val_peso_etapa:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_{val_peso_etapa:.2f}_{deshabilitar_peso}")
+                e_pes_str = c_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_{peso_val_ui:.2f}_{deshabilitar_peso}")
 
                 try: e_pes_num = float(e_pes_str)
                 except ValueError: e_pes_num = 0.0
 
-                if item_fijo["etapa"] == "Lavado": peso_lavado_auto = e_pes_num
-                elif item_fijo["etapa"] == "Corte": peso_corte_auto = e_pes_num
+                if item_fijo["etapa"] == "Lavado":
+                    peso_lavado_auto = 0.0 if no_aplica else e_pes_num
+                elif item_fijo["etapa"] == "Corte": 
+                    peso_corte_auto = e_pes_num
 
-                e_tip = c_tipo.text_input("Tipo Registro", value=tipo_prev_val, disabled=True, key=f"tr_tipo_{i}")
+                e_tip = c_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}")
                 
-                e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
-
-                if e_fot is not None:
-                    c_foto.image(e_fot, width=70)
-                elif foto_url_prev:
-                    c_foto.image(foto_url_prev, width=70)
+                if no_aplica:
+                    e_fot = None
+                    c_foto.info("No aplica")
+                else:
+                    e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
+                    if e_fot is not None:
+                        c_foto.image(e_fot, width=70)
+                    elif foto_url_prev:
+                        c_foto.image(foto_url_prev, width=70)
 
                 lista_trazabilidad.append({
                     "etapa": e_nom, "fecha": e_fec_val.strftime("%d/%m/%Y"), "responsable": e_res,
-                    "peso": e_pes_num, "tipo_registro": e_tip, "editado": permitir_editar,
-                    "foto_up": e_fot, "foto_url": foto_url_prev, "foto": e_fot if e_fot is not None else foto_url_prev
+                    "peso": e_pes_num, "tipo_registro": e_tip, "editado": permitir_editar, "no_aplica": no_aplica,
+                    "foto_up": e_fot, "foto_url": foto_url_prev if not no_aplica else "", 
+                    "foto": e_fot if e_fot is not None else (foto_url_prev if not no_aplica else "")
                 })
 
         st.write("")
@@ -2034,7 +2065,8 @@ else:
                     url = subir_imagen_supabase(f"fotos/{codigo_proy}/traza_{idx}_{ts}.jpg", tr["foto_up"].read())
                 traza_db.append({
                     "etapa": tr["etapa"], "fecha": tr["fecha"], "responsable": tr["responsable"],
-                    "peso": tr["peso"], "tipo_registro": tr["tipo_registro"], "editado": tr.get("editado", False), "foto_url": url
+                    "peso": tr["peso"], "tipo_registro": tr["tipo_registro"], "editado": tr.get("editado", False), 
+                    "no_aplica": tr.get("no_aplica", False), "foto_url": url
                 })
 
             prods_db = []
