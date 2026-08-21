@@ -662,18 +662,15 @@ def generar_pdf_oficial(
     elements.append(t_ficha)
     elements.append(Spacer(1, 8))
 
-    # --- NUEVA FUNCIÓN PARA LEER IMÁGENES DESDE LA NUBE O ARCHIVO ---
     def obtener_imagen_pdf(foto_data, width, height):
         if foto_data is not None and foto_data != "":
             import urllib.request
             try:
-                # Si es un enlace guardado en la nube
                 if isinstance(foto_data, str) and foto_data.startswith("http"):
                     req = urllib.request.Request(foto_data, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(req) as response:
                         img_data = io.BytesIO(response.read())
                     return Image(img_data, width=width, height=height)
-                # Si es un archivo recien subido (bytes)
                 elif hasattr(foto_data, 'read'):
                     foto_data.seek(0)
                     img_data = io.BytesIO(foto_data.read())
@@ -731,7 +728,6 @@ def generar_pdf_oficial(
     ]]
 
     for t_item in lista_trazabilidad:
-        # --- VERIFICAR SI LA ETAPA NO APLICA (OMITIDA) ---
         if t_item.get("no_aplica"):
             data_traza_pdf.append([
                 Paragraph(t_item["etapa"], cell_style), 
@@ -1162,13 +1158,14 @@ else:
             st.markdown("##### 2. Métricas Consolidadas")
             rm1, rm2, rm3 = st.columns(3)
             fast_peso = rm1.number_input("Material Procesado Total (kg) *", min_value=0.0, step=0.1)
-            fast_unid = rm2.number_input("Unidades Producidas *", min_value=0, step=1)
-            fast_co2 = rm3.number_input("CO₂e Neto Evitado (kg) *", min_value=0.0, step=0.1)
+            fast_unid_recibidas = rm2.number_input("Unidades Recibidas", min_value=0, step=1)
+            fast_unid = rm3.number_input("Unidades Producidas *", min_value=0, step=1)
 
-            rm4, rm5, rm6 = st.columns(3)
-            fast_horas = rm4.number_input("Horas de Trabajo Generadas *", min_value=0.0, step=0.5)
-            fast_personas = rm5.number_input("Personas / Beneficiarios *", min_value=0, step=1)
-            fast_aprovechamiento = rm6.number_input("% Aprovechamiento *", min_value=0.0, max_value=100.0, value=100.0, step=0.1)
+            rm4, rm5, rm6, rm7 = st.columns(4)
+            fast_co2 = rm4.number_input("CO₂e Neto Evitado (kg) *", min_value=0.0, step=0.1)
+            fast_horas = rm5.number_input("Horas de Trabajo *", min_value=0.0, step=0.5)
+            fast_personas = rm6.number_input("Participantes *", min_value=0, step=1)
+            fast_aprovechamiento = rm7.number_input("% Aprovechamiento *", min_value=0.0, max_value=100.0, value=100.0, step=0.1)
 
             fast_origen = st.text_input("Punto Origen", value="Sede Central")
 
@@ -1190,6 +1187,7 @@ else:
                             "aprovechamiento": fast_aprovechamiento, "co2_neto": fast_co2,
                             "horas_totales": fast_horas, "productos_unids": fast_unid,
                             "punto_origen": fast_origen,
+                            "datos_completos": {"participantes": fast_personas, "unidades_recibidas": fast_unid_recibidas}
                         }).execute()
                     st.success(f"✅ ¡Proyecto **{fast_cliente}** registrado exitosamente en el Histórico!")
                     st.toast("⚡ Guardado rápido completado")
@@ -1240,7 +1238,7 @@ else:
         tot_unids = sum([int(p.get("productos_unids", 0) or 0) for p in completados])
 
         dm1, dm2, dm3, dm4 = st.columns(4)
-        dm1.metric("📦 Material Reciclado", f"{tot_peso:.2f} kg")
+        dm1.metric("📦 Uniformes Transformados", f"{tot_peso:.2f} kg")
         dm2.metric("🌍 CO₂e Neto Evitado", f"{tot_co2:.2f} kg")
         dm3.metric("⏳ Horas de Trabajo", f"{tot_horas:.2f} hrs")
         dm4.metric("🛍️ Productos Creados", f"{tot_unids} unid")
@@ -1248,16 +1246,47 @@ else:
         st.write("")
         st.markdown("##### 📋 Resumen General de Proyectos Registrados")
         if completados:
-            df_comp = pd.DataFrame(completados)
-            columnas_mostrar = [
-                "codigo", "cliente", "tipo_proyecto", "peso_recibido", "co2_neto", "horas_totales", "productos_unids",
-            ]
-            nombres_cols = {
-                "codigo": "Código", "cliente": "Cliente", "tipo_proyecto": "Tipo",
-                "peso_recibido": "Peso (kg)", "co2_neto": "CO₂e Evitado (kg)",
-                "horas_totales": "Horas", "productos_unids": "Unidades",
-            }
-            df_tabla = df_comp[[c for c in columnas_mostrar if c in df_comp.columns]].rename(columns=nombres_cols)
+            tabla_data = []
+            for i, p in enumerate(completados):
+                # Extraer Mes de la fecha
+                fecha_str = p.get("fecha", "")
+                mes_texto = "N/D"
+                if "-" in fecha_str:
+                    fe_fin_str = fecha_str.split("-")[1].strip()
+                    try:
+                        mes_num = int(fe_fin_str.split("/")[1])
+                        mes_texto = MESES_ESPANOL.get(mes_num, "").capitalize()
+                    except:
+                        pass
+                
+                # Extraer unidades y participantes
+                dc = p.get("datos_completos") or {}
+                unidades_recibidas = 0
+                participantes = 0
+                
+                if "items" in dc:
+                    unidades_recibidas = sum([int(it.get("unidades", 0)) for it in dc.get("items", [])])
+                    conf = dc.get("confeccion", [])
+                    pers_conf = set([c.get("persona", "").strip() for c in conf if c.get("persona", "").strip()])
+                    participantes = 6 + len(pers_conf)
+                elif "participantes" in dc:
+                    participantes = dc.get("participantes", 0)
+                    unidades_recibidas = dc.get("unidades_recibidas", 0)
+
+                tabla_data.append({
+                    "N°": i + 1,
+                    "Cliente": p.get("cliente", "Sin Nombre"),
+                    "Mes": mes_texto,
+                    "Unidades recibidas": unidades_recibidas if unidades_recibidas > 0 else "-",
+                    "Kg recibidos": float(p.get("peso_recibido", 0) or 0),
+                    "CO₂ evitado": float(p.get("co2_neto", 0) or 0),
+                    "Horas": float(p.get("horas_totales", 0) or 0),
+                    "Productos": int(p.get("productos_unids", 0) or 0),
+                    "Participantes": participantes if participantes > 0 else "-",
+                    "TIPO DE PROYECTO": p.get("tipo_proyecto", "Upcycling")
+                })
+                
+            df_tabla = pd.DataFrame(tabla_data)
             st.dataframe(df_tabla, use_container_width=True, hide_index=True)
         else:
             st.info("📭 Aún no hay proyectos completados para mostrar en las métricas.")
@@ -1550,7 +1579,6 @@ else:
                     permitir_editar = c_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
                     deshabilitar_peso = not permitir_editar
 
-                # --- Si no aplica el lavado, reseteamos los valores mostrados en UI ---
                 if no_aplica:
                     resp_val_ui = "N/A"
                     peso_val_ui = 0.0
@@ -1680,7 +1708,7 @@ else:
                 retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
                 perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
 
-            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=editar_balance_prev, key="chk_edit_balance")
+            editar_balance = st.checkbox("✏️ Editar balance manually", value=editar_balance_prev, key="chk_edit_balance")
 
             col_bm1, col_bm2 = st.columns(2)
             mat_transformado = col_bm1.number_input(
