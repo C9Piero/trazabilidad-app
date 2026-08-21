@@ -45,7 +45,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
-        # 1. Determinar el Año
+        # 1. Determinar el Año (Quitamos restricción del root para evitar bloqueos)
         nombre_carpeta_anio = str(fecha_fin_dt.year)
         query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
@@ -94,6 +94,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         st.caption(f"Aviso Carpetas Drive: {e}")
         return None
 
+# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
 def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
     """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
     try:
@@ -662,15 +663,18 @@ def generar_pdf_oficial(
     elements.append(t_ficha)
     elements.append(Spacer(1, 8))
 
+    # --- NUEVA FUNCIÓN PARA LEER IMÁGENES DESDE LA NUBE O ARCHIVO ---
     def obtener_imagen_pdf(foto_data, width, height):
         if foto_data is not None and foto_data != "":
             import urllib.request
             try:
+                # Si es un enlace guardado en la nube
                 if isinstance(foto_data, str) and foto_data.startswith("http"):
                     req = urllib.request.Request(foto_data, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(req) as response:
                         img_data = io.BytesIO(response.read())
                     return Image(img_data, width=width, height=height)
+                # Si es un archivo recien subido (bytes)
                 elif hasattr(foto_data, 'read'):
                     foto_data.seek(0)
                     img_data = io.BytesIO(foto_data.read())
@@ -1277,17 +1281,51 @@ else:
                     "N°": i + 1,
                     "Cliente": p.get("cliente", "Sin Nombre"),
                     "Mes": mes_texto,
-                    "Unidades recibidas": unidades_recibidas if unidades_recibidas > 0 else "-",
+                    "Unidades recibidas": int(unidades_recibidas) if unidades_recibidas > 0 else None,
                     "Kg recibidos": float(p.get("peso_recibido", 0) or 0),
                     "CO₂ evitado": float(p.get("co2_neto", 0) or 0),
                     "Horas": float(p.get("horas_totales", 0) or 0),
                     "Productos": int(p.get("productos_unids", 0) or 0),
-                    "Participantes": participantes if participantes > 0 else "-",
+                    "Participantes": int(participantes) if participantes > 0 else None,
                     "TIPO DE PROYECTO": p.get("tipo_proyecto", "Upcycling")
                 })
                 
             df_tabla = pd.DataFrame(tabla_data)
-            st.dataframe(df_tabla, use_container_width=True, hide_index=True)
+            
+            # Obtener máximos para las barras de progreso
+            max_kg = float(df_tabla["Kg recibidos"].max()) if not df_tabla.empty else 100.0
+            max_co2 = float(df_tabla["CO₂ evitado"].max()) if not df_tabla.empty else 100.0
+            
+            # Dibujar el Super Dataframe con configuraciones estéticas
+            st.dataframe(
+                df_tabla,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "N°": st.column_config.NumberColumn("N°", format="%d", alignment="center", width="small"),
+                    "Cliente": st.column_config.TextColumn("Cliente", width="medium"),
+                    "Mes": st.column_config.TextColumn("Mes", alignment="center"),
+                    "Unidades recibidas": st.column_config.NumberColumn("Unidades recibidas", format="%d", alignment="center"),
+                    "Kg recibidos": st.column_config.ProgressColumn(
+                        "Kg recibidos",
+                        help="Peso total procesado",
+                        format="%.2f kg",
+                        min_value=0,
+                        max_value=max_kg,
+                    ),
+                    "CO₂ evitado": st.column_config.ProgressColumn(
+                        "CO₂ evitado",
+                        help="Impacto ambiental neto",
+                        format="%.2f kg",
+                        min_value=0,
+                        max_value=max_co2,
+                    ),
+                    "Horas": st.column_config.NumberColumn("Horas", format="%.2f hrs", alignment="center"),
+                    "Productos": st.column_config.NumberColumn("Productos", format="%d unid", alignment="center"),
+                    "Participantes": st.column_config.NumberColumn("Participantes", format="%d", alignment="center"),
+                    "TIPO DE PROYECTO": st.column_config.TextColumn("TIPO DE PROYECTO", alignment="center"),
+                }
+            )
         else:
             st.info("📭 Aún no hay proyectos completados para mostrar en las métricas.")
 
@@ -1533,6 +1571,7 @@ else:
 
             peso_corte_conf_auto = round(peso_total_recibido * st.session_state.pct_aprovechamiento_random, 2)
 
+            # --- SINCRONIZACIÓN DE FECHAS ---
             etapas_fijas = [
                 {"etapa": "Clasificación", "fecha": fe_inicio_dt, "resp_defecto": "Evelyn Prada Vizarreta", "peso_defecto": peso_total_recibido, "tipo": "Registro interno"},
                 {"etapa": "Lavado", "fecha": datetime.date.today(), "resp_defecto": "Lavandería", "peso_defecto": 0.0, "tipo": "Servicio Externo"},
@@ -1708,7 +1747,7 @@ else:
                 retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
                 perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
 
-            editar_balance = st.checkbox("✏️ Editar balance manually", value=editar_balance_prev, key="chk_edit_balance")
+            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=editar_balance_prev, key="chk_edit_balance")
 
             col_bm1, col_bm2 = st.columns(2)
             mat_transformado = col_bm1.number_input(
