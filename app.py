@@ -45,9 +45,9 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
-        # 1. Determinar el Año
+        # 1. Determinar el Año (¡CON CANDADO A LA CARPETA RAÍZ!)
         nombre_carpeta_anio = str(fecha_fin_dt.year)
-        query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
         
         if not res_anio.get('files', []):
@@ -89,7 +89,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         else:
             id_cli = res_cli.get('files')[0].get('id')
 
-        # 4. Determinar la Carpeta Específica del Proyecto/Pedido (Con nombre limpio)
+        # 4. Determinar la Carpeta Específica del Proyecto/Pedido
         query_proy = f"name='{nombre_subcarpeta}' and mimeType='application/vnd.google-apps.folder' and '{id_cli}' in parents and trashed=false"
         res_proy = service.files().list(q=query_proy, fields='files(id)').execute()
         
@@ -2315,7 +2315,7 @@ else:
                             zip_buffer.seek(0)
                             bytes_zip = zip_buffer.getvalue()
 
-                            # 4. Subir a Supabase Storage (PDFs) - Aquí usamos el código único para que no se chancen en la BD
+                            # 4. Subir a Supabase Storage (PDFs)
                             url_informe = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_informe)
                             url_constancia = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_constancia)
                             
