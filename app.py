@@ -45,7 +45,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
-        # 1. Determinar el Año
+        # 1. Determinar el Año (Quitamos restricción del root para evitar bloqueos)
         nombre_carpeta_anio = str(fecha_fin_dt.year)
         query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
@@ -122,162 +122,47 @@ def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application
         st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
         return None
 
-# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
-def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
-    """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
-    try:
-        if "drive_oauth" not in st.secrets:
-            return None 
-        
-        creds_data = st.secrets["drive_oauth"]
-        credentials = Credentials(
-            token=None,
-            refresh_token=creds_data["refresh_token"],
-            client_id=creds_data["client_id"],
-            client_secret=creds_data["client_secret"],
-            token_uri="https://oauth2.googleapis.com/token"
-        )
-        
-        service = build('drive', 'v3', credentials=credentials)
-        # Si le pasamos un folder_id específico (como el del cliente), lo usa; si no, usa el root.
-        folder_id = custom_folder_id if custom_folder_id else creds_data["folder_id"]
-        
-        file_metadata = {
-            'name': nombre_archivo,
-            'parents': [folder_id]
-        }
-        
-        import io
-        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
-        archivo_subido = service.files().create(
-            body=file_metadata, media_body=media, fields='id'
-        ).execute()
-        
-        return archivo_subido.get('id')
-    except Exception as e:
-        import streamlit as st
-        st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
-        return None
 
 # --- DICCIONARIO DE MESES EN ESPAÑOL ---
 MESES_ESPANOL = {
-    1: "enero",
-    2: "febrero",
-    3: "marzo",
-    4: "abril",
-    5: "mayo",
-    6: "junio",
-    7: "julio",
-    8: "agosto",
-    9: "setiembre",
-    10: "octubre",
-    11: "noviembre",
-    12: "diciembre",
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+    7: "julio", 8: "agosto", 9: "setiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
 }
 
 # --- CATÁLOGO BASE DE PRODUCTOS HISTÓRICOS ---
 PRODUCTOS_CATALOGO_BASE = [
-    "Estrellas",
-    "Cartuchera",
-    "Cúbica",
-    "Bolso",
-    "Mochila",
-    "Llavero",
-    "Monedero",
-    "Canguro",
-    "Tote bag",
-    "Neceser",
-    "Portalaptop",
-    "Portacepillos",
-    "Pelota",
-    "Portacubierto",
-    "Juguete",
-    "Cubo",
-    "Corazones",
-    "Peluche",
-    "Morral",
-    "Portaútiles",
-    "Portabotella",
-    "Cama perrito",
-    "Colets",
-    "Rombo",
-    "Mandiles",
-    "Lonchera",
+    "Estrellas", "Cartuchera", "Cúbica", "Bolso", "Mochila", "Llavero",
+    "Monedero", "Canguro", "Tote bag", "Neceser", "Portalaptop",
+    "Portacepillos", "Pelota", "Portacubierto", "Juguete", "Cubo",
+    "Corazones", "Peluche", "Morral", "Portaútiles", "Portabotella",
+    "Cama perrito", "Colets", "Rombo", "Mandiles", "Lonchera",
     "➕ Otro (Escribir nuevo producto)",
 ]
 
 # --- PERSONAL BASE DE CONFECCIÓN Y ACABADO ---
 PERSONAL_CONFECCION_BASE = [
-    "Celinda Gutierrez Delgado",
-    "Guadalupe Guerra Cespedes",
-    "Isabel Estrada Sandoval",
-    "Carmen Cespedes Borda",
-    "Mavela Espinoza",
-    "Juana Padilla Ruiz",
-    "Felicita Sandoval Vilchez",
-    "Luciana Jara Estrada",
-    "Genaro Jara Garcia",
-    "Yovana Davila",
-    "Katherine Hilario Vilca",
-    "Rody Jara Rucana",
-    "Lucila Campos",
-    "Tiffany Landa Rios",
-    "Sara Mallqui Herrada",
-    "Erlith Paima",
-    "Sonia Panduro Torres",
-    "Cintya Rincon",
-    "Dixie Hidalgo Martel",
-    "Janeth Mescco Bautista",
-    "Judith Cueva Vargas",
-    "Linfa Tauche",
-    "Maricela Nieto",
-    "Sofia Moya Reyes",
-    "Carmen Vizarreta Lozada",
-    "Genoveva Vizarreta Lozada",
-    "Gathy Perez Ortiz",
-    "Omar Prada",
-    "Yovana Davila Ramirez",
-    "Rosario Evelin Blas Alcala",
-    "Esmeralda Tandazo Briceño",
-    "Jhoel Angel Dominguez Rementeria",
-    "Pedro Estrada Ramos",
-    "Victor Auccapuri San Miguel",
-    "Gabriel Manrique Hurtado",
-    "Evelyn Prada Vizarreta",
-    "Eugenia Almanza Huere",
-    "Nicolle Estrada Yabe",
-    "Oswaldo Jara Garcia",
-    "Noelia Gonzales Lopez",
+    "Celinda Gutierrez Delgado", "Guadalupe Guerra Cespedes", "Isabel Estrada Sandoval",
+    "Carmen Cespedes Borda", "Mavela Espinoza", "Juana Padilla Ruiz", "Felicita Sandoval Vilchez",
+    "Luciana Jara Estrada", "Genaro Jara Garcia", "Yovana Davila", "Katherine Hilario Vilca",
+    "Rody Jara Rucana", "Lucila Campos", "Tiffany Landa Rios", "Sara Mallqui Herrada",
+    "Erlith Paima", "Sonia Panduro Torres", "Cintya Rincon", "Dixie Hidalgo Martel",
+    "Janeth Mescco Bautista", "Judith Cueva Vargas", "Linfa Tauche", "Maricela Nieto",
+    "Sofia Moya Reyes", "Carmen Vizarreta Lozada", "Genoveva Vizarreta Lozada",
+    "Gathy Perez Ortiz", "Omar Prada", "Yovana Davila Ramirez", "Rosario Evelin Blas Alcala",
+    "Esmeralda Tandazo Briceño", "Jhoel Angel Dominguez Rementeria", "Pedro Estrada Ramos",
+    "Victor Auccapuri San Miguel", "Gabriel Manrique Hurtado", "Evelyn Prada Vizarreta",
+    "Eugenia Almanza Huere", "Nicolle Estrada Yabe", "Oswaldo Jara Garcia", "Noelia Gonzales Lopez",
 ]
 
 # --- MATRIZ DE TIEMPOS ESTIMADOS (en horas/unidad) ---
 TIEMPOS_ESTIMADOS_PRODUCTO = {
-    "Mochila": 2.50,
-    "Bolso": 1.50,
-    "Tote bag": 0.80,
-    "Portalaptop": 1.20,
-    "Canguro": 1.10,
-    "Neceser": 0.70,
-    "Lonchera": 1.00,
-    "Cartuchera": 0.50,
-    "Morral": 1.20,
-    "Mandiles": 0.60,
-    "Cama perrito": 1.80,
-    "Peluche": 1.50,
-    "Pelota": 0.80,
-    "Estrellas": 0.35,
-    "Corazones": 0.35,
-    "Rombo": 0.35,
-    "Cúbica": 0.60,
-    "Cubo": 0.50,
-    "Llavero": 0.20,
-    "Monedero": 0.30,
-    "Portacepillos": 0.25,
-    "Portacubierto": 0.25,
-    "Portaútiles": 0.40,
-    "Portabotella": 0.45,
-    "Colets": 0.15,
-    "Juguete": 0.75,
+    "Mochila": 2.50, "Bolso": 1.50, "Tote bag": 0.80, "Portalaptop": 1.20,
+    "Canguro": 1.10, "Neceser": 0.70, "Lonchera": 1.00, "Cartuchera": 0.50,
+    "Morral": 1.20, "Mandiles": 0.60, "Cama perrito": 1.80, "Peluche": 1.50,
+    "Pelota": 0.80, "Estrellas": 0.35, "Corazones": 0.35, "Rombo": 0.35,
+    "Cúbica": 0.60, "Cubo": 0.50, "Llavero": 0.20, "Monedero": 0.30,
+    "Portacepillos": 0.25, "Portacubierto": 0.25, "Portaútiles": 0.40,
+    "Portabotella": 0.45, "Colets": 0.15, "Juguete": 0.75,
 }
 
 def estimar_tiempo_unidad(nombre_producto: str) -> float:
@@ -290,64 +175,25 @@ def estimar_tiempo_unidad(nombre_producto: str) -> float:
 
 # --- FACTORES DE EMISIÓN DE MATERIALES ---
 FACTORES_CO2 = {
-    "Banner": 9.5,
-    "Bata de laboratorio": 6.575,
-    "Bolsas": 8.0,
-    "Camisa": 6.575,
-    "Camisa algodón": 5.0,
-    "Camisa drill": 5.9,
-    "Camisa ignífuga": 5.35,
-    "Camisa jean / denim": 5.0,
-    "Camisaco": 5.0,
-    "Camisaco drill": 5.9,
-    "Camisaco drill con cinta": 6.25,
-    "Casaca": 6.575,
-    "Casaca drill": 5.9,
-    "Casaca polar": 6.0,
-    "Casaca polar con cinta reflectiva": 6.3,
-    "Casaca térmica": 6.1,
-    "Chaleco": 6.575,
-    "Chaleco con cinta": 6.925,
-    "Chaleco de seguridad": 9.75,
-    "Chaleco Fluorescente": 9.625,
-    "Chaleco polar": 6.0,
-    "Chaleco reversible": 9.5,
-    "Chompa": 7.1,
-    "Chompa con cinta reflectiva": 7.45,
-    "Chompa Jorge Chavez": 6.0,
-    "Chompa Jorge Chavez con cinta reflectiva": 6.3,
-    "Chompa polar": 6.0,
-    "Enterizo": 6.575,
-    "Gorro": 7.925,
-    "Impermeable": 9.425,
-    "Mameluco": 6.575,
-    "Mameluco acolchado": 5.825,
-    "Mameluco drill": 5.9,
-    "Mameluco jean reflectivo": 5.35,
-    "Merma": 6.575,
-    "Overol": 6.575,
-    "Pantalón": 6.575,
-    "Pantalón algodón": 5.0,
-    "Pantalón drill": 5.9,
-    "Pantalón drill con cinta": 6.25,
-    "Pantalón ignífugo": 5.35,
-    "Pantalón jean": 5.0,
-    "Pantalón jean / drill": 5.675,
-    "Pantalón jean con cinta reflectiva": 5.35,
-    "Pantalón polar": 6.0,
-    "Pantalón térmico": 6.0,
-    "Polera": 5.0,
-    "Polera polar": 6.0,
-    "Polo": 6.8,
-    "Polo algodón": 5.0,
-    "Polo con cinta reflectiva": 6.925,
-    "Polo manga corta": 6.8,
-    "Polo manga larga": 6.8,
-    "Polo manga larga con cinta reflectiva": 6.7,
-    "Polo piqué": 5.0,
-    "Short": 6.575,
-    "Toalla": 5.0,
-    "Otro": 6.575,
+    "Banner": 9.5, "Bata de laboratorio": 6.575, "Bolsas": 8.0, "Camisa": 6.575,
+    "Camisa algodón": 5.0, "Camisa drill": 5.9, "Camisa ignífuga": 5.35,
+    "Camisa jean / denim": 5.0, "Camisaco": 5.0, "Camisaco drill": 5.9,
+    "Camisaco drill con cinta": 6.25, "Casaca": 6.575, "Casaca drill": 5.9,
+    "Casaca polar": 6.0, "Casaca polar con cinta reflectiva": 6.3,
+    "Casaca térmica": 6.1, "Chaleco": 6.575, "Chaleco con cinta": 6.925,
+    "Chaleco de seguridad": 9.75, "Chaleco Fluorescente": 9.625, "Chaleco polar": 6.0,
+    "Chaleco reversible": 9.5, "Chompa": 7.1, "Chompa con cinta reflectiva": 7.45,
+    "Chompa Jorge Chavez": 6.0, "Chompa Jorge Chavez con cinta reflectiva": 6.3,
+    "Chompa polar": 6.0, "Enterizo": 6.575, "Gorro": 7.925, "Impermeable": 9.425,
+    "Mameluco": 6.575, "Mameluco acolchado": 5.825, "Mameluco drill": 5.9,
+    "Mameluco jean reflectivo": 5.35, "Merma": 6.575, "Overol": 6.575,
+    "Pantalón": 6.575, "Pantalón algodón": 5.0, "Pantalón drill": 5.9,
+    "Pantalón drill con cinta": 6.25, "Pantalón ignífugo": 5.35, "Pantalón jean": 5.0,
+    "Pantalón jean / drill": 5.675, "Pantalón jean con cinta reflectiva": 5.35,
+    "Pantalón polar": 6.0, "Pantalón térmico": 6.0, "Polera": 5.0, "Polera polar": 6.0,
+    "Polo": 6.8, "Polo algodón": 5.0, "Polo con cinta reflectiva": 6.925,
+    "Polo manga corta": 6.8, "Polo manga larga": 6.8, "Polo manga larga con cinta reflectiva": 6.7,
+    "Polo piqué": 5.0, "Short": 6.575, "Toalla": 5.0, "Otro": 6.575,
 }
 
 # --- FACTORES DE TRANSPORTE ---
@@ -362,66 +208,26 @@ FACTORES_TRANSPORTE = {
 
 # --- DISTANCIAS APROXIMADAS A LAS FLORES, SJL ---
 DISTANCIAS_LIMA_SJL = {
-    "San Juan de Lurigancho (Local)": 4.0,
-    "Ancón": 48.0,
-    "Ate": 14.0,
-    "Barranco": 18.5,
-    "Bellavista (Callao)": 17.0,
-    "Breña": 10.5,
-    "Callao (Cercado)": 18.0,
-    "Carabayllo": 25.0,
-    "Carmen de la Legua Reynoso (Callao)": 15.0,
-    "Chaclacayo": 28.0,
-    "Chorrillos": 22.0,
-    "Cieneguilla": 32.0,
-    "Comas": 18.0,
-    "El Agustino": 6.0,
-    "Independencia": 12.0,
-    "Jesús María": 12.0,
-    "La Molina": 15.0,
-    "La Perla (Callao)": 18.0,
-    "La Punta (Callao)": 21.0,
-    "La Victoria": 9.5,
-    "Lima (Cercado de Lima)": 9.0,
-    "Lince": 12.5,
-    "Los Olivos": 15.0,
-    "Lurigancho-Chosica": 36.0,
-    "Lurín": 36.0,
-    "Magdalena del Mar": 15.0,
-    "Mi Perú (Callao)": 32.0,
-    "Miraflores": 16.0,
-    "Pachacámac": 34.0,
-    "Pucusana": 72.0,
-    "Pueblo Libre": 13.5,
-    "Puente Piedra": 28.0,
-    "Punta Hermosa": 52.0,
-    "Punta Negra": 56.0,
-    "Rímac": 7.5,
-    "San Bartolo": 60.0,
-    "San Borja": 12.0,
-    "San Isidro": 13.5,
-    "San Juan de Miraflores": 20.0,
-    "San Luis": 10.0,
-    "San Martín de Porres": 13.0,
-    "San Miguel": 15.5,
-    "Santa Anita": 8.0,
-    "Santa María del Mar": 63.0,
-    "Santa Rosa": 42.0,
-    "Santiago de Surco": 17.0,
-    "Surquillo": 14.5,
-    "Ventanilla (Callao)": 30.0,
-    "Villa El Salvador": 28.0,
-    "Villa María del Triunfo": 24.0,
-    "➕ Otro / Fuera de Lima (Ingreso manual)": 0.0,
+    "San Juan de Lurigancho (Local)": 4.0, "Ancón": 48.0, "Ate": 14.0, "Barranco": 18.5,
+    "Bellavista (Callao)": 17.0, "Breña": 10.5, "Callao (Cercado)": 18.0, "Carabayllo": 25.0,
+    "Carmen de la Legua Reynoso (Callao)": 15.0, "Chaclacayo": 28.0, "Chorrillos": 22.0,
+    "Cieneguilla": 32.0, "Comas": 18.0, "El Agustino": 6.0, "Independencia": 12.0,
+    "Jesús María": 12.0, "La Molina": 15.0, "La Perla (Callao)": 18.0, "La Punta (Callao)": 21.0,
+    "La Victoria": 9.5, "Lima (Cercado de Lima)": 9.0, "Lince": 12.5, "Los Olivos": 15.0,
+    "Lurigancho-Chosica": 36.0, "Lurín": 36.0, "Magdalena del Mar": 15.0, "Mi Perú (Callao)": 32.0,
+    "Miraflores": 16.0, "Pachacámac": 34.0, "Pucusana": 72.0, "Pueblo Libre": 13.5,
+    "Puente Piedra": 28.0, "Punta Hermosa": 52.0, "Punta Negra": 56.0, "Rímac": 7.5,
+    "San Bartolo": 60.0, "San Borja": 12.0, "San Isidro": 13.5, "San Juan de Miraflores": 20.0,
+    "San Luis": 10.0, "San Martín de Porres": 13.0, "San Miguel": 15.5, "Santa Anita": 8.0,
+    "Santa María del Mar": 63.0, "Santa Rosa": 42.0, "Santiago de Surco": 17.0,
+    "Surquillo": 14.5, "Ventanilla (Callao)": 30.0, "Villa El Salvador": 28.0,
+    "Villa María del Triunfo": 24.0, "➕ Otro / Fuera de Lima (Ingreso manual)": 0.0,
 }
 
 # --- FACTORES DE BORDADO O ESTAMPADO ---
 FACTORES_BORDADO = {
-    "Sin bordado / Ninguno": 0.0,
-    "Estampado DTF": 0.020,
-    "Simple (5 min/pieza)": 0.020,
-    "Medio (9 min/pieza)": 0.037,
-    "Complejo (10 min/pieza)": 0.041,
+    "Sin bordado / Ninguno": 0.0, "Estampado DTF": 0.020, "Simple (5 min/pieza)": 0.020,
+    "Medio (9 min/pieza)": 0.037, "Complejo (10 min/pieza)": 0.041,
 }
 
 # --- PERSONAL FIJO DE OPERACIONES ---
@@ -435,11 +241,7 @@ PERSONAL_FIJO_OPERACIONES = [
 ]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(
-    page_title="Pequeños Detalles - Sistema de Trazabilidad",
-    page_icon="♻️",
-    layout="wide",
-)
+st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="♻️", layout="wide")
 
 # --- ESTILOS CSS ---
 st.markdown(
@@ -558,7 +360,12 @@ def init_supabase() -> Client:
 try:
     supabase = init_supabase()
 except KeyError:
-    st.error("⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\nConfigura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en `.streamlit/secrets.toml` (local) o en **Settings → Secrets** (Streamlit Cloud).")
+    st.error(
+        "⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\n"
+        "Configura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en "
+        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
+        "(Streamlit Cloud)."
+    )
     st.stop()
 except Exception as e:
     st.error(f"⚠️ No se pudo conectar con Supabase: {e}")
@@ -614,7 +421,8 @@ def eliminar_proyecto_bd(proyecto_id, codigo_proy):
 @st.dialog("⚠️ Confirmar Eliminación Permanente")
 def modal_confirmar_eliminacion(proyecto):
     st.warning(
-        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\nEsta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
+        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\n"
+        "Esta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
     )
     col_confirm, col_cancel = st.columns(2)
 
@@ -734,130 +542,52 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
 
 # --- GENERADOR DEL INFORME TÉCNICO COMPLETO ---
 def generar_pdf_oficial(
-    cliente,
-    ruc,
-    proyecto_nom,
-    codigo_proy,
-    fe_inicio,
-    fe_fin,
-    responsable,
-    area,
-    tipo_material,
-    valorizacion,
-    unidad_medida,
-    guia_remision,
-    origen,
-    destino,
-    lista_items,
-    lista_trazabilidad,
-    lista_productos,
-    mat_transformado,
-    retazos_aprovechables,
-    perdida_no_aprovechable,
-    total_procesado,
-    pct_aprovechamiento_total,
-    pct_perdida,
-    lista_operaciones_pdf,
-    lista_confeccion,
-    total_horas_social,
-    total_personas_social,
-    co2_evitado_total,
-    emisiones_transporte,
-    emisiones_lavado,
-    emisiones_corte,
-    emisiones_bordado,
-    lista_anexos=None,
+    cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area, tipo_material,
+    valorizacion, unidad_medida, guia_remision, origen, destino, lista_items, lista_trazabilidad,
+    lista_productos, mat_transformado, retazos_aprovechables, perdida_no_aprovechable, total_procesado,
+    pct_aprovechamiento_total, pct_perdida, lista_operaciones_pdf, lista_confeccion, total_horas_social,
+    total_personas_social, co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte,
+    emisiones_bordado, lista_anexos=None,
 ):
     kg_recibidos = sum([item["peso_total"] for item in lista_items])
-    emisiones_proceso = (
-        emisiones_transporte
-        + emisiones_lavado
-        + emisiones_corte
-        + emisiones_bordado
-    )
+    emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
     co2_neto = co2_evitado_total - emisiones_proceso
     total_prod_unidades = sum([p_item["cantidad"] for p_item in lista_productos])
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer,
-        pagesize=letter,
-        leftMargin=36,
-        rightMargin=36,
-        topMargin=36,
-        bottomMargin=45,
+        buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45,
     )
 
     styles = getSampleStyleSheet()
     h1_style = ParagraphStyle(
-        "H1",
-        parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
-        fontSize=14,
-        textColor=colors.HexColor("#1E293B"),
-        alignment=1,
-        spaceAfter=2,
+        "H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#1E293B"), alignment=1, spaceAfter=2,
     )
     sub_style = ParagraphStyle(
-        "Sub",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=8,
-        textColor=colors.HexColor("#64748B"),
-        alignment=1,
-        spaceAfter=12,
+        "Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=12,
     )
     h2_style = ParagraphStyle(
-        "H2",
-        parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=10,
-        textColor=colors.HexColor("#0F172A"),
-        spaceBefore=10,
-        spaceAfter=6,
+        "H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=10, textColor=colors.HexColor("#0F172A"), spaceBefore=10, spaceAfter=6,
     )
     cell_style = ParagraphStyle(
-        "Cell",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=8,
-        textColor=colors.HexColor("#334155"),
-        leading=10,
+        "Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10,
     )
     cell_bold = ParagraphStyle(
-        "CellB",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=8,
-        textColor=colors.HexColor("#0F172A"),
-        leading=10,
+        "CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10,
     )
     card_title = ParagraphStyle(
-        "CardT",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=12,
-        textColor=colors.HexColor("#0F172A"),
-        alignment=1,
+        "CardT", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=12, textColor=colors.HexColor("#0F172A"), alignment=1,
     )
     card_sub = ParagraphStyle(
-        "CardS",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=7,
-        textColor=colors.HexColor("#475569"),
-        alignment=1,
+        "CardS", parent=styles["Normal"], fontName="Helvetica", fontSize=7, textColor=colors.HexColor("#475569"), alignment=1,
     )
 
     elements = []
 
-    elements.append(
-        Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style)
-    )
+    elements.append(Paragraph("INFORME TÉCNICO DE VALORIZACIÓN TEXTIL", h1_style))
     elements.append(
         Paragraph(
-            "Medición de Impacto Ambiental, Trazabilidad y Gestión Social de"
-            f" Upcycling<br/><b>CÓDIGO: {codigo_proy}</b>",
+            f"Medición de Impacto Ambiental, Trazabilidad y Gestión Social de Upcycling<br/><b>CÓDIGO: {codigo_proy}</b>",
             sub_style,
         )
     )
@@ -869,14 +599,7 @@ def generar_pdf_oficial(
     """
 
     resumen_style = ParagraphStyle(
-        "Resumen",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=8.5,
-        leading=12,
-        alignment=4,
-        spaceBefore=4,
-        spaceAfter=6,
+        "Resumen", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=12, alignment=4, spaceBefore=4, spaceAfter=6,
     )
 
     elements.append(Paragraph(resumen_texto, resumen_style))
@@ -893,9 +616,7 @@ def generar_pdf_oficial(
             Paragraph("MATERIAL RECIBIDO", card_sub),
             Paragraph("% APROVECHAMIENTO", card_sub),
             Paragraph("CO2e NETO EVITADO", card_sub),
-            Paragraph(
-                f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_sub
-            ),
+            Paragraph(f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_sub),
         ],
     ]
     t_cards = Table(cards_data, colWidths=[135, 135, 135, 135])
@@ -911,53 +632,28 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 8))
 
-    elements.append(
-        Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style)
-    )
-    elements.append(
-        Paragraph(
-            "Datos generales que identifican al cliente, el tipo de proyecto y"
-            " el flujo logístico del material, desde el punto de origen hasta"
-            " su destino final en el taller.",
-            sub_style,
-        )
-    )
+    elements.append(Paragraph("1. FICHA GENERAL DEL PROYECTO Y TRAZABILIDAD", h2_style))
+    elements.append(Paragraph("Datos generales que identifican al cliente, el tipo de proyecto y el flujo logístico del material, desde el punto de origen hasta su destino final en el taller.", sub_style))
     data_ficha = [
         [
-            Paragraph("Cliente / Empresa", cell_bold),
-            Paragraph(f"{cliente} (RUC: {ruc})", cell_style),
-            Paragraph("Área / Responsable", cell_bold),
-            Paragraph(
-                f"{area} / "
-                + "<br/>".join(
-                    f"• {r}" for r in responsable.split(", ") if r.strip()
-                ),
-                cell_style,
-            ),
+            Paragraph("Cliente / Empresa", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style),
+            Paragraph("Área / Responsable", cell_bold), Paragraph(f"{area} / " + "<br/>".join(f"• {r}" for r in responsable.split(", ") if r.strip()), cell_style),
         ],
         [
-            Paragraph("Tipo de Proyecto", cell_bold),
-            Paragraph(proyecto_nom, cell_style),
-            Paragraph("Periodo de Ejecución", cell_bold),
-            Paragraph(f"{fe_inicio} al {fe_fin}", cell_style),
+            Paragraph("Tipo de Proyecto", cell_bold), Paragraph(proyecto_nom, cell_style),
+            Paragraph("Periodo de Ejecución", cell_bold), Paragraph(f"{fe_inicio} al {fe_fin}", cell_style),
         ],
         [
-            Paragraph("Tipo de Material", cell_bold),
-            Paragraph(tipo_material, cell_style),
-            Paragraph("Tipo de Valorización", cell_bold),
-            Paragraph(valorizacion, cell_style),
+            Paragraph("Tipo de Material", cell_bold), Paragraph(tipo_material, cell_style),
+            Paragraph("Tipo de Valorización", cell_bold), Paragraph(valorizacion, cell_style),
         ],
         [
-            Paragraph("Guía de Remisión", cell_bold),
-            Paragraph(guia_remision, cell_style),
-            Paragraph("Unidad de Medida", cell_bold),
-            Paragraph(unidad_medida, cell_style),
+            Paragraph("Guía de Remisión", cell_bold), Paragraph(guia_remision, cell_style),
+            Paragraph("Unidad de Medida", cell_bold), Paragraph(unidad_medida, cell_style),
         ],
         [
-            Paragraph("Punto de Origen", cell_bold),
-            Paragraph(origen, cell_style),
-            Paragraph("Punto de Destino", cell_bold),
-            Paragraph(destino, cell_style),
+            Paragraph("Punto de Origen", cell_bold), Paragraph(origen, cell_style),
+            Paragraph("Punto de Destino", cell_bold), Paragraph(destino, cell_style),
         ],
     ]
     t_ficha = Table(data_ficha, colWidths=[100, 170, 100, 170])
@@ -983,24 +679,12 @@ def generar_pdf_oficial(
                 return Paragraph("Sin foto", cell_style)
         return Paragraph("Sin foto", cell_style)
 
-    elements.append(
-        Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style)
-    )
-    elements.append(
-        Paragraph(
-            "Detalle de cada tipo de prenda o producto recibido del cliente,"
-            " con su peso registrado al ingreso y la evidencia fotográfica"
-            " correspondiente.",
-            sub_style,
-        )
-    )
+    elements.append(Paragraph("2. INGRESO DE MATERIAL Y EVIDENCIA FOTOGRÁFICA", h2_style))
+    elements.append(Paragraph("Detalle de cada tipo de prenda o producto recibido del cliente, con su peso registrado al ingreso y la evidencia fotográfica correspondiente.", sub_style))
     data_prendas_pdf = [[
-        Paragraph("Ítem", cell_bold),
-        Paragraph("Tipo de Producto / Prenda", cell_bold),
-        Paragraph("Ingreso (unid)", cell_bold),
-        Paragraph("Peso unit. (kg)", cell_bold),
-        Paragraph("Peso total (kg)", cell_bold),
-        Paragraph("Evidencia", cell_bold),
+        Paragraph("Ítem", cell_bold), Paragraph("Tipo de Producto / Prenda", cell_bold),
+        Paragraph("Ingreso (unid)", cell_bold), Paragraph("Peso unit. (kg)", cell_bold),
+        Paragraph("Peso total (kg)", cell_bold), Paragraph("Evidencia", cell_bold),
     ]]
 
     total_unidades_ingreso = 0
@@ -1009,26 +693,18 @@ def generar_pdf_oficial(
         img_cell = obtener_imagen_pdf(item["foto"], 45, 45)
 
         data_prendas_pdf.append([
-            Paragraph(str(i), cell_style),
-            Paragraph(item["descripcion"], cell_style),
-            Paragraph(str(item["unidades"]), cell_style),
-            Paragraph(f"{item['peso_unitario']:.2f}", cell_style),
-            Paragraph(f"{item['peso_total']:.2f}", cell_style),
-            img_cell,
+            Paragraph(str(i), cell_style), Paragraph(item["descripcion"], cell_style),
+            Paragraph(str(item["unidades"]), cell_style), Paragraph(f"{item['peso_unitario']:.2f}", cell_style),
+            Paragraph(f"{item['peso_total']:.2f}", cell_style), img_cell,
         ])
 
     data_prendas_pdf.append([
-        Paragraph("<b>TOTAL MATERIAL RECIBIDO</b>", cell_bold),
-        "",
-        Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold),
-        Paragraph("-", cell_bold),
-        Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold),
-        Paragraph("-", cell_bold),
+        Paragraph("<b>TOTAL MATERIAL RECIBIDO</b>", cell_bold), "",
+        Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold), Paragraph("-", cell_bold),
+        Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold), Paragraph("-", cell_bold),
     ])
 
-    t_prendas = Table(
-        data_prendas_pdf, colWidths=[30, 180, 80, 75, 75, 100]
-    )
+    t_prendas = Table(data_prendas_pdf, colWidths=[30, 180, 80, 75, 75, 100])
     t_prendas.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F5D0FE")),
@@ -1043,34 +719,19 @@ def generar_pdf_oficial(
     elements.append(t_prendas)
     elements.append(Spacer(1, 8))
 
-    elements.append(
-        Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style)
-    )
-    elements.append(
-        Paragraph(
-            "Seguimiento del material a través de cada etapa del proceso.",
-            sub_style,
-        )
-    )
+    elements.append(Paragraph("3. TRAZABILIDAD DEL PROCESO EN UPCYCLING", h2_style))
+    elements.append(Paragraph("Seguimiento del material a través de cada etapa del proceso.", sub_style))
     data_traza_pdf = [[
-        Paragraph("Etapa", cell_bold),
-        Paragraph("Fecha", cell_bold),
-        Paragraph("Responsable", cell_bold),
-        Paragraph("Peso (kg)", cell_bold),
-        Paragraph("Tipo de Registro", cell_bold),
-        Paragraph("Evidencia", cell_bold),
+        Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold), Paragraph("Responsable", cell_bold),
+        Paragraph("Peso (kg)", cell_bold), Paragraph("Tipo de Registro", cell_bold), Paragraph("Evidencia", cell_bold),
     ]]
 
     for t_item in lista_trazabilidad:
         img_cell = obtener_imagen_pdf(t_item["foto"], 45, 35)
-
         data_traza_pdf.append([
-            Paragraph(t_item["etapa"], cell_style),
-            Paragraph(t_item["fecha"], cell_style),
-            Paragraph(t_item["responsable"], cell_style),
-            Paragraph(f"{t_item['peso']:.2f}", cell_style),
-            Paragraph(t_item["tipo_registro"], cell_style),
-            img_cell,
+            Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style),
+            Paragraph(t_item["responsable"], cell_style), Paragraph(f"{t_item['peso']:.2f}", cell_style),
+            Paragraph(t_item["tipo_registro"], cell_style), img_cell,
         ])
 
     t_traza = Table(data_traza_pdf, colWidths=[90, 70, 130, 60, 100, 90])
@@ -1088,32 +749,20 @@ def generar_pdf_oficial(
     elements.append(PageBreak())
 
     elements.append(Paragraph("4. SALIDA DE PRODUCTOS", h2_style))
-    elements.append(
-        Paragraph(
-            "Registro de productos obtenidos a partir del proceso de"
-            " upcycling",
-            sub_style,
-        )
-    )
+    elements.append(Paragraph("Registro de productos obtenidos a partir del proceso de upcycling", sub_style))
 
     data_prod_pdf = [[
-        Paragraph("Producto", cell_bold),
-        Paragraph("Cantidad (Unidades)", cell_bold),
-        Paragraph("Evidencia", cell_bold),
+        Paragraph("Producto", cell_bold), Paragraph("Cantidad (Unidades)", cell_bold), Paragraph("Evidencia", cell_bold),
     ]]
 
     for p_item in lista_productos:
         img_cell = obtener_imagen_pdf(p_item["foto"], 60, 60)
         data_prod_pdf.append([
-            Paragraph(p_item["producto"], cell_style),
-            Paragraph(str(p_item["cantidad"]), cell_style),
-            img_cell,
+            Paragraph(p_item["producto"], cell_style), Paragraph(str(p_item["cantidad"]), cell_style), img_cell,
         ])
 
     data_prod_pdf.append([
-        Paragraph("<b>SUMA TOTAL</b>", cell_bold),
-        Paragraph(f"<b>{total_prod_unidades}</b>", cell_bold),
-        Paragraph("-", cell_bold),
+        Paragraph("<b>SUMA TOTAL</b>", cell_bold), Paragraph(f"<b>{total_prod_unidades}</b>", cell_bold), Paragraph("-", cell_bold),
     ])
 
     t_prod = Table(data_prod_pdf, colWidths=[240, 150, 150])
@@ -1132,50 +781,18 @@ def generar_pdf_oficial(
     elements.append(Spacer(1, 15))
 
     elements.append(Paragraph("5. BALANCE DE MATERIAL", h2_style))
-    elements.append(
-        Paragraph(
-            "Resumen del flujo y aprovechamiento del material procesado",
-            sub_style,
-        )
-    )
+    elements.append(Paragraph("Resumen del flujo y aprovechamiento del material procesado", sub_style))
 
     data_balance = [
-        [
-            Paragraph("<b>Concepto</b>", cell_bold),
-            Paragraph("<b>Cantidad (kg)</b>", cell_bold),
-        ],
-        [
-            Paragraph("Material recibido", cell_style),
-            Paragraph(f"{kg_recibidos:.2f}", cell_style),
-        ],
-        [
-            Paragraph("Material transformado en productos", cell_style),
-            Paragraph(f"{mat_transformado:.2f}", cell_style),
-        ],
-        [
-            Paragraph("Retazos aprovechables", cell_style),
-            Paragraph(f"{retazos_aprovechables:.2f}", cell_style),
-        ],
-        [
-            Paragraph("Pérdida no aprovechable", cell_style),
-            Paragraph(f"{perdida_no_aprovechable:.2f}", cell_style),
-        ],
-        [
-            Paragraph("<b>Total procesado</b>", cell_bold),
-            Paragraph(f"<b>{total_procesado:.2f}</b>", cell_bold),
-        ],
-        [
-            Paragraph("<b>Indicador</b>", cell_bold),
-            Paragraph("<b>Valor</b>", cell_bold),
-        ],
-        [
-            Paragraph("% aprovechamiento total", cell_style),
-            Paragraph(f"{pct_aprovechamiento_total:.2f}%", cell_style),
-        ],
-        [
-            Paragraph("% pérdida", cell_style),
-            Paragraph(f"{pct_perdida:.2f}%", cell_style),
-        ],
+        [Paragraph("<b>Concepto</b>", cell_bold), Paragraph("<b>Cantidad (kg)</b>", cell_bold)],
+        [Paragraph("Material recibido", cell_style), Paragraph(f"{kg_recibidos:.2f}", cell_style)],
+        [Paragraph("Material transformado en productos", cell_style), Paragraph(f"{mat_transformado:.2f}", cell_style)],
+        [Paragraph("Retazos aprovechables", cell_style), Paragraph(f"{retazos_aprovechables:.2f}", cell_style)],
+        [Paragraph("Pérdida no aprovechable", cell_style), Paragraph(f"{perdida_no_aprovechable:.2f}", cell_style)],
+        [Paragraph("<b>Total procesado</b>", cell_bold), Paragraph(f"<b>{total_procesado:.2f}</b>", cell_bold)],
+        [Paragraph("<b>Indicador</b>", cell_bold), Paragraph("<b>Valor</b>", cell_bold)],
+        [Paragraph("% aprovechamiento total", cell_style), Paragraph(f"{pct_aprovechamiento_total:.2f}%", cell_style)],
+        [Paragraph("% pérdida", cell_style), Paragraph(f"{pct_perdida:.2f}%", cell_style)],
     ]
 
     t_balance = Table(data_balance, colWidths=[340, 200])
@@ -1192,11 +809,7 @@ def generar_pdf_oficial(
     elements.append(t_balance)
     elements.append(Spacer(1, 15))
 
-    elements.append(
-        Paragraph(
-            "6. RESUMEN DE IMPACTO AMBIENTAL DEL PROYECTO (CO2e)", h2_style
-        )
-    )
+    elements.append(Paragraph("6. RESUMEN DE IMPACTO AMBIENTAL DEL PROYECTO (CO2e)", h2_style))
     data_co2_box = [
         [
             Paragraph("<b>(+) CO2 Evitado por Upcycling</b>", card_sub),
@@ -1221,33 +834,23 @@ def generar_pdf_oficial(
     elements.append(t_co2_box)
     elements.append(Spacer(1, 10))
 
-    elements.append(
-        Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EQUIPO DE TRABAJO", h2_style)
-    )
+    elements.append(Paragraph("7. RESUMEN DE IMPACTO SOCIAL Y EQUIPO DE TRABAJO", h2_style))
     data_ops_pdf = [[
-        Paragraph("Rol", cell_bold),
-        Paragraph("Nombre", cell_bold),
-        Paragraph("Días trabajados", cell_bold),
-        Paragraph("Hora/día", cell_bold),
-        Paragraph("Horas totales", cell_bold),
+        Paragraph("Rol", cell_bold), Paragraph("Nombre", cell_bold), Paragraph("Días trabajados", cell_bold),
+        Paragraph("Hora/día", cell_bold), Paragraph("Horas totales", cell_bold),
     ]]
 
     tot_hrs_ops = 0
     for op in lista_operaciones_pdf:
         tot_hrs_ops += op["horas_totales"]
         data_ops_pdf.append([
-            Paragraph(str(op["rol"]), cell_style),
-            Paragraph(str(op["nombre"]), cell_style),
-            Paragraph(str(op["dias"]), cell_style),
-            Paragraph(f"{op['horas_dia']:.2f}", cell_style),
+            Paragraph(str(op["rol"]), cell_style), Paragraph(str(op["nombre"]), cell_style),
+            Paragraph(str(op["dias"]), cell_style), Paragraph(f"{op['horas_dia']:.2f}", cell_style),
             Paragraph(f"{op['horas_totales']:.2f}", cell_style),
         ])
 
     data_ops_pdf.append([
-        Paragraph("<b>SUBTOTAL CORTE Y LOGÍSTICA</b>", cell_bold),
-        "",
-        "",
-        "",
+        Paragraph("<b>SUBTOTAL CORTE Y LOGÍSTICA</b>", cell_bold), "", "", "",
         Paragraph(f"<b>{tot_hrs_ops:.2f} hrs</b>", cell_bold),
     ])
 
@@ -1267,32 +870,22 @@ def generar_pdf_oficial(
 
     if lista_confeccion:
         data_social_pdf = [[
-            Paragraph("Producto", cell_bold),
-            Paragraph("Rol Operativo", cell_bold),
-            Paragraph("Encargado/a", cell_bold),
-            Paragraph("Cant.", cell_bold),
-            Paragraph("Tiempo unit. (hrs)", cell_bold),
-            Paragraph("Horas Totales", cell_bold),
+            Paragraph("Producto", cell_bold), Paragraph("Rol Operativo", cell_bold),
+            Paragraph("Encargado/a", cell_bold), Paragraph("Cant.", cell_bold),
+            Paragraph("Tiempo unit. (hrs)", cell_bold), Paragraph("Horas Totales", cell_bold),
         ]]
 
         tot_hrs_conf = 0
         for c_item in lista_confeccion:
             tot_hrs_conf += c_item["horas_totales"]
             data_social_pdf.append([
-                Paragraph(c_item["producto"], cell_style),
-                Paragraph(c_item["rol"], cell_style),
-                Paragraph(c_item["persona"], cell_style),
-                Paragraph(str(c_item["cantidad"]), cell_style),
-                Paragraph(f"{c_item['tiempo_unitario']:.2f} hrs", cell_style),
-                Paragraph(f"{c_item['horas_totales']:.2f} hrs", cell_style),
+                Paragraph(c_item["producto"], cell_style), Paragraph(c_item["rol"], cell_style),
+                Paragraph(c_item["persona"], cell_style), Paragraph(str(c_item["cantidad"]), cell_style),
+                Paragraph(f"{c_item['tiempo_unitario']:.2f} hrs", cell_style), Paragraph(f"{c_item['horas_totales']:.2f} hrs", cell_style),
             ])
 
         data_social_pdf.append([
-            Paragraph("<b>SUBTOTAL CONFECCIÓN Y ACABADO</b>", cell_bold),
-            "",
-            "",
-            "",
-            "",
+            Paragraph("<b>SUBTOTAL CONFECCIÓN Y ACABADO</b>", cell_bold), "", "", "", "",
             Paragraph(f"<b>{tot_hrs_conf:.2f} hrs</b>", cell_bold),
         ])
 
@@ -1313,15 +906,7 @@ def generar_pdf_oficial(
     elements.append(Paragraph("8. CONCLUSIÓN", h2_style))
 
     conclusion_style = ParagraphStyle(
-        "ConclusionText",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=8.5,
-        leading=13,
-        alignment=4,
-        textColor=colors.HexColor("#334155"),
-        spaceBefore=4,
-        spaceAfter=10,
+        "ConclusionText", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=13, alignment=4, textColor=colors.HexColor("#334155"), spaceBefore=4, spaceAfter=10,
     )
 
     texto_conclusion = """
@@ -1333,58 +918,29 @@ def generar_pdf_oficial(
     elements.append(Paragraph(texto_conclusion, conclusion_style))
 
     # --- 9. SECCIÓN ANEXOS ---
-    anexos_validos = [
-        a
-        for a in (lista_anexos or [])
-        if a.get("foto") or a.get("nota", "").strip()
-    ]
+    anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
     if anexos_validos:
         elements.append(PageBreak())
         elements.append(Paragraph("9. ANEXOS Y REGISTRO FOTOGRÁFICO", h2_style))
-        elements.append(
-            Paragraph(
-                "Evidencias visuales complementarias del proceso: fotos en"
-                " taller, colaboradoras, acabados y detalles del proyecto.",
-                sub_style,
-            )
-        )
+        elements.append(Paragraph("Evidencias visuales complementarias del proceso: fotos en taller, colaboradoras, acabados y detalles del proyecto.", sub_style))
         elements.append(Spacer(1, 4))
 
         for idx_a, anexo in enumerate(anexos_validos, 1):
             img_cell = obtener_imagen_pdf(anexo["foto"], width=480, height=215)
-            nota_texto = (
-                anexo["nota"].strip()
-                if anexo["nota"].strip()
-                else "Sin descripción adicional."
-            )
+            nota_texto = anexo["nota"].strip() if anexo["nota"].strip() else "Sin descripción adicional."
 
             card_data = [
                 [Paragraph(f"<b>Evidencia Fotográfica {idx_a}</b>", cell_bold)],
                 [img_cell],
-                [
-                    Paragraph(
-                        f"<b>Nota / Descripción:</b> {nota_texto}", cell_style
-                    )
-                ],
+                [Paragraph(f"<b>Nota / Descripción:</b> {nota_texto}", cell_style)],
             ]
 
             t_card = Table(card_data, colWidths=[520])
             t_card.setStyle(
                 TableStyle([
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
-                    (
-                        "BACKGROUND",
-                        (0, 1),
-                        (-1, -1),
-                        colors.HexColor("#F8FAFC"),
-                    ),
-                    (
-                        "GRID",
-                        (0, 0),
-                        (-1, -1),
-                        0.5,
-                        colors.HexColor("#CBD5E1"),
-                    ),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                     ("ALIGN", (0, 1), (0, 1), "CENTER"),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("PADDING", (0, 0), (-1, -1), 5),
@@ -1438,7 +994,12 @@ try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
 except KeyError:
-    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\nAgrega `USUARIO` y `PASSWORD` dentro de `[auth]` en `.streamlit/secrets.toml` (local) o en **Settings → Secrets** (Streamlit Cloud).")
+    st.error(
+        "⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\n"
+        "Agrega `USUARIO` y `PASSWORD` dentro de `[auth]` en "
+        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
+        "(Streamlit Cloud)."
+    )
     st.stop()
 
 if not st.session_state.autenticado:
@@ -3190,10 +2751,17 @@ else:
                             "datos_completos": datos_detalle,
                         }
 
-                        if p_edit.get("id"):
+                        # --- GUARDADO INTELIGENTE BORRADOR ---
+                        proyecto_id = p_edit.get("id")
+                        if not proyecto_id:
+                            busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
+                            if busca_existente.data:
+                                proyecto_id = busca_existente.data[0]["id"]
+                        
+                        if proyecto_id:
                             supabase.table("proyectos").update(
                                 datos_borrador
-                            ).eq("id", p_edit["id"]).execute()
+                            ).eq("id", proyecto_id).execute()
                         else:
                             supabase.table("proyectos").insert(
                                 datos_borrador
@@ -3429,17 +2997,15 @@ else:
                                     "datos_completos": datos_detalle,
                                 }
                                 
-                                if p_edit.get("id"):
-                             # Verificamos inteligentemente si el proyecto ya existe por su código
+                                # --- GUARDADO INTELIGENTE FINAL ---
                                 proyecto_id = p_edit.get("id")
                                 
-                                # Si no teníamos el ID en la memoria, buscamos si el código ya existe en la nube
+                                # Si no tiene ID asignado, busca si ya existe en la nube por el código
                                 if not proyecto_id:
                                     busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
                                     if busca_existente.data:
                                         proyecto_id = busca_existente.data[0]["id"]
                                 
-                                # Si el proyecto ya existe, lo actualizamos. Si no, insertamos uno nuevo.
                                 if proyecto_id:
                                     supabase.table("proyectos").update(
                                         datos_completado
@@ -3450,6 +3016,7 @@ else:
                                     ).execute()
                                     
                                 # <-- SOLO SI LA BD SE ACTUALIZA CON ÉXITO: 
+                                # Limpiamos el modo edición para que salga de la lista de borradores pendientes
                                 st.session_state.proyecto_editar = {}
                                 st.rerun()
 
