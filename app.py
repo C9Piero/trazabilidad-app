@@ -29,8 +29,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
-def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, codigo_proy: str):
-    """Crea o busca la estructura de carpetas: AÑO / MES / CLIENTE / PROYECTO en Google Drive"""
+def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta: str):
+    """Crea o busca la estructura de carpetas: AÑO / MES / CLIENTE / SUBCARPETA en Google Drive"""
     try:
         if "drive_oauth" not in st.secrets:
             return None
@@ -89,13 +89,13 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, codigo_proy: str):
         else:
             id_cli = res_cli.get('files')[0].get('id')
 
-        # 4. Determinar la Carpeta Específica del Proyecto/Pedido (NUEVO)
-        query_proy = f"name='{codigo_proy}' and mimeType='application/vnd.google-apps.folder' and '{id_cli}' in parents and trashed=false"
+        # 4. Determinar la Carpeta Específica del Proyecto/Pedido (Con nombre limpio)
+        query_proy = f"name='{nombre_subcarpeta}' and mimeType='application/vnd.google-apps.folder' and '{id_cli}' in parents and trashed=false"
         res_proy = service.files().list(q=query_proy, fields='files(id)').execute()
         
         if not res_proy.get('files', []):
             carpeta_proy = service.files().create(
-                body={'name': codigo_proy, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_cli]}, 
+                body={'name': nombre_subcarpeta, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_cli]}, 
                 fields='id'
             ).execute()
             id_proy = carpeta_proy.get('id')
@@ -1087,7 +1087,7 @@ else:
                 fecha_proy = p.get("fecha", "")
                 
                 if fecha_proy:
-                    label_btn = f"📁 {cli_nombre} ({fecha_proy})"
+                    label_btn = f"📁 {cli_nombre} [{fecha_proy}]"
                 else:
                     label_btn = f"📁 {cli_nombre}"
 
@@ -1174,6 +1174,7 @@ else:
             
             cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
             
+            # --- CÓDIGO INTELIGENTE CON PIN ---
             fast_codigo = f"{cli_clean}_{fast_f_ini.strftime('%d%m%Y')}-{fast_f_fin.strftime('%d%m%Y')}-{random.randint(1000, 9999)}"
 
             st.info(f"🆔 **Código Generado:** `{fast_codigo}`")
@@ -2300,30 +2301,41 @@ else:
                             }
                             bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word)
 
+                            # --- NOMBRES LIMPIOS PARA DRIVE Y DESCARGAS ---
+                            cliente_limpio = cliente.strip().replace("/", "-")
+                            nombre_informe_limpio = f"Informe_Tecnico_{cliente_limpio}.pdf"
+                            nombre_constancia_limpia = f"Constancia_{cliente_limpio}.pdf"
+                            nombre_zip_limpio = f"Documentos_{cliente_limpio}.zip"
+
                             # 3. Empaquetar en ZIP
                             zip_buffer = io.BytesIO()
                             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                                zip_file.writestr(f"Informe_Tecnico_{codigo_proy}.pdf", bytes_informe)
-                                zip_file.writestr(f"Constancia_Transformacion_{codigo_proy}.pdf", bytes_constancia)
+                                zip_file.writestr(nombre_informe_limpio, bytes_informe)
+                                zip_file.writestr(nombre_constancia_limpia, bytes_constancia)
                             zip_buffer.seek(0)
                             bytes_zip = zip_buffer.getvalue()
 
-                            # 4. Subir a Supabase Storage (PDFs)
+                            # 4. Subir a Supabase Storage (PDFs) - Aquí usamos el código único para que no se chancen en la BD
                             url_informe = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_informe)
                             url_constancia = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_constancia)
                             
                             # 5. Subir a GOOGLE DRIVE
                             try:
-                                carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt, codigo_proy)
-                                subir_a_drive(f"Informe_{codigo_proy}.pdf", bytes_informe, "application/pdf", custom_folder_id=carpeta_destino_id)
-                                subir_a_drive(f"Constancia_{codigo_proy}.pdf", bytes_constancia, "application/pdf", custom_folder_id=carpeta_destino_id)
-                                subir_a_drive(f"Paquete_Completo_{codigo_proy}.zip", bytes_zip, "application/zip", custom_folder_id=carpeta_destino_id)
+                                nombre_subcarpeta = f"Pedido {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})"
+                                carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt, nombre_subcarpeta)
+                                
+                                subir_a_drive(nombre_informe_limpio, bytes_informe, "application/pdf", custom_folder_id=carpeta_destino_id)
+                                subir_a_drive(nombre_constancia_limpia, bytes_constancia, "application/pdf", custom_folder_id=carpeta_destino_id)
+                                subir_a_drive(nombre_zip_limpio, bytes_zip, "application/zip", custom_folder_id=carpeta_destino_id)
                             except Exception as e_drive:
                                 st.caption(f"Aviso interno: No se pudo respaldar en Drive: {e_drive}")
 
                             st.session_state.documentos_descarga = {
-                                "codigo": codigo_proy, "bytes_informe": bytes_informe,
-                                "bytes_constancia": bytes_constancia, "bytes_zip": bytes_zip,
+                                "codigo": codigo_proy, 
+                                "cliente_limpio": cliente_limpio,
+                                "bytes_informe": bytes_informe,
+                                "bytes_constancia": bytes_constancia, 
+                                "bytes_zip": bytes_zip,
                             }
 
                             # 6. Procesar Fotos y Actualizar DB
@@ -2352,6 +2364,7 @@ else:
                                     supabase.table("proyectos").insert(datos_completado).execute()
                                     
                                 st.session_state.proyecto_editar = {}
+                                st.session_state.uid_proyecto = str(random.randint(1000, 9999)) # Generar uno nuevo para el próximo reporte
                                 st.rerun()
 
                             except Exception as e_bd:
@@ -2365,6 +2378,6 @@ else:
             st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
 
             c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
-            c_dzip.download_button("📦 Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_Oficiales_{docs['codigo']}.zip", mime="application/zip", use_container_width=True, type="primary")
-            c_dinf.download_button("📄 Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['codigo']}.pdf", mime="application/pdf", use_container_width=True)
-            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_Transformacion_{docs['codigo']}.pdf", mime="application/pdf", use_container_width=True)
+            c_dzip.download_button("📦 Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
+            c_dinf.download_button("📄 Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
+            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
