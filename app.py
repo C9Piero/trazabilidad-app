@@ -348,7 +348,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
 # --- CONEXIÓN SUPABASE ---
 @st.cache_resource
 def init_supabase() -> Client:
@@ -356,21 +355,14 @@ def init_supabase() -> Client:
     key = st.secrets["supabase"]["SUPABASE_KEY"]
     return create_client(url, key)
 
-
 try:
     supabase = init_supabase()
 except KeyError:
-    st.error(
-        "⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\n"
-        "Configura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en "
-        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
-        "(Streamlit Cloud)."
-    )
+    st.error("⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\nConfigura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en `.streamlit/secrets.toml` (local) o en **Settings → Secrets** (Streamlit Cloud).")
     st.stop()
 except Exception as e:
     st.error(f"⚠️ No se pudo conectar con Supabase: {e}")
     st.stop()
-
 
 def subir_pdf_supabase(nombre_archivo: str, pdf_bytes: bytes) -> str:
     """Sube un archivo PDF al Storage de Supabase y retorna su URL pública."""
@@ -390,8 +382,6 @@ def subir_pdf_supabase(nombre_archivo: str, pdf_bytes: bytes) -> str:
         st.error(f"❌ Error al obtener URL pública del PDF: {e_url}")
         return ""
 
-
-# --- NUEVA FUNCIÓN DE SUBIDA DE IMÁGENES A SUPABASE ---
 def subir_imagen_supabase(nombre_archivo: str, img_bytes: bytes) -> str:
     """Sube una imagen al Storage de Supabase (para borradores) y retorna su URL."""
     try:
@@ -403,7 +393,6 @@ def subir_imagen_supabase(nombre_archivo: str, img_bytes: bytes) -> str:
         return supabase.storage.from_("reportes").get_public_url(nombre_archivo)
     except Exception as e:
         return ""
-
 
 def cargar_proyectos(estado=None):
     """Carga proyectos desde Supabase."""
@@ -417,7 +406,6 @@ def cargar_proyectos(estado=None):
         st.warning(f"⚠️ No se pudieron cargar los proyectos: {e}")
         return []
 
-
 def eliminar_proyecto_bd(proyecto_id, codigo_proy):
     """Elimina definitivamente un proyecto de la base de datos."""
     try:
@@ -430,13 +418,11 @@ def eliminar_proyecto_bd(proyecto_id, codigo_proy):
         st.error(f"❌ Error al eliminar el proyecto: {e}")
         return False
 
-
 # --- DIÁLOGO MODAL DE CONFIRMACIÓN DE ELIMINACIÓN ---
 @st.dialog("⚠️ Confirmar Eliminación Permanente")
 def modal_confirmar_eliminacion(proyecto):
     st.warning(
-        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\n"
-        "Esta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
+        f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\nEsta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
     )
     col_confirm, col_cancel = st.columns(2)
 
@@ -453,7 +439,6 @@ def modal_confirmar_eliminacion(proyecto):
 
     if col_cancel.button(" Cancelar", use_container_width=True):
         st.rerun()
-
 
 # --- CLASE CANVAS PARA PIE DE PÁGINA DEL INFORME TÉCNICO ---
 class ReporteCanvas(canvas.Canvas):
@@ -485,7 +470,6 @@ class ReporteCanvas(canvas.Canvas):
         self.drawCentredString(612 / 2.0, 22, linea_1)
         self.drawCentredString(612 / 2.0, 12, linea_2)
         self.restoreState()
-
 
 # --- GENERADOR DE CONSTANCIA DESDE PLANTILLA WORD DOCX ---
 def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None) -> bytes:
@@ -528,8 +512,7 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
     if not ruta_encontrada:
         archivos_en_base = os.listdir(base_dir) if os.path.exists(base_dir) else []
         raise FileNotFoundError(
-            f"No se encontró el archivo de plantilla Word (.docx) en el repositorio. "
-            f"Archivos presentes en la carpeta: {archivos_en_base}"
+            f"No se encontró el archivo de plantilla Word (.docx) en el repositorio. Archivos presentes: {archivos_en_base}"
         )
 
     doc = DocxTemplate(ruta_encontrada)
@@ -549,10 +532,8 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
         else:
             detalle_error = resultado.stderr.decode("utf-8", errors="ignore")
             raise RuntimeError(
-                f"Error al convertir DOCX a PDF con LibreOffice. "
-                f"Verifica que 'libreoffice' esté en 'packages.txt'. Detalle: {detalle_error}"
+                f"Error al convertir DOCX a PDF con LibreOffice. Verifica 'libreoffice'. Detalle: {detalle_error}"
             )
-
 
 # --- GENERADOR DEL INFORME TÉCNICO COMPLETO ---
 def generar_pdf_oficial(
@@ -1004,25 +985,16 @@ if "documentos_descarga" not in st.session_state:
     st.session_state.documentos_descarga = None
 
 if "pct_aprovechamiento_random" not in st.session_state:
-    st.session_state.pct_aprovechamiento_random = round(
-        random.uniform(0.88, 0.94), 4
-    )
+    st.session_state.pct_aprovechamiento_random = round(random.uniform(0.88, 0.94), 4)
 
 if "pct_transformado_ratio" not in st.session_state:
-    st.session_state.pct_transformado_ratio = round(
-        random.uniform(0.78, 0.83), 4
-    )
+    st.session_state.pct_transformado_ratio = round(random.uniform(0.78, 0.83), 4)
 
 try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
 except KeyError:
-    st.error(
-        "⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\n"
-        "Agrega `USUARIO` y `PASSWORD` dentro de `[auth]` en "
-        "`.streamlit/secrets.toml` (local) o en **Settings → Secrets** "
-        "(Streamlit Cloud)."
-    )
+    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\nAgrega `USUARIO` y `PASSWORD` dentro de `[auth]` en `.streamlit/secrets.toml`.")
     st.stop()
 
 if not st.session_state.autenticado:
@@ -1043,13 +1015,8 @@ if not st.session_state.autenticado:
             usuario_input = st.text_input("Usuario")
             password_input = st.text_input("Contraseña", type="password")
 
-            if st.button(
-                "Ingresar al Sistema", use_container_width=True, type="primary"
-            ):
-                if (
-                    usuario_input == USUARIO_CORRECTO
-                    and password_input == PASSWORD_CORRECTO
-                ):
+            if st.button("Ingresar al Sistema", use_container_width=True, type="primary"):
+                if usuario_input == USUARIO_CORRECTO and password_input == PASSWORD_CORRECTO:
                     st.session_state.autenticado = True
                     st.success("¡Bienvenido/a!")
                     st.rerun()
@@ -1064,19 +1031,12 @@ else:
         st.caption("Panel de Control Interno | 2026")
         st.write("---")
 
-        st.markdown(
-            '<p class="sidebar-section-title">Navegación</p>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<p class="sidebar-section-title">Navegación</p>', unsafe_allow_html=True)
 
         if st.button(
             "✨     Nuevo Reporte PDF",
             use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF"
-                else "secondary"
-            ),
+            type="primary" if st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF" else "secondary",
         ):
             st.session_state.proyecto_editar = {}
             st.session_state.documentos_descarga = None
@@ -1086,39 +1046,30 @@ else:
         if st.button(
             "⚡     Carga Rápida Histórica",
             use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.pestaña_activa
-                == "⚡     Carga Rápida Histórica"
-                else "secondary"
-            ),
+            type="primary" if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica" else "secondary",
         ):
             st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "⚡     Carga Rápida Histórica"
             st.rerun()
 
-        st.markdown(
-            '<p class="sidebar-section-title">Proyectos Pendientes</p>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<p class="sidebar-section-title">Proyectos Pendientes</p>', unsafe_allow_html=True)
 
         if proyectos_wip:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
-                cod_ref = p.get("codigo", "")
-                label_btn = f"📁 {cli_nombre}" + (
-                    f" ({cod_ref})" if cod_ref else ""
-                )
+                fecha_proy = p.get("fecha", "")
+                
+                # --- CAMBIO 1: ESTÉTICA DEL MENÚ LATERAL ---
+                if fecha_proy:
+                    label_btn = f"📁 {cli_nombre} ({fecha_proy})"
+                else:
+                    label_btn = f"📁 {cli_nombre}"
 
-                es_activo = st.session_state.proyecto_editar.get(
-                    "id"
-                ) == p.get("id") or st.session_state.proyecto_editar.get(
-                    "codigo"
-                ) == cod_ref
+                es_activo = st.session_state.proyecto_editar.get("id") == p.get("id") or st.session_state.proyecto_editar.get("codigo") == p.get("codigo")
 
                 if st.button(
                     label_btn,
-                    key=f"side_proj_{p.get('id', cod_ref)}",
+                    key=f"side_proj_{p.get('id', p.get('codigo', ''))}",
                     use_container_width=True,
                     type="primary" if es_activo else "secondary",
                 ):
@@ -1135,19 +1086,12 @@ else:
         else:
             st.caption("📭 No hay proyectos en borrador")
 
-        st.markdown(
-            '<p class="sidebar-section-title">Analítica e Histórico</p>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<p class="sidebar-section-title">Analítica e Histórico</p>', unsafe_allow_html=True)
 
         if st.button(
             "📊 Dashboard 2026",
             use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.pestaña_activa == "📊 Dashboard 2026"
-                else "secondary"
-            ),
+            type="primary" if st.session_state.pestaña_activa == "📊 Dashboard 2026" else "secondary",
         ):
             st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "📊 Dashboard 2026"
@@ -1156,11 +1100,7 @@ else:
         if st.button(
             "🗂️ Historial Completo",
             use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.pestaña_activa == "🗂️ Historial Completo"
-                else "secondary"
-            ),
+            type="primary" if st.session_state.pestaña_activa == "🗂️ Historial Completo" else "secondary",
         ):
             st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "🗂️ Historial Completo"
@@ -1186,11 +1126,7 @@ else:
     # --- VISTA: CARGA RÁPIDA HISTÓRICA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos / Pasados")
-        st.caption(
-            "Utiliza este formulario simplificado para ingresar rápidamente"
-            " métricas consolidadas de proyectos pasados directamente al"
-            " historial y métricas generales."
-        )
+        st.caption("Utiliza este formulario simplificado para ingresar rápidamente métricas consolidadas.")
 
         with st.container(border=True):
             st.markdown("##### 1. Datos Generales del Proyecto")
@@ -1198,34 +1134,17 @@ else:
             fast_cliente = rq1.text_input("Cliente / Empresa *")
             fast_ruc = rq2.text_input("RUC (11 dígitos) *", max_chars=11)
             fast_tipo = rq3.selectbox(
-                "Tipo de Proyecto",
-                [
-                    "Upcycling",
-                    "Producción desde cero",
-                    "Cambio de logo",
-                    "Mixto",
-                    "Banner",
-                ],
+                "Tipo de Proyecto", ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
             )
             fast_resp = rq4.text_input("Responsable", value="Sostenibilidad")
 
             rq5, rq6 = st.columns(2)
-            fast_f_ini = rq5.date_input(
-                "Fecha Inicio",
-                value=datetime.date.today(),
-                format="DD/MM/YYYY",
-            )
-            fast_f_fin = rq6.date_input(
-                "Fecha Término",
-                value=datetime.date.today(),
-                format="DD/MM/YYYY",
-            )
+            fast_f_ini = rq5.date_input("Fecha Inicio", value=datetime.date.today(), format="DD/MM/YYYY")
+            fast_f_fin = rq6.date_input("Fecha Término", value=datetime.date.today(), format="DD/MM/YYYY")
 
             fe_ini_str = fast_f_ini.strftime("%d/%m/%Y")
             fe_fin_str = fast_f_fin.strftime("%d/%m/%Y")
-            cli_clean = (
-                fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
-            )
+            cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
             fast_codigo = f"{cli_clean}_{fast_f_ini.strftime('%d%m%Y')}-{fast_f_fin.strftime('%d%m%Y')}"
 
             st.info(f"🆔 **Código Generado:** `{fast_codigo}`")
@@ -1233,69 +1152,37 @@ else:
         with st.container(border=True):
             st.markdown("##### 2. Métricas Consolidadas")
             rm1, rm2, rm3 = st.columns(3)
-            fast_peso = rm1.number_input(
-                "Material Procesado Total (kg) *", min_value=0.0, step=0.1
-            )
-            fast_unid = rm2.number_input(
-                "Unidades Producidas *", min_value=0, step=1
-            )
-            fast_co2 = rm3.number_input(
-                "CO₂e Neto Evitado (kg) *", min_value=0.0, step=0.1
-            )
+            fast_peso = rm1.number_input("Material Procesado Total (kg) *", min_value=0.0, step=0.1)
+            fast_unid = rm2.number_input("Unidades Producidas *", min_value=0, step=1)
+            fast_co2 = rm3.number_input("CO₂e Neto Evitado (kg) *", min_value=0.0, step=0.1)
 
             rm4, rm5, rm6 = st.columns(3)
-            fast_horas = rm4.number_input(
-                "Horas de Trabajo Generadas *", min_value=0.0, step=0.5
-            )
-            fast_personas = rm5.number_input(
-                "Personas / Beneficiarios *", min_value=0, step=1
-            )
-            fast_aprovechamiento = rm6.number_input(
-                "% Aprovechamiento *",
-                min_value=0.0,
-                max_value=100.0,
-                value=100.0,
-                step=0.1,
-            )
+            fast_horas = rm4.number_input("Horas de Trabajo Generadas *", min_value=0.0, step=0.5)
+            fast_personas = rm5.number_input("Personas / Beneficiarios *", min_value=0, step=1)
+            fast_aprovechamiento = rm6.number_input("% Aprovechamiento *", min_value=0.0, max_value=100.0, value=100.0, step=0.1)
 
             fast_origen = st.text_input("Punto Origen", value="Sede Central")
 
         st.write("")
 
-        if st.button(
-            "🚀 Guardar Proyecto Histórico Directamente",
-            type="primary",
-            use_container_width=True,
-        ):
+        if st.button("🚀 Guardar Proyecto Histórico Directamente", type="primary", use_container_width=True):
             if not fast_cliente.strip():
                 st.error("El campo **Cliente / Empresa** es obligatorio.")
-            elif not fast_ruc.strip() or not re.fullmatch(
-                r"\d{11}", fast_ruc.strip()
-            ):
+            elif not fast_ruc.strip() or not re.fullmatch(r"\d{11}", fast_ruc.strip()):
                 st.error("El **RUC** es obligatorio y debe tener 11 dígitos.")
             else:
                 try:
                     with st.spinner("Registrando proyecto histórico..."):
                         supabase.table("proyectos").upsert({
-                            "codigo": fast_codigo,
-                            "cliente": fast_cliente,
-                            "ruc": fast_ruc,
-                            "tipo_proyecto": fast_tipo,
-                            "responsable": fast_resp,
-                            "fecha": f"{fe_ini_str} - {fe_fin_str}",
-                            "estado": "COMPLETADO",
-                            "peso_recibido": fast_peso,
-                            "peso_transformado": fast_peso,
-                            "aprovechamiento": fast_aprovechamiento,
-                            "co2_neto": fast_co2,
-                            "horas_totales": fast_horas,
-                            "productos_unids": fast_unid,
+                            "codigo": fast_codigo, "cliente": fast_cliente, "ruc": fast_ruc,
+                            "tipo_proyecto": fast_tipo, "responsable": fast_resp,
+                            "fecha": f"{fe_ini_str} - {fe_fin_str}", "estado": "COMPLETADO",
+                            "peso_recibido": fast_peso, "peso_transformado": fast_peso,
+                            "aprovechamiento": fast_aprovechamiento, "co2_neto": fast_co2,
+                            "horas_totales": fast_horas, "productos_unids": fast_unid,
                             "punto_origen": fast_origen,
                         }).execute()
-                    st.success(
-                        f"✅ ¡Proyecto **{fast_cliente}** registrado"
-                        " exitosamente en el Histórico!"
-                    )
+                    st.success(f"✅ ¡Proyecto **{fast_cliente}** registrado exitosamente en el Histórico!")
                     st.toast("⚡ Guardado rápido completado")
                 except Exception as e:
                     st.error(f"⚠️ Error al registrar el proyecto: {e}")
@@ -1303,15 +1190,10 @@ else:
     # --- VISTA: PROYECTOS EN PROCESO ---
     elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
         st.subheader("📋 Lista de Proyectos en Proceso (Borradores)")
-        st.caption(
-            "Proyectos guardados pendientes de culminación o emisión"
-            " definitiva."
-        )
+        st.caption("Proyectos guardados pendientes de culminación o emisión definitiva.")
 
         proyectos_lista = cargar_proyectos()
-        borradores = [
-            p for p in proyectos_lista if p.get("estado") == "EN_PROCESO"
-        ]
+        borradores = [p for p in proyectos_lista if p.get("estado") == "EN_PROCESO"]
 
         if borradores:
             for b in borradores:
@@ -1319,9 +1201,7 @@ else:
                     bc1, bc2, bc3 = st.columns([3, 2, 2])
                     bc1.markdown(f"**Cliente:** {b.get('cliente', 'Sin Nombre')}")
                     bc1.caption(f"Código: `{b.get('codigo', '')}`")
-                    bc2.markdown(
-                        f"**Tipo:** {b.get('tipo_proyecto', 'Upcycling')}"
-                    )
+                    bc2.markdown(f"**Tipo:** {b.get('tipo_proyecto', 'Upcycling')}")
                     bc2.caption(f"Fecha: {b.get('fecha', '')}")
 
                     if bc3.button(
@@ -1332,9 +1212,7 @@ else:
                     ):
                         st.session_state.proyecto_editar = b
                         st.session_state.documentos_descarga = None
-                        st.session_state.pestaña_activa = (
-                            "➕     Nuevo Reporte PDF"
-                        )
+                        st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
                         st.rerun()
         else:
             st.info("📭 No hay borradores en proceso actualmente.")
@@ -1342,26 +1220,15 @@ else:
     # --- VISTA: DASHBOARD 2026 ---
     elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
         st.subheader("📊 Dashboard de Sostenibilidad e Impacto 2026")
-        st.caption(
-            "Métricas consolidadas de todos los proyectos completados en el"
-            " sistema."
-        )
+        st.caption("Métricas consolidadas de todos los proyectos completados en el sistema.")
 
         proyectos_lista = cargar_proyectos()
-        completados = [
-            p for p in proyectos_lista if p.get("estado") == "COMPLETADO"
-        ]
+        completados = [p for p in proyectos_lista if p.get("estado") == "COMPLETADO"]
 
-        tot_peso = sum(
-            [float(p.get("peso_recibido", 0) or 0) for p in completados]
-        )
+        tot_peso = sum([float(p.get("peso_recibido", 0) or 0) for p in completados])
         tot_co2 = sum([float(p.get("co2_neto", 0) or 0) for p in completados])
-        tot_horas = sum(
-            [float(p.get("horas_totales", 0) or 0) for p in completados]
-        )
-        tot_unids = sum(
-            [int(p.get("productos_unids", 0) or 0) for p in completados]
-        )
+        tot_horas = sum([float(p.get("horas_totales", 0) or 0) for p in completados])
+        tot_unids = sum([int(p.get("productos_unids", 0) or 0) for p in completados])
 
         dm1, dm2, dm3, dm4 = st.columns(4)
         dm1.metric("📦 Material Reciclado", f"{tot_peso:.2f} kg")
@@ -1374,39 +1241,22 @@ else:
         if completados:
             df_comp = pd.DataFrame(completados)
             columnas_mostrar = [
-                "codigo",
-                "cliente",
-                "tipo_proyecto",
-                "peso_recibido",
-                "co2_neto",
-                "horas_totales",
-                "productos_unids",
+                "codigo", "cliente", "tipo_proyecto", "peso_recibido", "co2_neto", "horas_totales", "productos_unids",
             ]
             nombres_cols = {
-                "codigo": "Código",
-                "cliente": "Cliente",
-                "tipo_proyecto": "Tipo",
-                "peso_recibido": "Peso (kg)",
-                "co2_neto": "CO₂e Evitado (kg)",
-                "horas_totales": "Horas",
-                "productos_unids": "Unidades",
+                "codigo": "Código", "cliente": "Cliente", "tipo_proyecto": "Tipo",
+                "peso_recibido": "Peso (kg)", "co2_neto": "CO₂e Evitado (kg)",
+                "horas_totales": "Horas", "productos_unids": "Unidades",
             }
-            df_tabla = df_comp[
-                [c for c in columnas_mostrar if c in df_comp.columns]
-            ].rename(columns=nombres_cols)
+            df_tabla = df_comp[[c for c in columnas_mostrar if c in df_comp.columns]].rename(columns=nombres_cols)
             st.dataframe(df_tabla, use_container_width=True, hide_index=True)
         else:
-            st.info(
-                "📭 Aún no hay proyectos completados para mostrar en las"
-                " métricas."
-            )
+            st.info("📭 Aún no hay proyectos completados para mostrar en las métricas.")
 
     # --- VISTA: HISTORIAL COMPLETO ---
     elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
         st.subheader("🗂️ Historial Completo de Proyectos")
-        st.caption(
-            "Listado general de todos los proyectos registrados con acceso directo a ambos documentos en la nube."
-        )
+        st.caption("Listado general de todos los proyectos registrados con acceso directo a ambos documentos en la nube.")
 
         proyectos_lista = cargar_proyectos()
         if proyectos_lista:
@@ -1417,28 +1267,18 @@ else:
                     hc1.caption(f"ID/Código: `{p.get('codigo', '')}`")
                     hc2.markdown(f"Estado: **{p.get('estado', 'N/D')}**")
                     hc2.caption(f"Tipo: {p.get('tipo_proyecto', 'Upcycling')}")
-                    hc3.markdown(
-                        f"Peso: `{float(p.get('peso_recibido', 0) or 0):.2f} kg`"
-                    )
+                    hc3.markdown(f"Peso: `{float(p.get('peso_recibido', 0) or 0):.2f} kg`")
                     hc3.caption(f"Fecha: {p.get('fecha', 'N/D')}")
 
                     pdf_link = p.get("pdf_url")
                     if pdf_link:
-                        hc4.link_button(
-                            "📄 Informe PDF",
-                            pdf_link,
-                            use_container_width=True,
-                        )
+                        hc4.link_button("📄 Informe PDF", pdf_link, use_container_width=True)
                     else:
                         hc4.caption("📄 Sin Informe")
 
                     const_link = p.get("constancia_url")
                     if const_link:
-                        hc5.link_button(
-                            "📜 Constancia PDF",
-                            const_link,
-                            use_container_width=True,
-                        )
+                        hc5.link_button("📜 Constancia PDF", const_link, use_container_width=True)
                     else:
                         hc5.caption("📜 Sin Constancia")
 
@@ -1456,7 +1296,7 @@ else:
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
-        # Sincronización y persistencia de estado completo
+        # Sincronización de estado
         target_proj_id = p_edit.get("id") or p_edit.get("codigo") or "__nuevo__"
         current_loaded = st.session_state.get("_loaded_project_id", None)
 
@@ -1464,7 +1304,6 @@ else:
             st.session_state._loaded_project_id = target_proj_id
             dc_init = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
 
-            # Restaurar conteos dinámicos
             if dc_init.get("num_items"):
                 st.session_state.num_items = dc_init["num_items"]
             elif "items" in dc_init and len(dc_init["items"]) > 0:
@@ -1486,12 +1325,10 @@ else:
             else:
                 st.session_state.num_anexos = 1
 
-            # Restaurar conteo de personas por producto en confección
             conf_num_map = dc_init.get("confeccion_num_pers", {})
             for k_np, v_np in conf_num_map.items():
                 st.session_state[k_np] = v_np
 
-            # Limpiar llaves de widgets anteriores para asegurar la recarga limpia
             prefijos_limpiar = [
                 "desc_", "unid_", "tot_input_", "peso_u_", "foto_",
                 "prod_sel_", "prod_cant_", "prod_nuevo_txt_", "prod_dis_", "prod_foto_",
@@ -1502,10 +1339,7 @@ else:
                 "chk_edit_balance", "bm_mat_transf_", "bm_retazos_", "bm_perdida_",
                 "responsables_proyecto", "nuevo_responsable_proyecto"
             ]
-            keys_to_del = [
-                k for k in list(st.session_state.keys())
-                if any(k.startswith(pfx) for pfx in prefijos_limpiar)
-            ]
+            keys_to_del = [k for k in list(st.session_state.keys()) if any(k.startswith(pfx) for pfx in prefijos_limpiar)]
             for k_del in keys_to_del:
                 del st.session_state[k_del]
 
@@ -1513,154 +1347,82 @@ else:
 
         if p_edit:
             st.warning(
-                "✏️ **Modo Edición Activo:** Modificando borrador de"
-                f" **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
+                f"✏️ **Modo Edición Activo:** Modificando borrador de **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
             )
             col_desc, col_elim = st.columns([2, 2])
-            if col_desc.button(
-                "❌ Descartar selección y limpiar formulario",
-                use_container_width=True,
-            ):
+            if col_desc.button("❌ Descartar selección y limpiar formulario", use_container_width=True):
                 st.session_state.proyecto_editar = {}
                 st.session_state.documentos_descarga = None
                 st.rerun()
 
-            if col_elim.button(
-                "🗑️ Eliminar Proyecto Definitivamente",
-                use_container_width=True,
-            ):
+            if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
                 modal_confirmar_eliminacion(p_edit)
 
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
 
             fechas_raw = p_edit.get("fecha", " - ").split(" - ")
-            try:
-                def_f_ini = datetime.datetime.strptime(
-                    fechas_raw[0].strip(), "%d/%m/%Y"
-                ).date()
-            except Exception:
-                def_f_ini = datetime.date.today()
+            try: def_f_ini = datetime.datetime.strptime(fechas_raw[0].strip(), "%d/%m/%Y").date()
+            except Exception: def_f_ini = datetime.date.today()
 
-            try:
-                def_f_fin = datetime.datetime.strptime(
-                    fechas_raw[1].strip(), "%d/%m/%Y"
-                ).date()
-            except Exception:
-                def_f_fin = datetime.date.today()
+            try: def_f_fin = datetime.datetime.strptime(fechas_raw[1].strip(), "%d/%m/%Y").date()
+            except Exception: def_f_fin = datetime.date.today()
 
             c1, c2, c5, c6 = st.columns(4)
-            cliente = c1.text_input(
-                "Cliente / Empresa *", value=p_edit.get("cliente", "")
-            )
-
-            ruc = c2.text_input(
-                "RUC * (11 dígitos)",
-                value=p_edit.get("ruc", ""),
-                max_chars=11,
-            )
-
-            fe_inicio_dt = c5.date_input(
-                "Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY"
-            )
-            fe_fin_dt = c6.date_input(
-                "Fecha Término *", value=def_f_fin, format="DD/MM/YYYY"
-            )
+            cliente = c1.text_input("Cliente / Empresa *", value=p_edit.get("cliente", ""))
+            ruc = c2.text_input("RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11)
+            fe_inicio_dt = c5.date_input("Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY")
+            fe_fin_dt = c6.date_input("Fecha Término *", value=def_f_fin, format="DD/MM/YYYY")
 
             fe_inicio = fe_inicio_dt.strftime("%d/%m/%Y")
             fe_fin = fe_fin_dt.strftime("%d/%m/%Y")
 
-            str_empresa = (
-                cliente.strip() if cliente.strip() else "EMPRESA"
-            )
+            str_empresa = cliente.strip() if cliente.strip() else "EMPRESA"
             codigo_proy = f"{str_empresa}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}"
 
-            st.info(
-                f"🆔 **Código del Proyecto (Generado automáticamente):** `{codigo_proy}`"
-            )
+            st.info(f"🆔 **Código del Proyecto (Generado automáticamente):** `{codigo_proy}`")
 
             c4, c7, c8, c9 = st.columns(4)
-            opciones_tipo_proyecto = [
-                "Upcycling",
-                "Producción desde cero",
-                "Cambio de logo",
-                "Mixto",
-                "Banner",
-            ]
+            opciones_tipo_proyecto = ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
             tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
-            idx_tipo = (
-                opciones_tipo_proyecto.index(tipo_actual)
-                if tipo_actual in opciones_tipo_proyecto
-                else 0
-            )
+            idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
 
-            proyecto_nom = c4.selectbox(
-                "Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo
-            )
+            proyecto_nom = c4.selectbox("Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo)
 
-            RESPONSABLES_BASE = [
-                "Evelyn Prada Vizarreta",
-                "Gabriel Manrique Hurtado",
-            ]
-
+            RESPONSABLES_BASE = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado"]
             responsables_guardados = p_edit.get("responsables", [])
             if not isinstance(responsables_guardados, list):
-                responsables_guardados = [
-                    r.strip()
-                    for r in str(responsables_guardados).split(",")
-                    if r.strip()
-                ]
+                responsables_guardados = [r.strip() for r in str(responsables_guardados).split(",") if r.strip()]
 
             responsable_anterior = p_edit.get("responsable", "")
             if responsable_anterior and not responsables_guardados:
-                responsables_guardados = [
-                    r.strip()
-                    for r in str(responsable_anterior).split(",")
-                    if r.strip()
-                ]
+                responsables_guardados = [r.strip() for r in str(responsable_anterior).split(",") if r.strip()]
 
             if not responsables_guardados and dc.get("responsables_seleccionados"):
                 responsables_guardados = dc.get("responsables_seleccionados", [])
 
-            opciones_responsables = list(
-                dict.fromkeys(RESPONSABLES_BASE + responsables_guardados)
-            )
+            opciones_responsables = list(dict.fromkeys(RESPONSABLES_BASE + responsables_guardados))
 
             responsables_seleccionados = c7.multiselect(
                 "Responsable *",
                 options=opciones_responsables,
-                default=[
-                    r
-                    for r in responsables_guardados
-                    if r in opciones_responsables
-                ],
-                placeholder="Selecciona uno o más responsables",
+                default=[r for r in responsables_guardados if r in opciones_responsables],
+                placeholder="Selecciona uno o más",
                 key="responsables_proyecto",
             )
 
-            nuevo_responsable = c7.text_input(
-                "➕ Agregar otro responsable",
-                placeholder="Escribe el nombre completo",
-                key="nuevo_responsable_proyecto",
-            )
+            nuevo_responsable = c7.text_input("➕ Agregar otro responsable", placeholder="Nombre completo", key="nuevo_responsable_proyecto")
 
             if nuevo_responsable.strip():
-                nuevo_nombre = nuevo_responsable.strip()
-                if nuevo_nombre not in responsables_seleccionados:
-                    responsables_seleccionados.append(nuevo_nombre)
+                if nuevo_responsable.strip() not in responsables_seleccionados:
+                    responsables_seleccionados.append(nuevo_responsable.strip())
 
             responsable = ", ".join(responsables_seleccionados)
-
             area = c8.text_input("Área", value="Sostenibilidad", disabled=True)
-            guia_remision = c9.text_input(
-                "Nº Guía Remisión",
-                value=p_edit.get("guia", "") or dc.get("guia_remision", ""),
-            )
+            guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia", "") or dc.get("guia_remision", ""))
 
             origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
-            origen = st.text_input(
-                "Punto Origen *", value=origen_default
-            )
+            origen = st.text_input("Punto Origen *", value=origen_default)
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
 
         st.write("")
@@ -1674,10 +1436,7 @@ else:
             if col_btn1.button("➕     Agregar Ítem"):
                 st.session_state.num_items += 1
                 st.rerun()
-            if (
-                col_btn2.button("➖     Quitar Ítem")
-                and st.session_state.num_items > 1
-            ):
+            if col_btn2.button("➖     Quitar Ítem") and st.session_state.num_items > 1:
                 st.session_state.num_items -= 1
                 st.rerun()
 
@@ -1691,9 +1450,7 @@ else:
 
             for i in range(st.session_state.num_items):
                 st.markdown(f"**Material {i+1}**")
-                col_desc, col_unid, col_peso, col_tot, col_foto = st.columns(
-                    [3, 1.5, 1.5, 1.5, 3]
-                )
+                col_desc, col_unid, col_peso, col_tot, col_foto = st.columns([3, 1.5, 1.5, 1.5, 3])
 
                 item_prev = saved_items[i] if i < len(saved_items) else {}
                 desc_prev = item_prev.get("descripcion", opciones_prendas[0])
@@ -1702,37 +1459,15 @@ else:
                 peso_prev = float(item_prev.get("peso_total", 0.0))
                 foto_url_prev = item_prev.get("foto_url", "")
 
-                desc = col_desc.selectbox(
-                    "Tipo de Producto / Prenda *",
-                    opciones_prendas,
-                    index=idx_desc,
-                    key=f"desc_{i}",
-                )
-                unid = col_unid.number_input(
-                    "Ingreso (unid.) *", min_value=0, value=unid_prev, key=f"unid_{i}"
-                )
+                desc = col_desc.selectbox("Tipo de Producto / Prenda *", opciones_prendas, index=idx_desc, key=f"desc_{i}")
+                unid = col_unid.number_input("Ingreso (unid.) *", min_value=0, value=unid_prev, key=f"unid_{i}")
 
-                p_total = col_peso.number_input(
-                    "Peso Total (kg) *",
-                    min_value=0.0,
-                    value=peso_prev,
-                    step=0.05,
-                    key=f"tot_input_{i}",
-                )
+                p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=peso_prev, step=0.05, key=f"tot_input_{i}")
                 peso_u = p_total / unid if unid > 0 else 0.0
 
-                col_tot.text_input(
-                    "Peso Unitario",
-                    value=f"{peso_u:.2f} kg",
-                    disabled=True,
-                    key=f"peso_u_{i}_{unid}_{p_total}",
-                )
+                col_tot.text_input("Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}_{unid}_{p_total}")
 
-                foto = col_foto.file_uploader(
-                    "Evidencia Foto",
-                    type=["jpg", "png", "jpeg"],
-                    key=f"foto_{i}",
-                )
+                foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
 
                 if foto is not None:
                     col_foto.image(foto, width=80)
@@ -1746,62 +1481,26 @@ else:
                 total_piezas_ingresadas += unid
 
                 lista_items.append({
-                    "descripcion": desc,
-                    "unidades": unid,
-                    "peso_unitario": peso_u,
-                    "peso_total": p_total,
-                    "foto_up": foto,
-                    "foto_url": foto_url_prev,
-                    "foto": foto if foto is not None else foto_url_prev,
+                    "descripcion": desc, "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total,
+                    "foto_up": foto, "foto_url": foto_url_prev, "foto": foto if foto is not None else foto_url_prev,
                     "co2_evitado": co2_item,
                 })
 
-            st.info(
-                f"⚖️     **Total Material Recibido:** {peso_total_recibido:.2f} kg"
-                " | **CO₂ Evitado Calculado:**"
-                f" {co2_evitado_total:.2f} kg CO₂e"
-            )
+            st.info(f"⚖️     **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
 
         st.write("")
 
         with st.container(border=True):
             st.subheader("3. Trazabilidad del Proceso en Upcycling")
 
-            peso_corte_conf_auto = round(
-                peso_total_recibido
-                * st.session_state.pct_aprovechamiento_random,
-                2,
-            )
+            peso_corte_conf_auto = round(peso_total_recibido * st.session_state.pct_aprovechamiento_random, 2)
 
+            # --- CAMBIO 2: SINCRONIZACIÓN DE FECHAS ---
             etapas_fijas = [
-                {
-                    "etapa": "Clasificación",
-                    "fecha": datetime.date.today(),
-                    "resp_defecto": "Evelyn Prada Vizarreta",
-                    "peso_defecto": peso_total_recibido,
-                    "tipo": "Registro interno",
-                },
-                {
-                    "etapa": "Lavado",
-                    "fecha": datetime.date.today(),
-                    "resp_defecto": "Lavandería",
-                    "peso_defecto": 0.0,
-                    "tipo": "Servicio Externo",
-                },
-                {
-                    "etapa": "Corte",
-                    "fecha": datetime.date.today(),
-                    "resp_defecto": "Taller de corte (5 integrantes)",
-                    "peso_defecto": peso_corte_conf_auto,
-                    "tipo": "Pesaje real",
-                },
-                {
-                    "etapa": "Confección",
-                    "fecha": datetime.date.today(),
-                    "resp_defecto": "Producción descentralizada",
-                    "peso_defecto": peso_corte_conf_auto,
-                    "tipo": "Entrega / Recepción",
-                },
+                {"etapa": "Clasificación", "fecha": fe_inicio_dt, "resp_defecto": "Evelyn Prada Vizarreta", "peso_defecto": peso_total_recibido, "tipo": "Registro interno"},
+                {"etapa": "Lavado", "fecha": datetime.date.today(), "resp_defecto": "Lavandería", "peso_defecto": 0.0, "tipo": "Servicio Externo"},
+                {"etapa": "Corte", "fecha": datetime.date.today(), "resp_defecto": "Taller de corte (5 integrantes)", "peso_defecto": peso_corte_conf_auto, "tipo": "Pesaje real"},
+                {"etapa": "Confección", "fecha": datetime.date.today(), "resp_defecto": "Producción descentralizada", "peso_defecto": peso_corte_conf_auto, "tipo": "Entrega / Recepción"},
             ]
             lista_trazabilidad = []
             peso_lavado_auto = 0.0
@@ -1811,19 +1510,20 @@ else:
 
             for i, item_fijo in enumerate(etapas_fijas):
                 st.markdown(f"**Etapa {i+1}**")
-                c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = (
-                    st.columns([1.5, 1.5, 2, 1, 1.2, 1.8, 2])
-                )
+                c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = st.columns([1.5, 1.5, 2, 1, 1.2, 1.8, 2])
 
                 traza_prev = saved_traza[i] if i < len(saved_traza) else {}
                 fec_prev_str = traza_prev.get("fecha")
-                if fec_prev_str:
-                    try:
-                        fec_val_def = datetime.datetime.strptime(fec_prev_str, "%d/%m/%Y").date()
-                    except Exception:
-                        fec_val_def = item_fijo["fecha"]
+                
+                # --- Aseguramos que la Etapa 1 siempre tenga la fecha de inicio ---
+                if item_fijo["etapa"] == "Clasificación":
+                    fec_val_def = fe_inicio_dt
                 else:
-                    fec_val_def = item_fijo["fecha"]
+                    if fec_prev_str:
+                        try: fec_val_def = datetime.datetime.strptime(fec_prev_str, "%d/%m/%Y").date()
+                        except Exception: fec_val_def = item_fijo["fecha"]
+                    else:
+                        fec_val_def = item_fijo["fecha"]
 
                 resp_prev_val = traza_prev.get("responsable", item_fijo["resp_defecto"])
                 peso_prev_val = float(traza_prev.get("peso", item_fijo["peso_defecto"]))
@@ -1831,62 +1531,29 @@ else:
                 is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
                 foto_url_prev = traza_prev.get("foto_url", "")
 
-                e_nom = c_etapa.text_input(
-                    "Etapa",
-                    value=item_fijo["etapa"],
-                    disabled=True,
-                    key=f"tr_etapa_{i}",
-                )
+                e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
+                
+                # --- Bloqueamos la edición de la fecha solo en la Etapa 1 ---
+                deshabilitar_fec = (item_fijo["etapa"] == "Clasificación")
+                e_fec_val = c_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
 
-                e_fec_val = c_fecha.date_input(
-                    "Fecha *",
-                    value=fec_val_def,
-                    format="DD/MM/YYYY",
-                    key=f"tr_fecha_{i}",
-                )
-
-                permitir_editar = c_edit_chk.checkbox(
-                    "✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}"
-                )
-                e_res = c_resp.text_input(
-                    "Responsable *",
-                    value=resp_prev_val,
-                    disabled=not permitir_editar,
-                    key=f"tr_resp_{i}",
-                )
+                permitir_editar = c_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
+                e_res = c_resp.text_input("Responsable *", value=resp_prev_val, disabled=not permitir_editar, key=f"tr_resp_{i}")
 
                 val_peso_etapa = peso_prev_val
                 deshabilitar_peso = False if item_fijo["etapa"] == "Lavado" else (not permitir_editar)
 
-                e_pes_str = c_peso.text_input(
-                    "Peso (kg) *",
-                    value=f"{val_peso_etapa:.2f}",
-                    disabled=deshabilitar_peso,
-                    key=f"tr_peso_{i}_{val_peso_etapa:.2f}_{deshabilitar_peso}",
-                )
+                e_pes_str = c_peso.text_input("Peso (kg) *", value=f"{val_peso_etapa:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_{val_peso_etapa:.2f}_{deshabilitar_peso}")
 
-                try:
-                    e_pes_num = float(e_pes_str)
-                except ValueError:
-                    e_pes_num = 0.0
+                try: e_pes_num = float(e_pes_str)
+                except ValueError: e_pes_num = 0.0
 
-                if item_fijo["etapa"] == "Lavado":
-                    peso_lavado_auto = e_pes_num
-                elif item_fijo["etapa"] == "Corte":
-                    peso_corte_auto = e_pes_num
+                if item_fijo["etapa"] == "Lavado": peso_lavado_auto = e_pes_num
+                elif item_fijo["etapa"] == "Corte": peso_corte_auto = e_pes_num
 
-                e_tip = c_tipo.text_input(
-                    "Tipo Registro",
-                    value=tipo_prev_val,
-                    disabled=True,
-                    key=f"tr_tipo_{i}",
-                )
+                e_tip = c_tipo.text_input("Tipo Registro", value=tipo_prev_val, disabled=True, key=f"tr_tipo_{i}")
                 
-                e_fot = c_foto.file_uploader(
-                    "Evidencia",
-                    type=["jpg", "png", "jpeg"],
-                    key=f"tr_foto_{i}",
-                )
+                e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
 
                 if e_fot is not None:
                     c_foto.image(e_fot, width=70)
@@ -1894,15 +1561,9 @@ else:
                     c_foto.image(foto_url_prev, width=70)
 
                 lista_trazabilidad.append({
-                    "etapa": e_nom,
-                    "fecha": e_fec_val.strftime("%d/%m/%Y"),
-                    "responsable": e_res,
-                    "peso": e_pes_num,
-                    "tipo_registro": e_tip,
-                    "editado": permitir_editar,
-                    "foto_up": e_fot,
-                    "foto_url": foto_url_prev,
-                    "foto": e_fot if e_fot is not None else foto_url_prev
+                    "etapa": e_nom, "fecha": e_fec_val.strftime("%d/%m/%Y"), "responsable": e_res,
+                    "peso": e_pes_num, "tipo_registro": e_tip, "editado": permitir_editar,
+                    "foto_up": e_fot, "foto_url": foto_url_prev, "foto": e_fot if e_fot is not None else foto_url_prev
                 })
 
         st.write("")
@@ -1917,10 +1578,7 @@ else:
             if cp_btn1.button("➕     Agregar Producto"):
                 st.session_state.num_prods += 1
                 st.rerun()
-            if (
-                cp_btn2.button("➖     Quitar Producto")
-                and st.session_state.num_prods > 1
-            ):
+            if cp_btn2.button("➖     Quitar Producto") and st.session_state.num_prods > 1:
                 st.session_state.num_prods -= 1
                 st.rerun()
 
@@ -1930,9 +1588,7 @@ else:
 
             for i in range(st.session_state.num_prods):
                 st.markdown(f"**Producto {i+1}**")
-                col_psel, col_pnom_nuevo, col_pcant, col_pfoto = st.columns(
-                    [3, 2.5, 1.5, 3]
-                )
+                col_psel, col_pnom_nuevo, col_pcant, col_pfoto = st.columns([3, 2.5, 1.5, 3])
 
                 prod_prev = saved_prods[i] if i < len(saved_prods) else {}
                 prod_nom_prev = prod_prev.get("producto", "")
@@ -1942,58 +1598,21 @@ else:
                 if prod_nom_prev and prod_nom_prev not in st.session_state.catalogo_productos:
                     st.session_state.catalogo_productos.insert(-1, prod_nom_prev)
 
-                idx_psel = (
-                    st.session_state.catalogo_productos.index(prod_nom_prev)
-                    if prod_nom_prev in st.session_state.catalogo_productos
-                    else 0
-                )
+                idx_psel = st.session_state.catalogo_productos.index(prod_nom_prev) if prod_nom_prev in st.session_state.catalogo_productos else 0
 
-                prod_seleccionado = col_psel.selectbox(
-                    "Seleccionar Producto Base *",
-                    st.session_state.catalogo_productos,
-                    index=idx_psel,
-                    key=f"prod_sel_{i}",
-                )
+                prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, index=idx_psel, key=f"prod_sel_{i}")
 
                 if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
-                    nuevo_nombre = col_pnom_nuevo.text_input(
-                        "Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}"
-                    )
-                    nombre_final = (
-                        nuevo_nombre.strip()
-                        if nuevo_nombre.strip()
-                        else f"Producto {i+1}"
-                    )
-
-                    if (
-                        nuevo_nombre.strip()
-                        and nuevo_nombre.strip()
-                        not in st.session_state.catalogo_productos
-                    ):
-                        st.session_state.catalogo_productos.insert(
-                            -1, nuevo_nombre.strip()
-                        )
+                    nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}")
+                    nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
+                    if nuevo_nombre.strip() and nuevo_nombre.strip() not in st.session_state.catalogo_productos:
+                        st.session_state.catalogo_productos.insert(-1, nuevo_nombre.strip())
                 else:
-                    col_pnom_nuevo.text_input(
-                        "Producto",
-                        value=prod_seleccionado,
-                        disabled=True,
-                        key=f"prod_dis_{i}_{prod_seleccionado}",
-                    )
+                    col_pnom_nuevo.text_input("Producto", value=prod_seleccionado, disabled=True, key=f"prod_dis_{i}_{prod_seleccionado}")
                     nombre_final = prod_seleccionado
 
-                p_cant = col_pcant.number_input(
-                    "Cantidad (Unid.) *",
-                    min_value=0,
-                    value=cant_prev,
-                    key=f"prod_cant_{i}",
-                )
-                
-                p_foto = col_pfoto.file_uploader(
-                    "Evidencia Foto",
-                    type=["jpg", "png", "jpeg"],
-                    key=f"prod_foto_{i}",
-                )
+                p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=cant_prev, key=f"prod_cant_{i}")
+                p_foto = col_pfoto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}")
 
                 if p_foto is not None:
                     col_pfoto.image(p_foto, width=80)
@@ -2002,31 +1621,20 @@ else:
 
                 total_prod_unid += p_cant
                 lista_productos.append({
-                    "producto": nombre_final,
-                    "cantidad": p_cant,
-                    "foto_up": p_foto,
-                    "foto_url": foto_url_prev,
-                    "foto": p_foto if p_foto is not None else foto_url_prev
+                    "producto": nombre_final, "cantidad": p_cant,
+                    "foto_up": p_foto, "foto_url": foto_url_prev, "foto": p_foto if p_foto is not None else foto_url_prev
                 })
 
-            st.success(
-                "🧮 **Suma Total de Productos Obtenidos:**"
-                f" {total_prod_unid} unidades"
-            )
+            st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
 
         st.write("")
 
         with st.container(border=True):
             st.subheader("5. Balance de Material")
-            st.info(
-                "⚖️     **Material Recibido (calculado automáticamente):**"
-                f" {peso_total_recibido:.2f} kg"
-            )
+            st.info(f"⚖️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
 
             pct_aprov_auto = st.session_state.pct_aprovechamiento_random
-            pct_transf_auto = min(
-                st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05
-            )
+            pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
             pct_retazos_auto = pct_aprov_auto - pct_transf_auto
 
             saved_bm = dc.get("balance", {})
@@ -2039,61 +1647,34 @@ else:
             else:
                 mat_transf_def = round(peso_total_recibido * pct_transf_auto, 2)
                 retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
-                perdida_def = (
-                    round(
-                        peso_total_recibido - mat_transf_def - retazos_def,
-                        2,
-                    )
-                    if peso_total_recibido > 0
-                    else 0.0
-                )
+                perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
 
-            editar_balance = st.checkbox(
-                "✏️ Editar balance manualmente", value=editar_balance_prev, key="chk_edit_balance"
-            )
+            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=editar_balance_prev, key="chk_edit_balance")
 
             col_bm1, col_bm2 = st.columns(2)
             mat_transformado = col_bm1.number_input(
                 "Material transformado en productos (kg)",
-                min_value=0.0,
-                value=float(mat_transf_def),
-                step=0.1,
-                disabled=not editar_balance,
+                min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance,
                 key=f"bm_mat_transf_{peso_total_recibido:.2f}_{editar_balance}",
             )
             retazos_aprovechables = col_bm2.number_input(
                 "Retazos aprovechables (kg)",
-                min_value=0.0,
-                value=float(retazos_def),
-                step=0.1,
-                disabled=not editar_balance,
+                min_value=0.0, value=float(retazos_def), step=0.1, disabled=not editar_balance,
                 key=f"bm_retazos_{peso_total_recibido:.2f}_{editar_balance}",
             )
 
             col_bm3, _ = st.columns([1, 1])
             perdida_no_aprovechable = col_bm3.number_input(
                 "Pérdida no aprovechable (kg)",
-                min_value=0.0,
-                value=float(perdida_def),
-                step=0.1,
-                disabled=not editar_balance,
+                min_value=0.0, value=float(perdida_def), step=0.1, disabled=not editar_balance,
                 key=f"bm_perdida_{peso_total_recibido:.2f}_{editar_balance}",
             )
 
-            total_procesado = (
-                mat_transformado
-                + retazos_aprovechables
-                + perdida_no_aprovechable
-            )
+            total_procesado = mat_transformado + retazos_aprovechables + perdida_no_aprovechable
 
             if peso_total_recibido > 0:
-                pct_aprovechamiento_total = (
-                    (mat_transformado + retazos_aprovechables)
-                    / peso_total_recibido
-                ) * 100
-                pct_perdida = (
-                    perdida_no_aprovechable / peso_total_recibido
-                ) * 100
+                pct_aprovechamiento_total = ((mat_transformado + retazos_aprovechables) / peso_total_recibido) * 100
+                pct_perdida = (perdida_no_aprovechable / peso_total_recibido) * 100
             else:
                 pct_aprovechamiento_total = 0.0
                 pct_perdida = 0.0
@@ -2101,9 +1682,7 @@ else:
             st.markdown("##### Resumen de Indicadores")
             ind1, ind2, ind3 = st.columns(3)
             ind1.metric("Total Procesado", f"{total_procesado:.2f} kg")
-            ind2.metric(
-                "% Aprovechamiento Total", f"{pct_aprovechamiento_total:.2f}%"
-            )
+            ind2.metric("% Aprovechamiento Total", f"{pct_aprovechamiento_total:.2f}%")
             ind3.metric("% Pérdida", f"{pct_perdida:.2f}%")
 
         st.write("")
@@ -2111,10 +1690,7 @@ else:
         with st.container(border=True):
             st.subheader("6. Balance de Emisiones (CO₂e)")
             st.markdown("##### 🚚 A. Cálculo de Transporte")
-            st.caption(
-                "Destino Fijo: **Taller Las Flores, San Juan de Lurigancho"
-                " (SJL)**"
-            )
+            st.caption("Destino Fijo: **Taller Las Flores, San Juan de Lurigancho (SJL)**")
 
             saved_trans = dc.get("transporte", {})
             dist_sel_prev = saved_trans.get("distrito", list(DISTANCIAS_LIMA_SJL.keys())[0])
@@ -2122,76 +1698,39 @@ else:
 
             ct1, ct2, ct3, ct4 = st.columns([2.5, 1.2, 1.8, 1.5])
             distrito_sel = ct1.selectbox(
-                "Distrito de Origen (Recojo de Material) *",
-                list(DISTANCIAS_LIMA_SJL.keys()),
-                index=idx_dist,
-                key="transporte_distrito_origen",
+                "Distrito de Origen (Recojo de Material) *", list(DISTANCIAS_LIMA_SJL.keys()), index=idx_dist, key="transporte_distrito_origen"
             )
 
             dist_defecto = float(DISTANCIAS_LIMA_SJL.get(distrito_sel, 0.0))
             saved_dist_km = float(saved_trans.get("distancia", dist_defecto)) if dist_sel_prev == distrito_sel else dist_defecto
 
             if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)":
-                distancia_km = ct2.number_input(
-                    "Distancia (km) *",
-                    min_value=0.0,
-                    value=saved_dist_km,
-                    step=1.0,
-                    key="dist_km_manual",
-                )
+                distancia_km = ct2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key="dist_km_manual")
             else:
-                distancia_km = ct2.number_input(
-                    "Distancia (km)",
-                    min_value=0.0,
-                    value=saved_dist_km,
-                    step=0.5,
-                    key=f"dist_km_auto_{distrito_sel}",
-                )
+                distancia_km = ct2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_{distrito_sel}")
 
             vehiculo_prev = saved_trans.get("vehiculo", list(FACTORES_TRANSPORTE.keys())[0])
             idx_veh = list(FACTORES_TRANSPORTE.keys()).index(vehiculo_prev) if vehiculo_prev in FACTORES_TRANSPORTE else 0
 
-            vehiculo_sel = ct3.selectbox(
-                "Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh
-            )
+            vehiculo_sel = ct3.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh)
 
             rec_prev = saved_trans.get("recorrido", "Ida y Vuelta (2)")
             idx_rec = 0 if "2" in rec_prev else 1
-            recorrido_tipo = ct4.selectbox(
-                "Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec
-            )
+            recorrido_tipo = ct4.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec)
 
             factor_veh = FACTORES_TRANSPORTE[vehiculo_sel]
             mult_recorrido = 2.0 if "2" in recorrido_tipo else 1.0
-            emisiones_transporte = (
-                distancia_km
-                * mult_recorrido
-                * factor_veh["consumo"]
-                * factor_veh["factor"]
-            )
+            emisiones_transporte = distancia_km * mult_recorrido * factor_veh["consumo"] * factor_veh["factor"]
 
-            st.caption(
-                f"Distancia considerada: **{distancia_km:.1f} km**"
-                f" ({recorrido_tipo}) | Emisión de Transporte estimada:"
-                f" **{emisiones_transporte:.2f} kg CO₂e**"
-            )
+            st.caption(f"Distancia considerada: **{distancia_km:.1f} km** ({recorrido_tipo}) | Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
 
-            st.markdown(
-                "##### ✂️  B. Lavandería y Taller de Corte (Calculado desde"
-                " Trazabilidad)"
-            )
+            st.markdown("##### ✂️  B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
             emisiones_lavado = peso_lavado_auto * 0.30
             emisiones_corte = peso_corte_auto * 0.05
 
             clav, ccort = st.columns(2)
-            clav.info(
-                f"**Lavandería ({peso_lavado_auto:.2f} kg):**"
-                f" {emisiones_lavado:.2f} kg CO₂e *(Factor: 0.30)*"
-            )
-            ccort.info(
-                f"**Corte ({peso_corte_auto:.2f} kg):** {emisiones_corte:.2f} kg CO₂e"
-                " *(Factor: 0.05)*"
-            )
+            clav.info(f"**Lavandería ({peso_lavado_auto:.2f} kg):** {emisiones_lavado:.2f} kg CO₂e *(Factor: 0.30)*")
+            ccort.info(f"**Corte ({peso_corte_auto:.2f} kg):** {emisiones_corte:.2f} kg CO₂e *(Factor: 0.05)*")
 
             st.markdown("##### 🧵 C. Cálculo de Bordado o Estampado")
             saved_bord = dc.get("bordado", {})
@@ -2200,36 +1739,18 @@ else:
             idx_tbord = list(FACTORES_BORDADO.keys()).index(tipo_bord_prev) if tipo_bord_prev in FACTORES_BORDADO else 0
 
             cb1, cb2 = st.columns(2)
-            cant_prendas_bordado = cb1.number_input(
-                "Cantidad de prendas que requieren bordado o estampado",
-                min_value=0,
-                value=cant_bord_prev,
-                step=1,
-            )
-            tipo_diseno_bordado = cb2.selectbox(
-                "Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()), index=idx_tbord
-            )
+            cant_prendas_bordado = cb1.number_input("Cantidad de prendas que requieren bordado o estampado", min_value=0, value=cant_bord_prev, step=1)
+            tipo_diseno_bordado = cb2.selectbox("Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()), index=idx_tbord)
 
             factor_bordado = FACTORES_BORDADO[tipo_diseno_bordado]
             emisiones_bordado = cant_prendas_bordado * factor_bordado
 
-            st.caption(
-                f"Emisión estimada (Bordado/Estampado): **{emisiones_bordado:.2f} kg CO₂e**"
-            )
+            st.caption(f"Emisión estimada (Bordado/Estampado): **{emisiones_bordado:.2f} kg CO₂e**")
 
-            emisiones_proceso = (
-                emisiones_transporte
-                + emisiones_lavado
-                + emisiones_corte
-                + emisiones_bordado
-            )
+            emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
             co2_neto = co2_evitado_total - emisiones_proceso
 
-            st.warning(
-                "🌍 **Total Emisiones del Proceso:**"
-                f" {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto"
-                f" Evitado:** {co2_neto:.2f} kg CO₂e"
-            )
+            st.warning(f"🌍 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
 
         st.write("")
 
@@ -2255,9 +1776,7 @@ else:
             lista_operaciones = []
             total_horas_ops = 0.0
 
-            h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns(
-                [1.5, 2.5, 0.8, 1.2, 1.2, 1.2]
-            )
+            h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
             h_col1.markdown("**Rol**")
             h_col2.markdown("**Nombre**")
             h_col3.markdown("**Editar**")
@@ -2270,33 +1789,17 @@ else:
             saved_ops = dc.get("operaciones", [])
 
             for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
-                c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns(
-                    [1.5, 2.5, 0.8, 1.2, 1.2, 1.2]
-                )
+                c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
 
                 op_prev = saved_ops[idx] if idx < len(saved_ops) else {}
                 is_edited_op = op_prev.get("editado", False)
                 nom_prev_op = op_prev.get("nombre", p_fijo["nombre"])
 
                 rol_val = p_fijo["rol"]
-                c_rol.text_input(
-                    "Rol",
-                    value=rol_val,
-                    disabled=True,
-                    key=f"ops_rol_{idx}",
-                    label_visibility="collapsed",
-                )
+                c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
 
-                editar_fila = c_chk.checkbox(
-                    "✅", value=bool(is_edited_op), key=f"ops_chk_{idx}", label_visibility="collapsed"
-                )
-                nom_val = c_nom.text_input(
-                    "Nombre",
-                    value=nom_prev_op,
-                    disabled=not editar_fila,
-                    key=f"ops_nom_{idx}",
-                    label_visibility="collapsed",
-                )
+                editar_fila = c_chk.checkbox("✅", value=bool(is_edited_op), key=f"ops_chk_{idx}", label_visibility="collapsed")
+                nom_val = c_nom.text_input("Nombre", value=nom_prev_op, disabled=not editar_fila, key=f"ops_nom_{idx}", label_visibility="collapsed")
 
                 if rol_val == "Logística":
                     val_dias_defecto = dias_calc_log
@@ -2309,134 +1812,59 @@ else:
                 hdia_init = float(op_prev.get("horas_dia", val_hdia_defecto)) if is_edited_op else float(val_hdia_defecto)
 
                 val_dias = c_dias.number_input(
-                    "Días",
-                    min_value=0,
-                    value=dias_init,
-                    step=1,
-                    disabled=not editar_fila,
-                    key=f"ops_dias_dyn_{idx}_{val_dias_defecto}_{editar_fila}",
-                    label_visibility="collapsed",
+                    "Días", min_value=0, value=dias_init, step=1, disabled=not editar_fila,
+                    key=f"ops_dias_dyn_{idx}_{val_dias_defecto}_{editar_fila}", label_visibility="collapsed"
                 )
                 val_hdia = c_hdia.number_input(
-                    "Hrs/Día",
-                    min_value=0.0,
-                    value=hdia_init,
-                    step=0.5,
-                    disabled=not editar_fila,
-                    key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}_{editar_fila}",
-                    label_visibility="collapsed",
+                    "Hrs/Día", min_value=0.0, value=hdia_init, step=0.5, disabled=not editar_fila,
+                    key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}_{editar_fila}", label_visibility="collapsed"
                 )
 
                 tot_hrs_pers = float(val_dias) * float(val_hdia)
 
-                c_tot.text_input(
-                    "Total",
-                    value=f"{tot_hrs_pers:.2f}",
-                    disabled=True,
-                    key=f"ops_tot_{idx}_{val_dias}_{val_hdia}",
-                    label_visibility="collapsed",
-                )
+                c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_{idx}_{val_dias}_{val_hdia}", label_visibility="collapsed")
 
                 total_horas_ops += tot_hrs_pers
                 lista_operaciones.append({
-                    "rol": rol_val,
-                    "nombre": nom_val,
-                    "dias": val_dias,
-                    "horas_dia": val_hdia,
-                    "horas_totales": tot_hrs_pers,
-                    "editado": editar_fila,
+                    "rol": rol_val, "nombre": nom_val, "dias": val_dias, "horas_dia": val_hdia,
+                    "horas_totales": tot_hrs_pers, "editado": editar_fila,
                 })
 
             st.write("---")
 
             st.markdown("#### Confección y Acabado – Asignación de Personal")
-            with st.expander(
-                "⚙️ Administrar Catálogo de Personal (Agregar, Modificar o"
-                " Eliminar)"
-            ):
-                tab_add, tab_edit, tab_del = st.tabs([
-                    "➕ Agregar Personal",
-                    "✏️ Modificar Nombre",
-                    "🗑️ Eliminar de la Lista",
-                ])
+            with st.expander("⚙️ Administrar Catálogo de Personal (Agregar, Modificar o Eliminar)"):
+                tab_add, tab_edit, tab_del = st.tabs(["➕ Agregar Personal", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
 
                 with tab_add:
                     c_a1, c_a2 = st.columns([3, 1])
-                    nuevo_integrante = c_a1.text_input(
-                        "Nombre completo de la nueva persona:",
-                        placeholder="Ej. Rosa María Quispe",
-                        key="adm_input_add",
-                    )
-                    if c_a2.button(
-                        "Guardar en Lista", use_container_width=True
-                    ):
+                    nuevo_integrante = c_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key="adm_input_add")
+                    if c_a2.button("Guardar en Lista", use_container_width=True):
                         n_limpio = nuevo_integrante.strip()
-                        if (
-                            n_limpio
-                            and n_limpio
-                            not in st.session_state.lista_personal_confeccion
-                        ):
-                            st.session_state.lista_personal_confeccion.append(
-                                n_limpio
-                            )
+                        if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.append(n_limpio)
                             st.session_state.lista_personal_confeccion.sort()
                             st.toast(f"✅ Agregado/a: {n_limpio}")
                             st.rerun()
-                        elif (
-                            n_limpio
-                            in st.session_state.lista_personal_confeccion
-                        ):
-                            st.warning(
-                                "⚠️ Esta persona ya se encuentra en la lista."
-                            )
 
                 with tab_edit:
                     c_e1, c_e2, c_e3 = st.columns([2, 2, 1])
-                    pers_a_mod = c_e1.selectbox(
-                        "Persona a modificar:",
-                        st.session_state.lista_personal_confeccion,
-                        key="adm_sel_mod",
-                    )
-                    nombre_modificado = c_e2.text_input(
-                        "Nombre corregido:",
-                        value=pers_a_mod,
-                        key=f"adm_txt_mod_{pers_a_mod}",
-                    )
+                    pers_a_mod = c_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key="adm_sel_mod")
+                    nombre_modificado = c_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_{pers_a_mod}")
                     if c_e3.button("Actualizar", use_container_width=True):
-                        if (
-                            nombre_modificado.strip()
-                            and pers_a_mod
-                            in st.session_state.lista_personal_confeccion
-                        ):
-                            idx_mod = (
-                                st.session_state.lista_personal_confeccion.index(
-                                    pers_a_mod
-                                )
-                            )
-                            st.session_state.lista_personal_confeccion[
-                                idx_mod
-                            ] = nombre_modificado.strip()
+                        if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
+                            idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
+                            st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
                             st.session_state.lista_personal_confeccion.sort()
-                            st.toast(
-                                f"✅ Actualizado: {nombre_modificado.strip()}"
-                            )
+                            st.toast(f"✅ Actualizado: {nombre_modificado.strip()}")
                             st.rerun()
 
                 with tab_del:
                     c_d1, c_d2 = st.columns([3, 1])
-                    pers_a_borrar = c_d1.selectbox(
-                        "Persona a eliminar del catálogo:",
-                        st.session_state.lista_personal_confeccion,
-                        key="adm_sel_del",
-                    )
+                    pers_a_borrar = c_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key="adm_sel_del")
                     if c_d2.button("Eliminar", use_container_width=True):
-                        if (
-                            pers_a_borrar
-                            in st.session_state.lista_personal_confeccion
-                        ):
-                            st.session_state.lista_personal_confeccion.remove(
-                                pers_a_borrar
-                            )
+                        if pers_a_borrar in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
                             st.toast(f"🗑️ Eliminado/a: {pers_a_borrar}")
                             st.rerun()
 
@@ -2451,10 +1879,7 @@ else:
 
                 tiempo_base_ia = estimar_tiempo_unidad(p_nom)
 
-                st.markdown(
-                    f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid "
-                    f"| Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*"
-                )
+                st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*")
 
                 key_num_pers = f"num_pers_prod_{idx}"
                 if key_num_pers not in st.session_state:
@@ -2464,34 +1889,22 @@ else:
                 if col_b1.button("➕  Persona", key=f"add_pers_{idx}"):
                     st.session_state[key_num_pers] += 1
                     st.rerun()
-                if (
-                    col_b2.button("➖  Quitar", key=f"del_pers_{idx}")
-                    and st.session_state[key_num_pers] > 1
-                ):
+                if col_b2.button("➖  Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
                     st.session_state[key_num_pers] -= 1
                     st.rerun()
 
                 conf_del_prod = [c for c in saved_conf_list if c.get("producto") == p_nom]
 
                 for p_idx in range(st.session_state[key_num_pers]):
-                    c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns(
-                        [1.8, 3.0, 1.4, 1.8, 1.8]
-                    )
+                    c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([1.8, 3.0, 1.4, 1.8, 1.8])
 
                     c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
                     rol_prev_val = c_item_prev.get("rol", "Confección")
                     idx_rol = 0 if rol_prev_val == "Confección" else 1
 
-                    rol_sel = c_rol.selectbox(
-                        "Rol *",
-                        ["Confección", "Acabado"],
-                        index=idx_rol,
-                        key=f"soc_rol_{idx}_{p_idx}",
-                    )
+                    rol_sel = c_rol.selectbox("Rol *", ["Confección", "Acabado"], index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
 
-                    opciones_personas = list(
-                        st.session_state.lista_personal_confeccion
-                    )
+                    opciones_personas = list(st.session_state.lista_personal_confeccion)
                     opcion_otro = "➕ Otro (Escribir nuevo nombre)"
                     if opcion_otro not in opciones_personas:
                         opciones_personas.append(opcion_otro)
@@ -2502,126 +1915,61 @@ else:
                         st.session_state.lista_personal_confeccion.sort()
                         opciones_personas = list(st.session_state.lista_personal_confeccion) + [opcion_otro]
 
-                    idx_pers = (
-                        opciones_personas.index(pers_guardada)
-                        if pers_guardada in opciones_personas
-                        else 0
-                    )
+                    idx_pers = opciones_personas.index(pers_guardada) if pers_guardada in opciones_personas else 0
 
-                    persona_sel = c_persona.selectbox(
-                        "Persona Encargada *",
-                        opciones_personas,
-                        index=idx_pers,
-                        key=f"soc_pers_sel_{idx}_{p_idx}",
-                    )
+                    persona_sel = c_persona.selectbox("Persona Encargada *", opciones_personas, index=idx_pers, key=f"soc_pers_sel_{idx}_{p_idx}")
 
                     if persona_sel == opcion_otro:
-                        nuevo_nombre_escrito = c_persona.text_input(
-                            "Escribe el nombre *",
-                            placeholder="Nombre y Apellido",
-                            key=f"soc_pers_txt_custom_{idx}_{p_idx}",
-                        )
-                        persona_nom = (
-                            nuevo_nombre_escrito.strip()
-                            if nuevo_nombre_escrito.strip()
-                            else f"Persona {p_idx+1}"
-                        )
-                        if (
-                            nuevo_nombre_escrito.strip()
-                            and nuevo_nombre_escrito.strip()
-                            not in st.session_state.lista_personal_confeccion
-                        ):
-                            st.session_state.lista_personal_confeccion.append(
-                                nuevo_nombre_escrito.strip()
-                            )
+                        nuevo_nombre_escrito = c_persona.text_input("Escribe el nombre *", placeholder="Nombre y Apellido", key=f"soc_pers_txt_custom_{idx}_{p_idx}")
+                        persona_nom = nuevo_nombre_escrito.strip() if nuevo_nombre_escrito.strip() else f"Persona {p_idx+1}"
+                        if nuevo_nombre_escrito.strip() and nuevo_nombre_escrito.strip() not in st.session_state.lista_personal_confeccion:
+                            st.session_state.lista_personal_confeccion.append(nuevo_nombre_escrito.strip())
                             st.session_state.lista_personal_confeccion.sort()
                     else:
                         persona_nom = persona_sel
 
-                    cant_sugerida = (
-                        max(1, int(p_cant / st.session_state[key_num_pers]))
-                        if p_cant > 0
-                        else 0
-                    )
+                    cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
                     cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
 
-                    cant_asig = c_cant_asig.number_input(
-                        "Unid. Asignadas *",
-                        min_value=0,
-                        max_value=max(p_cant, cant_init),
-                        value=cant_init,
-                        key=f"soc_cant_{idx}_{p_idx}",
-                    )
+                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=max(p_cant, cant_init), value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
 
                     if rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                        c_tiempo.text_input(
-                            "Tiempo/Unid (hrs) [Acabado 20%]",
-                            value=f"{tiempo_unitario:.3f} hrs",
-                            disabled=True,
-                            key=f"soc_tunit_calc_{idx}_{p_idx}",
-                        )
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acabado 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
                     else:
                         tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
-                        tiempo_unitario = c_tiempo.number_input(
-                            "Tiempo/Unid (hrs) *",
-                            min_value=0.0,
-                            value=tunit_init,
-                            step=0.05,
-                            key=f"soc_tunit_{idx}_{p_idx}_{p_nom}",
-                        )
+                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
 
                     horas_persona = cant_asig * tiempo_unitario
 
-                    c_tot.text_input(
-                        "Horas Totales",
-                        value=f"{horas_persona:.2f} hrs",
-                        disabled=True,
-                        key=f"soc_htot_{idx}_{p_idx}",
-                    )
+                    c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}")
 
                     horas_confeccion_total += horas_persona
                     if persona_nom.strip():
                         personas_confeccion_set.add(persona_nom.strip())
 
                     lista_confeccion.append({
-                        "producto": p_nom,
-                        "rol": rol_sel,
-                        "persona": persona_nom,
-                        "cantidad": cant_asig,
-                        "tiempo_unitario": tiempo_unitario,
-                        "horas_totales": horas_persona,
+                        "producto": p_nom, "rol": rol_sel, "persona": persona_nom,
+                        "cantidad": cant_asig, "tiempo_unitario": tiempo_unitario, "horas_totales": horas_persona,
                     })
 
             total_horas_social = total_horas_ops + horas_confeccion_total
-            total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(
-                personas_confeccion_set
-            )
+            total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(personas_confeccion_set)
 
-            st.info(
-                "🧑‍🤝‍🧑 **Impacto Social Total:**"
-                f" {total_horas_social:.2f} horas generadas |"
-                f" {total_personas_social} personas beneficiadas."
-            )
+            st.info(f"🧑‍🤝‍🧑 **Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas.")
 
         st.write("")
 
         # --- SECCIÓN 8: ANEXOS ---
         with st.container(border=True):
             st.subheader("8. Anexos (Registro Fotográfico Adicional)")
-            st.caption(
-                "Agrega fotografías adicionales de colaboradoras con sus"
-                " productos, procesos en taller, etc."
-            )
+            st.caption("Agrega fotografías adicionales de colaboradoras con sus productos, procesos en taller, etc.")
 
             col_anx1, col_anx2, _ = st.columns([1, 1, 4])
             if col_anx1.button("➕     Agregar Anexo"):
                 st.session_state.num_anexos += 1
                 st.rerun()
-            if (
-                col_anx2.button("➖     Quitar Anexo")
-                and st.session_state.num_anexos > 0
-            ):
+            if col_anx2.button("➖     Quitar Anexo") and st.session_state.num_anexos > 0:
                 st.session_state.num_anexos -= 1
                 st.rerun()
 
@@ -2636,54 +1984,30 @@ else:
                 nota_prev = anx_prev.get("nota", "")
                 foto_url_prev = anx_prev.get("foto_url", "")
 
-                foto_anx = col_afoto.file_uploader(
-                    "Fotografía de Evidencia",
-                    type=["jpg", "png", "jpeg"],
-                    key=f"anx_foto_{a_i}",
-                )
+                foto_anx = col_afoto.file_uploader("Fotografía de Evidencia", type=["jpg", "png", "jpeg"], key=f"anx_foto_{a_i}")
 
                 if foto_anx is not None:
                     col_afoto.image(foto_anx, width=110)
                 elif foto_url_prev:
                     col_afoto.image(foto_url_prev, width=110)
 
-                nota_anx = col_anota.text_area(
-                    "Nota / Descripción de la evidencia",
-                    value=nota_prev,
-                    placeholder="Ej. Colaboradora elaborando productos...",
-                    key=f"anx_nota_{a_i}",
-                    height=90,
-                )
+                nota_anx = col_anota.text_area("Nota / Descripción de la evidencia", value=nota_prev, placeholder="Ej. Colaboradora elaborando productos...", key=f"anx_nota_{a_i}", height=90)
 
                 lista_anexos.append({
-                    "foto_up": foto_anx,
-                    "foto_url": foto_url_prev,
-                    "nota": nota_anx,
-                    "foto": foto_anx if foto_anx is not None else foto_url_prev
+                    "foto_up": foto_anx, "foto_url": foto_url_prev, "nota": nota_anx, "foto": foto_anx if foto_anx is not None else foto_url_prev
                 })
 
         st.write("")
 
-        def _validar_informe_final(
-            cliente_val, ruc_val, responsable_val, origen_val, items_val
-        ):
+        def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, items_val):
             errores = []
-            if not cliente_val.strip():
-                errores.append("Falta 'Cliente / Empresa' en Ficha General.")
-            if not ruc_val.strip() or not re.fullmatch(
-                r"\d{11}", ruc_val.strip()
-            ):
-                errores.append("El 'RUC' debe tener 11 dígitos numéricos.")
-            if not responsable_val.strip():
-                errores.append("Falta 'Responsable' en Ficha General.")
-            if not origen_val.strip():
-                errores.append("Falta 'Punto Origen' en Ficha General.")
+            if not cliente_val.strip(): errores.append("Falta 'Cliente / Empresa' en Ficha General.")
+            if not ruc_val.strip() or not re.fullmatch(r"\d{11}", ruc_val.strip()): errores.append("El 'RUC' debe tener 11 dígitos numéricos.")
+            if not responsable_val.strip(): errores.append("Falta 'Responsable' en Ficha General.")
+            if not origen_val.strip(): errores.append("Falta 'Punto Origen' en Ficha General.")
             for i_item, v_item in enumerate(items_val, 1):
                 if v_item["unidades"] <= 0 or v_item["peso_total"] <= 0:
-                    errores.append(
-                        f"En Ingreso de Material (Ítem {i_item}), las unidades y"
-                        " el peso total deben ser mayores a 0."
-                    )
+                    errores.append(f"En Ingreso de Material (Ítem {i_item}), las unidades y el peso total deben ser mayores a 0.")
             return errores
 
         # --- FUNCIÓN AYUDANTE: SUBIR TODAS LAS FOTOS A SUPABASE Y ARMAR DICCIONARIO ---
