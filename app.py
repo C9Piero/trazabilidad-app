@@ -29,8 +29,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
-def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
-    """Crea o busca la estructura de carpetas: AÑO / MES / CLIENTE en Google Drive"""
+def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, codigo_proy: str):
+    """Crea o busca la estructura de carpetas: AÑO / MES / CLIENTE / PROYECTO en Google Drive"""
     try:
         if "drive_oauth" not in st.secrets:
             return None
@@ -45,7 +45,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
-        # 1. Determinar el Año (Quitamos restricción del root para evitar bloqueos)
+        # 1. Determinar el Año
         nombre_carpeta_anio = str(fecha_fin_dt.year)
         query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
@@ -89,7 +89,20 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         else:
             id_cli = res_cli.get('files')[0].get('id')
 
-        return id_cli
+        # 4. Determinar la Carpeta Específica del Proyecto/Pedido (NUEVO)
+        query_proy = f"name='{codigo_proy}' and mimeType='application/vnd.google-apps.folder' and '{id_cli}' in parents and trashed=false"
+        res_proy = service.files().list(q=query_proy, fields='files(id)').execute()
+        
+        if not res_proy.get('files', []):
+            carpeta_proy = service.files().create(
+                body={'name': codigo_proy, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_cli]}, 
+                fields='id'
+            ).execute()
+            id_proy = carpeta_proy.get('id')
+        else:
+            id_proy = res_proy.get('files')[0].get('id')
+
+        return id_proy
     except Exception as e:
         st.caption(f"Aviso Carpetas Drive: {e}")
         return None
@@ -999,6 +1012,10 @@ if "pct_aprovechamiento_random" not in st.session_state:
 if "pct_transformado_ratio" not in st.session_state:
     st.session_state.pct_transformado_ratio = round(random.uniform(0.78, 0.83), 4)
 
+# --- INICIALIZADOR DE PIN ÚNICO AUTOMÁTICO ---
+if "uid_proyecto" not in st.session_state:
+    st.session_state.uid_proyecto = str(random.randint(1000, 9999))
+
 try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
@@ -1050,6 +1067,7 @@ else:
             st.session_state.proyecto_editar = {}
             st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+            st.session_state.uid_proyecto = str(random.randint(1000, 9999))  # Nuevo PIN cada vez
             st.rerun()
 
         if st.button(
@@ -1067,15 +1085,9 @@ else:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
                 fecha_proy = p.get("fecha", "")
-                dc_sidebar = p.get("datos_completos") or {}
-                lote_val = dc_sidebar.get("lote_pedido", "").strip()
-                
-                # --- CAMBIO: Mostrar si es un Lote/Pedido distinto en el menú ---
-                if lote_val:
-                    cli_nombre = f"{cli_nombre} (Lote {lote_val})"
                 
                 if fecha_proy:
-                    label_btn = f"📁 {cli_nombre} [{fecha_proy}]"
+                    label_btn = f"📁 {cli_nombre} ({fecha_proy})"
                 else:
                     label_btn = f"📁 {cli_nombre}"
 
@@ -1145,10 +1157,8 @@ else:
         with st.container(border=True):
             st.markdown("##### 1. Datos Generales del Proyecto")
             
-            # --- CAMBIO: Campo de Lote en Carga Rápida ---
-            rq1, rq_lote, rq2, rq3, rq4 = st.columns([2, 1, 1.5, 1.5, 1.5])
+            rq1, rq2, rq3, rq4 = st.columns(4)
             fast_cliente = rq1.text_input("Cliente / Empresa *")
-            fast_lote = rq_lote.text_input("Lote / N°", placeholder="Ej. 2")
             fast_ruc = rq2.text_input("RUC (11 dígitos) *", max_chars=11)
             fast_tipo = rq3.selectbox(
                 "Tipo de Proyecto", ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
@@ -1163,10 +1173,8 @@ else:
             fe_fin_str = fast_f_fin.strftime("%d/%m/%Y")
             
             cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
-            fast_lote_str = f"_{fast_lote.strip().replace(' ', '')}" if fast_lote.strip() else ""
             
-            # --- CÓDIGO INTELIGENTE CON LOTE ---
-            fast_codigo = f"{cli_clean}{fast_lote_str}_{fast_f_ini.strftime('%d%m%Y')}-{fast_f_fin.strftime('%d%m%Y')}"
+            fast_codigo = f"{cli_clean}_{fast_f_ini.strftime('%d%m%Y')}-{fast_f_fin.strftime('%d%m%Y')}-{random.randint(1000, 9999)}"
 
             st.info(f"🆔 **Código Generado:** `{fast_codigo}`")
 
@@ -1205,8 +1213,7 @@ else:
                             "punto_origen": fast_origen,
                             "datos_completos": {
                                 "participantes": fast_personas, 
-                                "unidades_recibidas": fast_unid_recibidas,
-                                "lote_pedido": fast_lote.strip()
+                                "unidades_recibidas": fast_unid_recibidas
                             }
                         }).execute()
                     st.success(f"✅ ¡Proyecto **{fast_cliente}** registrado exitosamente en el Histórico!")
@@ -1228,10 +1235,6 @@ else:
                     bc1, bc2, bc3 = st.columns([3, 2, 2])
                     
                     nombre_cli_ui = b.get('cliente', 'Sin Nombre')
-                    lote_ui = (b.get("datos_completos") or {}).get("lote_pedido", "").strip()
-                    if lote_ui:
-                        nombre_cli_ui = f"{nombre_cli_ui} (Lote {lote_ui})"
-
                     bc1.markdown(f"**Cliente:** {nombre_cli_ui}")
                     bc1.caption(f"Código: `{b.get('codigo', '')}`")
                     bc2.markdown(f"**Tipo:** {b.get('tipo_proyecto', 'Upcycling')}")
@@ -1271,7 +1274,6 @@ else:
             elif "unidades_recibidas" in dc:
                 tot_unids_recibidas += int(dc.get("unidades_recibidas", 0))
 
-        # --- CAMBIO: 5 COLUMNAS EN LUGAR DE 4 ---
         dm1, dm2, dm3, dm4, dm5 = st.columns(5)
         dm1.metric("📦 Uniformes Transformados", f"{tot_unids_recibidas} unid")
         dm2.metric("⚖️ Peso Total Procesado", f"{tot_peso:.2f} kg")
@@ -1369,9 +1371,6 @@ else:
                     hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
                     
                     nombre_cli_ui = p.get('cliente', 'Sin Nombre')
-                    lote_ui = (p.get("datos_completos") or {}).get("lote_pedido", "").strip()
-                    if lote_ui:
-                        nombre_cli_ui = f"{nombre_cli_ui} (Lote {lote_ui})"
 
                     hc1.markdown(f"**{nombre_cli_ui}**")
                     hc1.caption(f"ID/Código: `{p.get('codigo', '')}`")
@@ -1478,10 +1477,8 @@ else:
             try: def_f_fin = datetime.datetime.strptime(fechas_raw[1].strip(), "%d/%m/%Y").date()
             except Exception: def_f_fin = datetime.date.today()
 
-            # --- CAMBIO: Campo de Lote en Ficha General ---
-            c1, c_lote, c2, c5, c6 = st.columns([2, 1, 1.5, 1.5, 1.5])
+            c1, c2, c5, c6 = st.columns(4)
             cliente = c1.text_input("Cliente / Empresa *", value=p_edit.get("cliente", ""))
-            lote_pedido = c_lote.text_input("Lote / N°", value=dc.get("lote_pedido", ""), placeholder="Ej. 2")
             ruc = c2.text_input("RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11)
             
             fe_inicio_dt = c5.date_input("Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY")
@@ -1492,9 +1489,11 @@ else:
 
             str_empresa = cliente.strip() if cliente.strip() else "EMPRESA"
             
-            # --- CÓDIGO INTELIGENTE CON LOTE ---
-            str_lote = f"_{lote_pedido.strip().replace(' ', '')}" if lote_pedido.strip() else ""
-            codigo_proy = f"{str_empresa}{str_lote}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}"
+            # --- CÓDIGO INTELIGENTE CON PIN DE 4 DÍGITOS ---
+            if p_edit.get("codigo"):
+                codigo_proy = p_edit["codigo"]
+            else:
+                codigo_proy = f"{str_empresa}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}-{st.session_state.uid_proyecto}"
 
             st.info(f"🆔 **Código del Proyecto (Generado automáticamente):** `{codigo_proy}`")
 
@@ -1611,6 +1610,7 @@ else:
 
             peso_corte_conf_auto = round(peso_total_recibido * st.session_state.pct_aprovechamiento_random, 2)
 
+            # --- SINCRONIZACIÓN DE FECHAS ---
             etapas_fijas = [
                 {"etapa": "Clasificación", "fecha": fe_inicio_dt, "resp_defecto": "Evelyn Prada Vizarreta", "peso_defecto": peso_total_recibido, "tipo": "Registro interno"},
                 {"etapa": "Lavado", "fecha": datetime.date.today(), "resp_defecto": "Lavandería", "peso_defecto": 0.0, "tipo": "Servicio Externo"},
@@ -1631,6 +1631,7 @@ else:
                 fec_prev_str = traza_prev.get("fecha")
                 no_aplica_prev = traza_prev.get("no_aplica", False)
                 
+                # --- Aseguramos que la Etapa 1 siempre tenga la fecha de inicio ---
                 if item_fijo["etapa"] == "Clasificación":
                     fec_val_def = fe_inicio_dt
                 else:
@@ -1646,6 +1647,7 @@ else:
                 is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
                 foto_url_prev = traza_prev.get("foto_url", "")
 
+                # --- Lógica Especial para Etapa de Lavado (No aplica) ---
                 if item_fijo["etapa"] == "Lavado":
                     no_aplica = c_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}")
                     permitir_editar = not no_aplica
@@ -1666,6 +1668,7 @@ else:
 
                 e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
                 
+                # --- Bloqueamos la edición de la fecha en la Etapa 1 o si "No Aplica" ---
                 deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
                 e_fec_val = c_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
 
@@ -2193,7 +2196,6 @@ else:
                 })
 
             return {
-                "lote_pedido": lote_pedido.strip(),
                 "responsables_seleccionados": responsables_seleccionados,
                 "origen": origen, "num_items": st.session_state.num_items,
                 "items": items_db, "trazabilidad": traza_db, "num_prods": st.session_state.num_prods,
@@ -2312,7 +2314,7 @@ else:
                             
                             # 5. Subir a GOOGLE DRIVE
                             try:
-                                carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt)
+                                carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt, codigo_proy)
                                 subir_a_drive(f"Informe_{codigo_proy}.pdf", bytes_informe, "application/pdf", custom_folder_id=carpeta_destino_id)
                                 subir_a_drive(f"Constancia_{codigo_proy}.pdf", bytes_constancia, "application/pdf", custom_folder_id=carpeta_destino_id)
                                 subir_a_drive(f"Paquete_Completo_{codigo_proy}.zip", bytes_zip, "application/zip", custom_folder_id=carpeta_destino_id)
