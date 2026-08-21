@@ -1168,7 +1168,6 @@ else:
 
             fast_tipo = rq4.selectbox("Tipo de Proyecto", ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"])
             
-            # Generador de fecha interna para el ordenamiento automático
             mes_num = meses_lista.index(fast_mes) + 1
             fe_ini_str = f"01/{mes_num:02d}/{fast_anio}"
             fe_fin_str = f"28/{mes_num:02d}/{fast_anio}"
@@ -1309,7 +1308,6 @@ else:
                     participantes = dc.get("participantes", 0)
                     unidades_recibidas = dc.get("unidades_recibidas", 0)
 
-                # Tabla limpia sin la columna N°
                 tabla_data.append({
                     "Cliente": p.get("cliente", "Sin Nombre"),
                     "Mes": mes_texto,
@@ -1465,6 +1463,7 @@ else:
             if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
                 modal_confirmar_eliminacion(p_edit)
 
+        # --- SECCIÓN 1 CON AYUDAS VISUALES (TOOLTIPS "HELP") ---
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
 
@@ -1476,11 +1475,11 @@ else:
             except Exception: def_f_fin = datetime.date.today()
 
             c1, c2, c5, c6 = st.columns(4)
-            cliente = c1.text_input("Cliente / Empresa *", value=p_edit.get("cliente", ""))
-            ruc = c2.text_input("RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11)
+            cliente = c1.text_input("Cliente / Empresa *", value=p_edit.get("cliente", ""), help="Nombre de la empresa o cliente corporativo.")
+            ruc = c2.text_input("RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11, help="RUC de 11 dígitos de la empresa cliente.")
             
-            fe_inicio_dt = c5.date_input("Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY")
-            fe_fin_dt = c6.date_input("Fecha Término *", value=def_f_fin, format="DD/MM/YYYY")
+            fe_inicio_dt = c5.date_input("Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY", help="Fecha en la que se recibieron los uniformes o materiales.")
+            fe_fin_dt = c6.date_input("Fecha Término *", value=def_f_fin, format="DD/MM/YYYY", help="Fecha de culminación y entrega final del proceso.")
 
             fe_inicio = fe_inicio_dt.strftime("%d/%m/%Y")
             fe_fin = fe_fin_dt.strftime("%d/%m/%Y")
@@ -1499,7 +1498,7 @@ else:
             tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
             idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
 
-            proyecto_nom = c4.selectbox("Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo)
+            proyecto_nom = c4.selectbox("Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo, help="Clasificación del tipo de servicio realizado.")
 
             RESPONSABLES_BASE = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado"]
             responsables_guardados = p_edit.get("responsables", [])
@@ -1521,6 +1520,7 @@ else:
                 default=[r for r in responsables_guardados if r in opciones_responsables],
                 placeholder="Selecciona uno o más",
                 key="responsables_proyecto",
+                help="Responsable(s) internos a cargo del proyecto.",
             )
 
             nuevo_responsable = c7.text_input("➕ Agregar otro responsable", placeholder="Nombre completo", key="nuevo_responsable_proyecto")
@@ -1530,11 +1530,11 @@ else:
                     responsables_seleccionados.append(nuevo_responsable.strip())
 
             responsable = ", ".join(responsables_seleccionados)
-            area = c8.text_input("Área", value="Sostenibilidad", disabled=True)
-            guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia", "") or dc.get("guia_remision", ""))
+            area = c8.text_input("Área", value="Sostenibilidad", disabled=True, help="Área interna encargada.")
+            guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia", "") or dc.get("guia_remision", ""), help="Guía de remisión con la que llegaron los uniformes.")
 
             origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
-            origen = st.text_input("Punto Origen *", value=origen_default)
+            origen = st.text_input("Punto Origen *", value=origen_default, help="Lugar o dirección de donde vinieron los uniformes.")
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
 
         st.write("")
@@ -2362,4 +2362,4 @@ else:
             c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
             c_dzip.download_button("📦 Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
             c_dinf.download_button("📄 Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
-            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
+            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_lnlimpio']}.pdf", mime="application/pdf", use_container_width=True)
