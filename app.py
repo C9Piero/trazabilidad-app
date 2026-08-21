@@ -1701,17 +1701,56 @@ else:
 
         st.write("")
 
-        with st.container(border=True):
+with st.container(border=True):
             st.subheader("4. Salida de Productos")
+            
+            # --- ADMINISTRADOR DEL CATÁLOGO DE PRODUCTOS ---
+            with st.expander("⚙️ Administrar Catálogo de Productos (Agregar, Modificar o Eliminar)"):
+                tab_p_add, tab_p_edit, tab_p_del = st.tabs(["➕ Agregar Producto", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
+
+                with tab_p_add:
+                    c_pa1, c_pa2 = st.columns([3, 1])
+                    nuevo_producto_cat = c_pa1.text_input("Nombre del nuevo producto:", placeholder="Ej. Mochila ejecutiva", key="adm_prod_input_add")
+                    if c_pa2.button("Guardar en Catálogo", use_container_width=True, key="btn_add_prod_cat"):
+                        np_limpio = nuevo_producto_cat.strip()
+                        if np_limpio and np_limpio not in st.session_state.catalogo_productos:
+                            if "➕ Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
+                                st.session_state.catalogo_productos.insert(-1, np_limpio)
+                            else:
+                                st.session_state.catalogo_productos.append(np_limpio)
+                            st.toast(f"✅ Producto agregado: {np_limpio}")
+                            st.rerun()
+
+                with tab_p_edit:
+                    c_pe1, c_pe2, c_pe3 = st.columns([2, 2, 1])
+                    prods_editables = [p for p in st.session_state.catalogo_productos if "Otro" not in p]
+                    prod_a_mod = c_pe1.selectbox("Producto a modificar:", prods_editables, key="adm_prod_sel_mod")
+                    prod_modificado = c_pe2.text_input("Nombre corregido:", value=prod_a_mod if prod_a_mod else "", key=f"adm_prod_txt_mod_{prod_a_mod}")
+                    if c_pe3.button("Actualizar", use_container_width=True, key="btn_edit_prod_cat"):
+                        if prod_modificado.strip() and prod_a_mod in st.session_state.catalogo_productos:
+                            idx_mod = st.session_state.catalogo_productos.index(prod_a_mod)
+                            st.session_state.catalogo_productos[idx_mod] = prod_modificado.strip()
+                            st.toast(f"✅ Producto actualizado: {prod_modificado.strip()}")
+                            st.rerun()
+
+                with tab_p_del:
+                    c_pd1, c_pd2 = st.columns([3, 1])
+                    prods_borrables = [p for p in st.session_state.catalogo_productos if "Otro" not in p]
+                    prod_a_borrar = c_pd1.selectbox("Producto a eliminar del catálogo:", prods_borrables, key="adm_prod_sel_del")
+                    if c_pd2.button("Eliminar", use_container_width=True, key="btn_del_prod_cat"):
+                        if prod_a_borrar in st.session_state.catalogo_productos:
+                            st.session_state.catalogo_productos.remove(prod_a_borrar)
+                            st.toast(f"🗑️ Producto eliminado: {prod_a_borrar}")
+                            st.rerun()
 
             if "num_prods" not in st.session_state:
                 st.session_state.num_prods = 2
 
             cp_btn1, cp_btn2, _ = st.columns([1, 1, 4])
-            if cp_btn1.button("➕     Agregar Producto"):
+            if cp_btn1.button("➕     Agregar Ítem de Producto"):
                 st.session_state.num_prods += 1
                 st.rerun()
-            if cp_btn2.button("➖     Quitar Producto") and st.session_state.num_prods > 1:
+            if cp_btn2.button("➖     Quitar Ítem de Producto") and st.session_state.num_prods > 1:
                 st.session_state.num_prods -= 1
                 st.rerun()
 
