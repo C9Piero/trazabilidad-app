@@ -24,7 +24,7 @@ from reportlab.platypus import (
 )
 from supabase import Client, create_client
 
-# --- NUEVAS LIBRERÍAS DE GOOGLE DRIVE (OAUTH) ---
+# --- LIBRERÍAS DE GOOGLE DRIVE (OAUTH) ---
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -45,7 +45,6 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
-        # 1. Determinar el Año (¡CON CANDADO A LA CARPETA RAÍZ!)
         nombre_carpeta_anio = str(fecha_fin_dt.year)
         query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
@@ -59,7 +58,6 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         else:
             id_anio = res_anio.get('files')[0].get('id')
 
-        # 2. Determinar el Mes 
         meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 
                  7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
         nombre_carpeta_mes = meses.get(fecha_fin_dt.month, 'MES')
@@ -75,7 +73,6 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         else:
             id_mes = res_mes.get('files')[0].get('id')
 
-        # 3. Determinar el Nombre del Cliente
         nombre_cliente = cliente.strip().upper().replace("'", "")
         query_cli = f"name='{nombre_cliente}' and mimeType='application/vnd.google-apps.folder' and '{id_mes}' in parents and trashed=false"
         res_cli = service.files().list(q=query_cli, fields='files(id)').execute()
@@ -89,7 +86,6 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         else:
             id_cli = res_cli.get('files')[0].get('id')
 
-        # 4. Determinar la Carpeta Específica del Proyecto/Pedido
         query_proy = f"name='{nombre_subcarpeta}' and mimeType='application/vnd.google-apps.folder' and '{id_cli}' in parents and trashed=false"
         res_proy = service.files().list(q=query_proy, fields='files(id)').execute()
         
@@ -675,18 +671,15 @@ def generar_pdf_oficial(
     elements.append(t_ficha)
     elements.append(Spacer(1, 8))
 
-    # --- NUEVA FUNCIÓN PARA LEER IMÁGENES DESDE LA NUBE O ARCHIVO ---
     def obtener_imagen_pdf(foto_data, width, height):
         if foto_data is not None and foto_data != "":
             import urllib.request
             try:
-                # Si es un enlace guardado en la nube
                 if isinstance(foto_data, str) and foto_data.startswith("http"):
                     req = urllib.request.Request(foto_data, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(req) as response:
                         img_data = io.BytesIO(response.read())
                     return Image(img_data, width=width, height=height)
-                # Si es un archivo recien subido (bytes)
                 elif hasattr(foto_data, 'read'):
                     foto_data.seek(0)
                     img_data = io.BytesIO(foto_data.read())
@@ -1067,7 +1060,7 @@ else:
             st.session_state.proyecto_editar = {}
             st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
-            st.session_state.uid_proyecto = str(random.randint(1000, 9999))  # Nuevo PIN cada vez
+            st.session_state.uid_proyecto = str(random.randint(1000, 9999))
             st.rerun()
 
         if st.button(
@@ -1084,8 +1077,6 @@ else:
         if proyectos_wip:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
-                
-                # Barra lateral limpia sin fechas
                 label_btn = f"📁 {cli_nombre}"
 
                 es_activo = st.session_state.proyecto_editar.get("id") == p.get("id") or st.session_state.proyecto_editar.get("codigo") == p.get("codigo")
@@ -1146,7 +1137,7 @@ else:
         unsafe_allow_html=True,
     )
 
-    # --- VISTA: CARGA RÁPIDA HISTÓRICA (SIMPLIFICADA) ---
+    # --- VISTA: CARGA RÁPIDA HISTÓRICA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos / Pasados")
         st.caption("Ingresa únicamente la Razón Social, el Mes y las métricas necesarias para alimentar tu Dashboard.")
@@ -1252,7 +1243,7 @@ else:
         else:
             st.info("📭 No hay borradores en proceso actualmente.")
 
-    # --- VISTA: DASHBOARD 2026 (SIN COLUMNA "N°") ---
+    # --- VISTA: DASHBOARD 2026 ---
     elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
         st.subheader("📊 Dashboard de Sostenibilidad e Impacto 2026")
         st.caption("Métricas consolidadas de todos los proyectos completados en el sistema.")
@@ -1463,7 +1454,7 @@ else:
             if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
                 modal_confirmar_eliminacion(p_edit)
 
-# --- SECCIÓN 1 CON AYUDAS VISUALES OPTIMIZADAS ---
+        # --- SECCIÓN 1: FICHA GENERAL (CON TOOLTIPS DE AYUDA) ---
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
 
@@ -1535,11 +1526,11 @@ else:
 
             origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
             
-            # --- PUNTO DE ORIGEN CON ETIQUETA CLARA INTEGRADA ---
             st.markdown("**Punto Origen \*** <span style='font-weight: normal; color: #64748B; font-size: 0.85rem;'>(Lugar o dirección de donde vinieron los uniformes)</span>", unsafe_allow_html=True)
             origen = st.text_input("Punto Origen *", value=origen_default, label_visibility="collapsed")
             
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
+
         st.write("")
 
         with st.container(border=True):
@@ -1701,10 +1692,10 @@ else:
 
         st.write("")
 
-with st.container(border=True):
+        # --- SECCIÓN 4: SALIDA DE PRODUCTOS (CON GESTOR DE CATÁLOGO) ---
+        with st.container(border=True):
             st.subheader("4. Salida de Productos")
             
-            # --- ADMINISTRADOR DEL CATÁLOGO DE PRODUCTOS ---
             with st.expander("⚙️ Administrar Catálogo de Productos (Agregar, Modificar o Eliminar)"):
                 tab_p_add, tab_p_edit, tab_p_del = st.tabs(["➕ Agregar Producto", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
 
@@ -1800,6 +1791,7 @@ with st.container(border=True):
             st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
 
         st.write("")
+
         with st.container(border=True):
             st.subheader("5. Balance de Material")
             st.info(f"⚖️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
@@ -2403,4 +2395,4 @@ with st.container(border=True):
             c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
             c_dzip.download_button("📦 Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
             c_dinf.download_button("📄 Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
-            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_lnlimpio']}.pdf", mime="application/pdf", use_container_width=True)
+            c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
