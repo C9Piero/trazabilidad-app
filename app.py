@@ -1800,7 +1800,6 @@ with st.container(border=True):
             st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
 
         st.write("")
-
         with st.container(border=True):
             st.subheader("5. Balance de Material")
             st.info(f"⚖️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
