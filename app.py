@@ -1084,12 +1084,9 @@ else:
         if proyectos_wip:
             for p in proyectos_wip:
                 cli_nombre = p.get("cliente", "Sin Nombre")
-                fecha_proy = p.get("fecha", "")
                 
-                if fecha_proy:
-                    label_btn = f"📁 {cli_nombre} [{fecha_proy}]"
-                else:
-                    label_btn = f"📁 {cli_nombre}"
+                # Barra lateral limpia sin fechas
+                label_btn = f"📁 {cli_nombre}"
 
                 es_activo = st.session_state.proyecto_editar.get("id") == p.get("id") or st.session_state.proyecto_editar.get("codigo") == p.get("codigo")
 
@@ -1149,7 +1146,7 @@ else:
         unsafe_allow_html=True,
     )
 
-# --- VISTA: CARGA RÁPIDA HISTÓRICA ---
+    # --- VISTA: CARGA RÁPIDA HISTÓRICA (SIMPLIFICADA) ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos / Pasados")
         st.caption("Ingresa únicamente la Razón Social, el Mes y las métricas necesarias para alimentar tu Dashboard.")
@@ -1171,7 +1168,7 @@ else:
 
             fast_tipo = rq4.selectbox("Tipo de Proyecto", ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"])
             
-            # --- TRUCO: Generar fecha falsa para que el Dashboard lo lea perfecto ---
+            # Generador de fecha interna para el ordenamiento automático
             mes_num = meses_lista.index(fast_mes) + 1
             fe_ini_str = f"01/{mes_num:02d}/{fast_anio}"
             fe_fin_str = f"28/{mes_num:02d}/{fast_anio}"
@@ -1202,7 +1199,7 @@ else:
                         supabase.table("proyectos").upsert({
                             "codigo": fast_codigo, 
                             "cliente": fast_cliente, 
-                            "ruc": "00000000000", # RUC genérico para evitar errores en otras vistas
+                            "ruc": "00000000000", 
                             "tipo_proyecto": fast_tipo, 
                             "responsable": "Sostenibilidad (Histórico)",
                             "fecha": f"{fe_ini_str} - {fe_fin_str}", 
@@ -1256,7 +1253,7 @@ else:
         else:
             st.info("📭 No hay borradores en proceso actualmente.")
 
-    # --- VISTA: DASHBOARD 2026 ---
+    # --- VISTA: DASHBOARD 2026 (SIN COLUMNA "N°") ---
     elif st.session_state.pestaña_activa == "📊 Dashboard 2026":
         st.subheader("📊 Dashboard de Sostenibilidad e Impacto 2026")
         st.caption("Métricas consolidadas de todos los proyectos completados en el sistema.")
@@ -1288,7 +1285,7 @@ else:
         st.markdown("##### 📋 Resumen General de Proyectos Registrados")
         if completados:
             tabla_data = []
-            for i, p in enumerate(completados):
+            for p in completados:
                 fecha_str = p.get("fecha", "")
                 mes_texto = "N/D"
                 if "-" in fecha_str:
@@ -1312,8 +1309,8 @@ else:
                     participantes = dc.get("participantes", 0)
                     unidades_recibidas = dc.get("unidades_recibidas", 0)
 
+                # Tabla limpia sin la columna N°
                 tabla_data.append({
-                    "N°": i + 1,
                     "Cliente": p.get("cliente", "Sin Nombre"),
                     "Mes": mes_texto,
                     "Unidades recibidas": int(unidades_recibidas) if unidades_recibidas > 0 else None,
@@ -1335,7 +1332,6 @@ else:
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "N°": st.column_config.NumberColumn("N°", format="%d", alignment="center", width="small"),
                     "Cliente": st.column_config.TextColumn("Cliente", width="medium"),
                     "Mes": st.column_config.TextColumn("Mes", alignment="center"),
                     "Unidades recibidas": st.column_config.NumberColumn("Unidades recibidas", format="%d", alignment="center"),
@@ -1408,7 +1404,6 @@ else:
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
-        # Sincronización de estado
         target_proj_id = p_edit.get("id") or p_edit.get("codigo") or "__nuevo__"
         current_loaded = st.session_state.get("_loaded_project_id", None)
 
@@ -1492,7 +1487,6 @@ else:
 
             str_empresa = cliente.strip() if cliente.strip() else "EMPRESA"
             
-            # --- CÓDIGO INTELIGENTE CON PIN DE 4 DÍGITOS ---
             if p_edit.get("codigo"):
                 codigo_proy = p_edit["codigo"]
             else:
@@ -1613,7 +1607,6 @@ else:
 
             peso_corte_conf_auto = round(peso_total_recibido * st.session_state.pct_aprovechamiento_random, 2)
 
-            # --- SINCRONIZACIÓN DE FECHAS ---
             etapas_fijas = [
                 {"etapa": "Clasificación", "fecha": fe_inicio_dt, "resp_defecto": "Evelyn Prada Vizarreta", "peso_defecto": peso_total_recibido, "tipo": "Registro interno"},
                 {"etapa": "Lavado", "fecha": datetime.date.today(), "resp_defecto": "Lavandería", "peso_defecto": 0.0, "tipo": "Servicio Externo"},
@@ -1634,7 +1627,6 @@ else:
                 fec_prev_str = traza_prev.get("fecha")
                 no_aplica_prev = traza_prev.get("no_aplica", False)
                 
-                # --- Aseguramos que la Etapa 1 siempre tenga la fecha de inicio ---
                 if item_fijo["etapa"] == "Clasificación":
                     fec_val_def = fe_inicio_dt
                 else:
@@ -1650,7 +1642,6 @@ else:
                 is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
                 foto_url_prev = traza_prev.get("foto_url", "")
 
-                # --- Lógica Especial para Etapa de Lavado (No aplica) ---
                 if item_fijo["etapa"] == "Lavado":
                     no_aplica = c_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}")
                     permitir_editar = not no_aplica
@@ -1671,7 +1662,6 @@ else:
 
                 e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
                 
-                # --- Bloqueamos la edición de la fecha en la Etapa 1 o si "No Aplica" ---
                 deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
                 e_fec_val = c_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
 
@@ -2150,7 +2140,6 @@ else:
                     errores.append(f"En Ingreso de Material (Ítem {i_item}), las unidades y el peso total deben ser mayores a 0.")
             return errores
 
-        # --- FUNCIÓN AYUDANTE: SUBIR TODAS LAS FOTOS A SUPABASE Y ARMAR DICCIONARIO ---
         def procesar_fotos_y_armar_detalle():
             import time
             ts = int(time.time())
@@ -2250,7 +2239,6 @@ else:
                             "datos_completos": datos_detalle,
                         }
 
-                        # --- GUARDADO INTELIGENTE BORRADOR ---
                         proyecto_id = p_edit.get("id")
                         if not proyecto_id:
                             busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
@@ -2270,7 +2258,6 @@ else:
                 except Exception as e:
                     st.error(f"⚠️ Error al guardar el borrador: {e}")
 
-            # --- BOTÓN PRINCIPAL: GENERA INFORME + CONSTANCIA ---
             if col_gen1.button("🚀 Generar Reportes Oficiales (Informe + Constancia)", type="primary", use_container_width=True):
                 errores_final = _validar_informe_final(cliente, ruc, responsable, origen, lista_items)
                 if errores_final:
@@ -2279,7 +2266,6 @@ else:
                 else:
                     with st.spinner("Generando documentos, subiendo fotos y respaldando en la nube..."):
                         try:
-                            # 1. Generar Informe Técnico PDF
                             pdf_informe_buffer = generar_pdf_oficial(
                                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
                                 "Textiles en desuso", "Upcycling", "Kilogramos (kg)", guia_remision, origen, destino,
@@ -2291,7 +2277,6 @@ else:
                             )
                             bytes_informe = pdf_informe_buffer.getvalue()
 
-                            # 2. Generar Constancia Oficial PDF
                             mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                             contexto_word = {
                                 "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
@@ -2303,13 +2288,11 @@ else:
                             }
                             bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word)
 
-                            # --- NOMBRES LIMPIOS PARA DRIVE Y DESCARGAS ---
                             cliente_limpio = cliente.strip().replace("/", "-")
                             nombre_informe_limpio = f"Informe_Tecnico_{cliente_limpio}.pdf"
                             nombre_constancia_limpia = f"Constancia_{cliente_limpio}.pdf"
                             nombre_zip_limpio = f"Documentos_{cliente_limpio}.zip"
 
-                            # 3. Empaquetar en ZIP
                             zip_buffer = io.BytesIO()
                             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                                 zip_file.writestr(nombre_informe_limpio, bytes_informe)
@@ -2317,11 +2300,9 @@ else:
                             zip_buffer.seek(0)
                             bytes_zip = zip_buffer.getvalue()
 
-                            # 4. Subir a Supabase Storage (PDFs)
                             url_informe = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_informe)
                             url_constancia = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_constancia)
                             
-                            # 5. Subir a GOOGLE DRIVE
                             try:
                                 nombre_subcarpeta = f"Pedido {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})"
                                 carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt, nombre_subcarpeta)
@@ -2340,7 +2321,6 @@ else:
                                 "bytes_zip": bytes_zip,
                             }
 
-                            # 6. Procesar Fotos y Actualizar DB
                             try:
                                 datos_detalle = procesar_fotos_y_armar_detalle()
 
@@ -2366,7 +2346,7 @@ else:
                                     supabase.table("proyectos").insert(datos_completado).execute()
                                     
                                 st.session_state.proyecto_editar = {}
-                                st.session_state.uid_proyecto = str(random.randint(1000, 9999)) # Generar uno nuevo para el próximo reporte
+                                st.session_state.uid_proyecto = str(random.randint(1000, 9999))
                                 st.rerun()
 
                             except Exception as e_bd:
