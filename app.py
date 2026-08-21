@@ -1463,7 +1463,7 @@ else:
             if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
                 modal_confirmar_eliminacion(p_edit)
 
-        # --- SECCIÓN 1 CON AYUDAS VISUALES (TOOLTIPS "HELP") ---
+# --- SECCIÓN 1 CON AYUDAS VISUALES OPTIMIZADAS ---
         with st.container(border=True):
             st.subheader("1. Ficha General del Proyecto")
 
@@ -1534,9 +1534,12 @@ else:
             guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia", "") or dc.get("guia_remision", ""), help="Guía de remisión con la que llegaron los uniformes.")
 
             origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
-            origen = st.text_input("Punto Origen *", value=origen_default, help="Lugar o dirección de donde vinieron los uniformes.")
+            
+            # --- PUNTO DE ORIGEN CON ETIQUETA CLARA INTEGRADA ---
+            st.markdown("**Punto Origen \*** <span style='font-weight: normal; color: #64748B; font-size: 0.85rem;'>(Lugar o dirección de donde vinieron los uniformes)</span>", unsafe_allow_html=True)
+            origen = st.text_input("Punto Origen *", value=origen_default, label_visibility="collapsed")
+            
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
-
         st.write("")
 
         with st.container(border=True):
