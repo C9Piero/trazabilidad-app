@@ -162,24 +162,52 @@ PERSONAL_CONFECCION_BASE = [
     "Eugenia Almanza Huere", "Nicolle Estrada Yabe", "Oswaldo Jara Garcia", "Noelia Gonzales Lopez",
 ]
 
-# --- MATRIZ DE TIEMPOS ESTIMADOS (en horas/unidad) ---
-TIEMPOS_ESTIMADOS_PRODUCTO = {
-    "Mochila": 2.50, "Bolso": 1.50, "Tote bag": 0.80, "Portalaptop": 1.20,
-    "Canguro": 1.10, "Neceser": 0.70, "Lonchera": 1.00, "Cartuchera": 0.50,
-    "Morral": 1.20, "Mandiles": 0.60, "Cama perrito": 1.80, "Peluche": 1.50,
-    "Pelota": 0.80, "Estrellas": 0.35, "Corazones": 0.35, "Rombo": 0.35,
-    "Cúbica": 0.60, "Cubo": 0.50, "Llavero": 0.20, "Monedero": 0.30,
-    "Portacepillos": 0.25, "Portacubierto": 0.25, "Portaútiles": 0.40,
-    "Portabotella": 0.45, "Colets": 0.15, "Juguete": 0.75,
+# --- MATRIZ DE TIEMPOS DE CONFECCIÓN PURA Y RAZONAMIENTO INTELIGENTE (en horas) ---
+TIEMPOS_CONFECCION_PURO = {
+    "mochila": 0.60, "bolso": 0.45, "tote bag": 0.30, "portalaptop": 0.75,
+    "canguro": 0.50, "neceser": 0.35, "lonchera": 0.50, "cartuchera": 0.25,
+    "morral": 0.50, "mandiles": 0.30, "cama perrito": 0.80, "cama": 0.80, 
+    "casa": 0.80, "peluche": 0.60, "pelota": 0.30, "estrellas": 0.15, 
+    "corazones": 0.15, "rombo": 0.15, "cúbica": 0.25, "cubo": 0.25, 
+    "llavero": 0.10, "monedero": 0.15, "portacepillos": 0.12, 
+    "portacubierto": 0.12, "portaútiles": 0.20, "portabotella": 0.20, 
+    "colets": 0.08, "juguete": 0.40,
 }
 
 def estimar_tiempo_unidad(nombre_producto: str) -> float:
+    """Razona inteligentemente el tiempo exclusivo de confección (costura pura) de cualquier producto nuevo."""
     if not nombre_producto:
         return 0.35
-    for prod_key, tiempo in TIEMPOS_ESTIMADOS_PRODUCTO.items():
-        if prod_key.lower() in nombre_producto.lower():
-            return tiempo
-    return 0.35
+    
+    nombre_lower = nombre_producto.lower().strip()
+    
+    tiempo_costura = 0.40
+    encontrado = False
+    
+    for prod_key, tiempo in TIEMPOS_CONFECCION_PURO.items():
+        if prod_key in nombre_lower:
+            tiempo_costura = tiempo
+            encontrado = True
+            break
+            
+    if not encontrado:
+        if any(w in nombre_lower for w in ["casa", "cama", "colchón", "almohadón", "organizador"]):
+            tiempo_costura = 0.80
+        elif any(w in nombre_lower for w in ["mochila", "morral", "maletín", "set", "conjunto"]):
+            tiempo_costura = 0.70
+        elif any(w in nombre_lower for w in ["bolso", "tote", "lonchera", "funda", "delantal"]):
+            tiempo_costura = 0.45
+        elif any(w in nombre_lower for w in ["cartuchera", "neceser", "monedero", "estuche"]):
+            tiempo_costura = 0.30
+        else:
+            tiempo_costura = 0.35
+
+    if any(w in nombre_lower for w in ["gran", "grande", "maxi", "complejo", "completo", "xl", "pesado"]):
+        tiempo_costura += 0.25
+    elif any(w in nombre_lower for w in ["mini", "pequeño", "simple", "corto", "sencillo"]):
+        tiempo_costura = max(0.10, tiempo_costura - 0.15)
+        
+    return round(max(0.10, tiempo_costura), 2)
 
 # --- FACTORES DE EMISIÓN DE MATERIALES ---
 FACTORES_CO2 = {
@@ -2042,7 +2070,7 @@ else:
 
                 tiempo_base_ia = estimar_tiempo_unidad(p_nom)
 
-                st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*")
+                st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Costura Pura IA: {tiempo_base_ia:.2f} hrs/unid)*")
 
                 key_num_pers = f"num_pers_prod_{idx}"
                 if key_num_pers not in st.session_state:
