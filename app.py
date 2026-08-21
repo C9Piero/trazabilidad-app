@@ -94,7 +94,6 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt):
         st.caption(f"Aviso Carpetas Drive: {e}")
         return None
 
-# --- NUEVA FUNCIÓN: SUBIR A GOOGLE DRIVE CON OAUTH ---
 def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
     """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
     try:
@@ -1240,12 +1239,23 @@ else:
         tot_co2 = sum([float(p.get("co2_neto", 0) or 0) for p in completados])
         tot_horas = sum([float(p.get("horas_totales", 0) or 0) for p in completados])
         tot_unids = sum([int(p.get("productos_unids", 0) or 0) for p in completados])
+        
+        # --- CAMBIO: CÁLCULO DE UNIDADES RECIBIDAS ---
+        tot_unids_recibidas = 0
+        for p in completados:
+            dc = p.get("datos_completos") or {}
+            if "items" in dc:
+                tot_unids_recibidas += sum([int(it.get("unidades", 0)) for it in dc.get("items", [])])
+            elif "unidades_recibidas" in dc:
+                tot_unids_recibidas += int(dc.get("unidades_recibidas", 0))
 
-        dm1, dm2, dm3, dm4 = st.columns(4)
-        dm1.metric("📦 Uniformes Transformados", f"{tot_peso:.2f} kg")
-        dm2.metric("🌍 CO₂e Neto Evitado", f"{tot_co2:.2f} kg")
-        dm3.metric("⏳ Horas de Trabajo", f"{tot_horas:.2f} hrs")
-        dm4.metric("🛍️ Productos Creados", f"{tot_unids} unid")
+        # --- CAMBIO: 5 COLUMNAS EN LUGAR DE 4 ---
+        dm1, dm2, dm3, dm4, dm5 = st.columns(5)
+        dm1.metric("📦 Uniformes Transformados", f"{tot_unids_recibidas} unid")
+        dm2.metric("⚖️ Peso Total Procesado", f"{tot_peso:.2f} kg")
+        dm3.metric("🌍 CO₂e Neto Evitado", f"{tot_co2:.2f} kg")
+        dm4.metric("⏳ Horas de Trabajo", f"{tot_horas:.2f} hrs")
+        dm5.metric("🛍️ Productos Creados", f"{tot_unids} unid")
 
         st.write("")
         st.markdown("##### 📋 Resumen General de Proyectos Registrados")
