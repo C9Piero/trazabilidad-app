@@ -984,7 +984,7 @@ else:
             st.info("📭 No hay borradores en proceso actualmente.")
 
     # --- VISTA: DASHBOARD SÚPER DINÁMICO (PLOTLY) ---
-    elif st.session_state.pestaña_activa == "Dashboard Analítico":
+    elif st.session_state.pestaña_activa == "📊 Dashboard Analítico":
         st.markdown("<h3 style='color: #1E293B; font-weight: 700; margin-bottom: 5px;'>Panel de Control y Analítica Avanzada</h3>", unsafe_allow_html=True)
         st.markdown("<p style='color: #64748B; font-size: 0.95rem; margin-bottom: 25px;'>Filtra, analiza y visualiza el impacto histórico generado por los proyectos de sostenibilidad.</p>", unsafe_allow_html=True)
 
