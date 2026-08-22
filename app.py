@@ -631,6 +631,101 @@ def generar_pdf_oficial(
     buffer.seek(0)
     return buffer
 
+# --- NUEVA FUNCIÓN: GENERAR PDF DEL DASHBOARD ANALÍTICO ---
+def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
+    styles = getSampleStyleSheet()
+    
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=1, spaceAfter=6)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=20)
+    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
+    cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
+    cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
+    
+    elements = []
+    
+    # Determinar Títulos Dinámicos según los filtros aplicados
+    if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
+        titulo = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
+        sub = "Reporte consolidado del impacto ambiental y social generado durante el año."
+    elif sel_mes != "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
+        titulo = f"REPORTE MENSUAL DE SOSTENIBILIDAD - {sel_mes.upper()} {sel_anio}"
+        sub = "Resumen del impacto ambiental y social generado en el mes seleccionado."
+    else:
+        titulo = "REPORTE EJECUTIVO DE SOSTENIBILIDAD"
+        sub = f"Filtros: Año: {sel_anio} | Mes: {sel_mes} | Cliente: {sel_cli} | Tipo: {sel_tipo}"
+        
+    elements.append(Paragraph(titulo, h1_style))
+    elements.append(Paragraph(sub, sub_style))
+    
+    if df_fil.empty:
+        elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
+        doc.build(elements, canvasmaker=ReporteCanvas)
+        return buffer.getvalue()
+        
+    # Calcular Métricas Totales
+    kg_tot = df_fil['Kg Procesados'].sum()
+    co2_tot = df_fil['CO₂ Evitado'].sum()
+    hrs_tot = df_fil['Horas de Trabajo'].sum()
+    prods_tot = df_fil['Productos Creados'].sum()
+    unid_tot = df_fil['Unidades Recibidas'].sum()
+    
+    # Tabla de Impacto Global
+    elements.append(Paragraph("1. RESUMEN DE IMPACTO GLOBAL", h2_style))
+    data_metrics = [
+        [Paragraph("<b>Unidades Recibidas</b>", cell_bold), Paragraph("<b>Peso Procesado</b>", cell_bold), Paragraph("<b>Productos Creados</b>", cell_bold)],
+        [Paragraph(f"{int(unid_tot)} unid", cell_style), Paragraph(f"{kg_tot:.2f} kg", cell_style), Paragraph(f"{int(prods_tot)} unid", cell_style)],
+        [Paragraph("<b>CO2e Neto Evitado</b>", cell_bold), Paragraph("<b>Horas Generadas</b>", cell_bold), ""],
+        [Paragraph(f"{co2_tot:.2f} kg", cell_style), Paragraph(f"{hrs_tot:.2f} hrs", cell_style), ""]
+    ]
+    t_metrics = Table(data_metrics, colWidths=[180, 180, 180])
+    t_metrics.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+        ("PADDING", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
+    ]))
+    elements.append(t_metrics)
+    
+    # Top 5 Clientes
+    top5 = df_fil.groupby("Cliente")["CO₂ Evitado"].sum().reset_index().sort_values(by="CO₂ Evitado", ascending=False).head(5)
+    if not top5.empty:
+        elements.append(Paragraph("2. TOP CLIENTES POR IMPACTO AMBIENTAL (CO2e)", h2_style))
+        data_t5 = [[Paragraph("Ranking", cell_bold), Paragraph("Cliente / Empresa", cell_bold), Paragraph("CO2e Evitado", cell_bold)]]
+        for i, r in enumerate(top5.itertuples(), 1):
+            data_t5.append([Paragraph(str(i), cell_style), Paragraph(str(r.Cliente), cell_style), Paragraph(f"{r._2:.2f} kg", cell_style)])
+        t_top5 = Table(data_t5, colWidths=[60, 320, 160])
+        t_top5.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+            ("PADDING", (0, 0), (-1, -1), 6)
+        ]))
+        elements.append(t_top5)
+        
+    # Detalle de Proyectos
+    elements.append(Paragraph("3. DESGLOSE DE PROYECTOS", h2_style))
+    data_proy = [[Paragraph("Cliente", cell_bold), Paragraph("Mes", cell_bold), Paragraph("Kg Procesados", cell_bold), Paragraph("CO2e Evitado", cell_bold), Paragraph("Horas", cell_bold)]]
+    for idx, r in df_fil.iterrows():
+        data_proy.append([
+            Paragraph(str(r["Cliente"]), cell_style),
+            Paragraph(str(r["Mes"]), cell_style),
+            Paragraph(f"{r['Kg Procesados']:.1f}", cell_style),
+            Paragraph(f"{r['CO₂ Evitado']:.1f}", cell_style),
+            Paragraph(f"{r['Horas de Trabajo']:.1f}", cell_style)
+        ])
+    t_proy = Table(data_proy, colWidths=[180, 80, 90, 90, 100])
+    t_proy.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+        ("PADDING", (0, 0), (-1, -1), 5)
+    ]))
+    elements.append(t_proy)
+    
+    doc.build(elements, canvasmaker=ReporteCanvas)
+    return buffer.getvalue()
+
+
 # --- ESTADOS DE SESIÓN ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -983,10 +1078,10 @@ else:
         else:
             st.info("📭 No hay borradores en proceso actualmente.")
 
-    # --- VISTA: DASHBOARD SÚPER DINÁMICO (PLOTLY) ---
+    # --- VISTA: DASHBOARD SÚPER DINÁMICO ---
     elif st.session_state.pestaña_activa == "📊 Dashboard Analítico":
         st.markdown("<h3 style='color: #1E293B; font-weight: 700; margin-bottom: 5px;'>Panel de Control y Analítica Avanzada</h3>", unsafe_allow_html=True)
-        st.markdown("<p style='color: #64748B; font-size: 0.95rem; margin-bottom: 25px;'>Filtra, analiza y visualiza el impacto histórico generado por los proyectos de sostenibilidad.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748B; font-size: 0.95rem; margin-bottom: 25px;'>Filtra, analiza y descarga el impacto histórico generado por los proyectos de sostenibilidad.</p>", unsafe_allow_html=True)
 
         completados = cargar_proyectos("COMPLETADO")
         
@@ -1037,9 +1132,32 @@ else:
             if sel_cli != "Todos": df_fil = df_fil[df_fil["Cliente"] == sel_cli]
             if sel_tipo != "Todos": df_fil = df_fil[df_fil["Tipo de Servicio"] == sel_tipo]
 
-            # 3. TARJETAS DE IMPACTO
+            # 3. TARJETAS DE IMPACTO & BOTÓN DE DESCARGA
             st.write("")
-            st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Impacto Acumulado</h5>", unsafe_allow_html=True)
+            c_tit1, c_tit2 = st.columns([3, 1])
+            c_tit1.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Impacto Acumulado</h5>", unsafe_allow_html=True)
+            
+            # --- NUEVO: BOTÓN DE DESCARGA PDF DEL DASHBOARD ---
+            if not df_fil.empty:
+                pdf_bytes = generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo)
+                
+                # Nombre de archivo dinámico
+                if sel_mes == "Todos" and sel_anio != "Todos":
+                    nombre_archivo = f"Memoria_Anual_Sostenibilidad_{sel_anio}.pdf"
+                elif sel_mes != "Todos" and sel_anio != "Todos":
+                    nombre_archivo = f"Reporte_Mensual_{sel_mes}_{sel_anio}.pdf"
+                else:
+                    nombre_archivo = "Reporte_Sostenibilidad_Personalizado.pdf"
+
+                c_tit2.download_button(
+                    label="📥 Descargar Reporte PDF",
+                    data=pdf_bytes,
+                    file_name=nombre_archivo,
+                    mime="application/pdf",
+                    use_container_width=True,
+                    type="primary"
+                )
+            
             dm1, dm2, dm3, dm4, dm5 = st.columns(5)
             dm1.metric("Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum())} unid")
             dm2.metric("Peso Procesado", f"{df_fil['Kg Procesados'].sum():.2f} kg")
@@ -1113,14 +1231,12 @@ else:
         proyectos_lista = cargar_proyectos()
 
         if proyectos_lista:
-            # --- NUEVO: BARRA DE BÚSQUEDA Y FILTROS ---
             with st.expander("🔍 Buscar y Filtrar Historial", expanded=True):
                 f1, f2, f3 = st.columns([2, 1, 1])
                 busqueda = f1.text_input("Buscar por Cliente o Código", placeholder="Ej. Antamina o HIST_...")
                 filtro_estado = f2.selectbox("Estado del Proyecto", ["Todos", "COMPLETADO", "EN_PROCESO"])
                 filtro_tipo = f3.selectbox("Tipo de Servicio", ["Todos", "UPCYCLING", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
             
-            # Aplicar filtros
             proyectos_filtrados = []
             for p in proyectos_lista:
                 match_txt = busqueda.lower() in str(p.get("cliente", "")).lower() or busqueda.lower() in str(p.get("codigo", "")).lower() if busqueda else True
@@ -1133,21 +1249,18 @@ else:
             st.write("---")
             col_top1, col_top2 = st.columns([4, 2])
             
-            # --- INTERRUPTOR DE MODO EDICIÓN ---
             modo_edicion = col_top1.toggle("🛠️ Habilitar selección múltiple para borrar")
             
             if modo_edicion:
-                # Usar la lista filtrada para no borrar cosas sin querer
                 proyectos_seleccionados = [p for p in proyectos_filtrados if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
                 if col_top2.button(
                     f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
                     disabled=len(proyectos_seleccionados) == 0, 
-                    type="secondary", # Color secundario para no desentonar
+                    type="secondary",
                     use_container_width=True
                 ):
                     modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
             else:
-                # Limpiar selecciones de la vista actual si se apaga el modo
                 for p in proyectos_filtrados:
                     k = f"bulk_del_{p.get('id', p.get('codigo'))}"
                     if k in st.session_state:
@@ -1199,7 +1312,7 @@ else:
         else:
             st.info("📭 No hay proyectos registrados en el historial.")
 
-    # --- VISTA: NUEVO REPORTE PDF (ESTRUCTURA ORIGINAL EXPANDIDA) ---
+    # --- VISTA: NUEVO REPORTE PDF ---
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
