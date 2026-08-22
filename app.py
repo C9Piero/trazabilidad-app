@@ -493,7 +493,6 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
         st.session_state.proyecto_editar = {}
         st.toast(f"🗑️ {len(proyectos_a_borrar)} proyectos eliminados con éxito.")
         
-        # Limpiar el estado de los checkboxes
         for p in proyectos_a_borrar:
             k = f"bulk_del_{p.get('id', p.get('codigo'))}"
             if k in st.session_state:
@@ -1262,8 +1261,7 @@ else:
             with st.container(border=True):
                 st.markdown("##### 📂 Importación Masiva de Proyectos")
                 st.markdown("""
-                Sube un archivo **CSV** (recomendado para evitar errores de librerías) o Excel con las columnas:
-                `Cliente`, `Mes`, `Unidades recibidas`, `Kg recibidos`, `CO2 evitado`, `Horas`, `Productos`, `Participantes`, `TIPO DE PROYECTO`.
+                Sube tu archivo (preferiblemente **CSV**) para importar todos los datos al historial. El sistema leerá automáticamente la codificación y los separadores.
                 """)
 
                 archivo_cargado = st.file_uploader("Selecciona tu archivo CSV o Excel", type=["csv", "xlsx"])
@@ -1273,10 +1271,10 @@ else:
                     try:
                         if archivo_cargado.name.endswith('.csv'):
                             try:
-                                df_subido = pd.read_csv(archivo_cargado, encoding='utf-8')
+                                df_subido = pd.read_csv(archivo_cargado, encoding='utf-8', sep=None, engine='python')
                             except UnicodeDecodeError:
                                 archivo_cargado.seek(0)
-                                df_subido = pd.read_csv(archivo_cargado, encoding='latin1')
+                                df_subido = pd.read_csv(archivo_cargado, encoding='latin1', sep=None, engine='python')
                         else:
                             try:
                                 df_subido = pd.read_excel(archivo_cargado)
@@ -1290,24 +1288,51 @@ else:
                             if st.button("🚀 Importar Todos los Proyectos", type="primary", use_container_width=True):
                                 with st.spinner("Importando masivamente..."):
                                     meses_map = {m.lower(): i for i, m in MESES_ESPANOL.items()}
+                                    
+                                    cols = df_subido.columns
+                                    cli_col = next((c for c in cols if "cliente" in str(c).lower() or "razón" in str(c).lower()), "Cliente")
+                                    mes_col = next((c for c in cols if "mes" in str(c).lower()), "Mes")
+                                    unid_col = next((c for c in cols if "unid" in str(c).lower()), "Unidades recibidas")
+                                    kg_col = next((c for c in cols if "kg" in str(c).lower() or "peso" in str(c).lower()), "Kg recibidos")
+                                    co2_col = next((c for c in cols if "co2" in str(c).lower() or "evit" in str(c).lower()), "CO2 evitado")
+                                    hr_col = next((c for c in cols if "hora" in str(c).lower()), "Horas")
+                                    prod_col = next((c for c in cols if "prod" in str(c).lower()), "Productos")
+                                    part_col = next((c for c in cols if "partic" in str(c).lower()), "Participantes")
+                                    tipo_col = next((c for c in cols if "tipo" in str(c).lower()), "TIPO DE PROYECTO")
+
+                                    def safe_float(val):
+                                        try: return float(val) if pd.notna(val) else 0.0
+                                        except: return 0.0
+                                        
+                                    def safe_int(val):
+                                        try: return int(float(val)) if pd.notna(val) else 0
+                                        except: return 0
+
                                     count_exito = 0
-                                    for _, row in df_subido.iterrows():
-                                        cli = str(row.get("Cliente", row.get("cliente", "CLIENTE"))).strip()
-                                        mes_txt = str(row.get("Mes", row.get("mes", "enero"))).strip().lower()
+                                    for idx_row, row in df_subido.iterrows():
+                                        cli_val = row.get(cli_col)
+                                        if pd.isna(cli_val): continue
+                                        cli = str(cli_val).strip()
+                                        if cli.upper() == "NAN" or not cli: continue
+                                        
+                                        mes_txt = str(row.get(mes_col, "enero")).strip().lower()
                                         mes_n = meses_map.get(mes_txt, 1)
                                         
                                         fe_i = f"01/{mes_n:02d}/{anio_masivo}"
                                         fe_f = f"28/{mes_n:02d}/{anio_masivo}"
                                         
-                                        unid_rec = int(row.get("Unidades recibidas", row.get("unidades_recibidas", 0)) or 0)
-                                        kg_rec = float(row.get("Kg recibidos", row.get("kg_recibidos", 0)) or 0.0)
-                                        co2_val = float(row.get("CO₂ evitado", row.get("CO2 evitado", row.get("co2_evitado", 0))) or 0.0)
-                                        horas_val = float(row.get("Horas", row.get("horas", 0)) or 0.0)
-                                        prod_val = int(row.get("Productos", row.get("productos", 0)) or 0)
-                                        part_val = int(row.get("Participantes", row.get("participantes", 0)) or 0)
-                                        tipo_proy = str(row.get("TIPO DE PROYECTO", row.get("tipo_proyecto", "UPCYCLING"))).upper()
+                                        unid_rec = safe_int(row.get(unid_col))
+                                        kg_rec = safe_float(row.get(kg_col))
+                                        co2_val = safe_float(row.get(co2_col))
+                                        horas_val = safe_float(row.get(hr_col))
+                                        prod_val = safe_int(row.get(prod_col))
+                                        part_val = safe_int(row.get(part_col))
+                                        
+                                        tipo_val = row.get(tipo_col)
+                                        tipo_proy = str(tipo_val).upper() if pd.notna(tipo_val) else "UPCYCLING"
 
-                                        codigo_H = f"MASIVO_{cli[:10]}_{mes_n:02d}{anio_masivo}-{random.randint(100,999)}"
+                                        cli_limpio = cli[:8].replace(" ", "")
+                                        codigo_H = f"MAS_{cli_limpio}_{mes_n:02d}{anio_masivo}-{idx_row}-{random.randint(10000, 99999)}"
 
                                         supabase.table("proyectos").upsert({
                                             "codigo": codigo_H, "cliente": cli, "ruc": "00000000000",
@@ -1450,32 +1475,23 @@ else:
 
         proyectos_lista = cargar_proyectos()
         if proyectos_lista:
-            # Identificar qué proyectos han sido seleccionados con el checkbox
             proyectos_seleccionados = [p for p in proyectos_lista if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
 
             col_top1, col_top2 = st.columns([4, 2])
             
-            # Botón superior de Eliminación Masiva
-            if col_top2.button(
-                f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
-                disabled=len(proyectos_seleccionados) == 0, 
-                type="primary", 
-                use_container_width=True
-            ):
+            if col_top2.button(f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", disabled=len(proyectos_seleccionados) == 0, type="primary", use_container_width=True):
                 modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
                 
             st.write("---")
 
             for p in proyectos_lista:
                 with st.container(border=True):
-                    # Se agregó una columna extra al inicio (c_chk) para la casilla de selección
                     c_chk, hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([0.4, 2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
                     
-                    c_chk.write("") # Pequeño espacio para centrar el checkbox verticalmente
+                    c_chk.write("") 
                     c_chk.checkbox(" ", key=f"bulk_del_{p.get('id', p.get('codigo'))}", label_visibility="collapsed")
                     
                     nombre_cli_ui = p.get('cliente', 'Sin Nombre')
-
                     hc1.markdown(f"**{nombre_cli_ui}**")
                     hc1.caption(f"ID/Código: `{p.get('codigo', '')}`")
                     hc2.markdown(f"Estado: **{p.get('estado', 'N/D')}**")
@@ -1495,7 +1511,6 @@ else:
                     else:
                         hc5.caption("📜 Sin Constancia")
 
-                    # Botón individual por si se quiere borrar solo uno rápido
                     if hc6.button("🗑️", key=f"hist_del_{p.get('id', p.get('codigo'))}", use_container_width=True, help="Eliminar este proyecto individualmente"):
                         modal_confirmar_eliminacion(p)
         else:
