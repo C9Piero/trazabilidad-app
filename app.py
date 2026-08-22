@@ -386,7 +386,7 @@ def init_supabase() -> Client:
 try:
     supabase = init_supabase()
 except KeyError:
-    st.error("⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.")
+    st.error("⚠️ No se encontraron las credenciales de Supabase en `st.secrets`.\n\nConfigura `SUPABASE_URL` y `SUPABASE_KEY` dentro de `[supabase]` en `.streamlit/secrets.toml` (local) o en **Settings → Secrets** (Streamlit Cloud).")
     st.stop()
 except Exception as e:
     st.error(f"⚠️ No se pudo conectar con Supabase: {e}")
@@ -717,15 +717,18 @@ def generar_pdf_oficial(
     elements.append(t_ficha)
     elements.append(Spacer(1, 8))
 
+    # --- NUEVA FUNCIÓN PARA LEER IMÁGENES DESDE LA NUBE O ARCHIVO ---
     def obtener_imagen_pdf(foto_data, width, height):
         if foto_data is not None and foto_data != "":
             import urllib.request
             try:
+                # Si es un enlace guardado en la nube
                 if isinstance(foto_data, str) and foto_data.startswith("http"):
                     req = urllib.request.Request(foto_data, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(req) as response:
                         img_data = io.BytesIO(response.read())
                     return Image(img_data, width=width, height=height)
+                # Si es un archivo recien subido (bytes)
                 elif hasattr(foto_data, 'read'):
                     foto_data.seek(0)
                     img_data = io.BytesIO(foto_data.read())
@@ -1057,7 +1060,7 @@ try:
     USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
     PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
 except KeyError:
-    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.")
+    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\nAgrega `USUARIO` y `PASSWORD` dentro de `[auth]` en `.streamlit/secrets.toml`.")
     st.stop()
 
 # --- PANTALLA DE INICIO DE SESIÓN ---
@@ -1088,7 +1091,7 @@ if not st.session_state.autenticado:
                     st.error("⚠️ Usuario o contraseña incorrectos.")
 
 else:
-    proyectos_wip = cargar_proyectos("EN_PROCESO")
+    proyectos_wip = cargar_proyectos(estado="EN_PROCESO")
 
     with st.sidebar:
         st.markdown("### ♻️ Pequeños Detalles")
@@ -1124,7 +1127,7 @@ else:
                 cli_nombre = p.get("cliente", "Sin Nombre")
                 label_btn = f"📁 {cli_nombre}"
 
-                es_activo = st.session_state.proyecto_editar.get("id") == p.get("id")
+                es_activo = st.session_state.proyecto_editar.get("id") == p.get("id") or st.session_state.proyecto_editar.get("codigo") == p.get("codigo")
 
                 if st.button(
                     label_btn,
@@ -1638,12 +1641,13 @@ else:
             try: def_f_fin = datetime.datetime.strptime(fechas_raw[1].strip(), "%d/%m/%Y").date()
             except Exception: def_f_fin = datetime.date.today()
 
+            # --- RESTAURACIÓN DE TOOLTIPS (help) ---
             c1, c2, c5, c6 = st.columns(4)
-            cliente = c1.text_input("Cliente / Empresa *", value=p_edit.get("cliente", ""))
-            ruc = c2.text_input("RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11)
+            cliente = c1.text_input("Cliente / Empresa *", value=p_edit.get("cliente", ""), help="Nombre de la empresa o cliente corporativo.")
+            ruc = c2.text_input("RUC * (11 dígitos)", value=p_edit.get("ruc", ""), max_chars=11, help="RUC de 11 dígitos de la empresa cliente.")
             
-            fe_inicio_dt = c5.date_input("Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY")
-            fe_fin_dt = c6.date_input("Fecha Término *", value=def_f_fin, format="DD/MM/YYYY")
+            fe_inicio_dt = c5.date_input("Fecha Inicio *", value=def_f_ini, format="DD/MM/YYYY", help="Fecha en la que se recibieron los uniformes o materiales.")
+            fe_fin_dt = c6.date_input("Fecha Término *", value=def_f_fin, format="DD/MM/YYYY", help="Fecha de culminación y entrega final del proceso.")
 
             fe_inicio = fe_inicio_dt.strftime("%d/%m/%Y")
             fe_fin = fe_fin_dt.strftime("%d/%m/%Y")
@@ -1662,7 +1666,7 @@ else:
             tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
             idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
 
-            proyecto_nom = c4.selectbox("Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo)
+            proyecto_nom = c4.selectbox("Tipo de Proyecto *", opciones_tipo_proyecto, index=idx_tipo, help="Clasificación del tipo de servicio realizado.")
 
             RESPONSABLES_BASE = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado"]
             responsables_guardados = p_edit.get("responsables", [])
@@ -1684,6 +1688,7 @@ else:
                 default=[r for r in responsables_guardados if r in opciones_responsables],
                 placeholder="Selecciona uno o más",
                 key="responsables_proyecto",
+                help="Responsable(s) internos a cargo del proyecto."
             )
 
             nuevo_responsable = c7.text_input("➕ Agregar otro responsable", placeholder="Nombre completo", key="nuevo_responsable_proyecto")
@@ -1693,11 +1698,15 @@ else:
                     responsables_seleccionados.append(nuevo_responsable.strip())
 
             responsable = ", ".join(responsables_seleccionados)
-            area = c8.text_input("Área", value="Sostenibilidad", disabled=True)
-            guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia", "") or dc.get("guia_remision", ""))
+            area = c8.text_input("Área", value="Sostenibilidad", disabled=True, help="Área interna encargada.")
+            guia_remision = c9.text_input("Nº Guía Remisión", value=p_edit.get("guia", "") or dc.get("guia_remision", ""), help="Guía de remisión con la que llegaron los uniformes.")
 
             origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
-            origen = st.text_input("Punto Origen *", value=origen_default)
+            
+            # --- RESTAURACIÓN DEL DISEÑO DE PUNTO DE ORIGEN ---
+            st.markdown("**Punto Origen \*** <span style='font-weight: normal; color: #64748B; font-size: 0.85rem;'>(Lugar o dirección de donde vinieron los uniformes)</span>", unsafe_allow_html=True)
+            origen = st.text_input("Punto Origen *", value=origen_default, label_visibility="collapsed")
+            
             destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
 
         st.write("")
@@ -1727,7 +1736,6 @@ else:
             for i in range(st.session_state.num_items):
                 st.markdown(f"**Material {i+1}**")
                 
-                # RECREANDO TU ESTRUCTURA ORIGINAL LEGIBLE
                 col_desc, col_unid, col_peso, col_tot, col_foto = st.columns([3, 1.5, 1.5, 1.5, 3])
 
                 item_prev = saved_items[i] if i < len(saved_items) else {}
@@ -1789,8 +1797,7 @@ else:
             for i, item_fijo in enumerate(etapas_fijas):
                 st.markdown(f"**Etapa {i+1}**")
                 
-                # RECREANDO TU ESTRUCTURA ORIGINAL
-                c_etapa, c_fecha, c_resp, c_edit_chk, c_peso, c_tipo, c_foto = st.columns([1.5, 1.5, 2, 1.2, 1.2, 1.6, 2])
+                col_etapa, col_fecha, col_resp, col_edit_chk, col_peso, col_tipo, col_foto = st.columns([1.5, 1.5, 2, 1.2, 1.2, 1.6, 2])
 
                 traza_prev = saved_traza[i] if i < len(saved_traza) else {}
                 fec_prev_str = traza_prev.get("fecha")
@@ -1812,12 +1819,12 @@ else:
                 foto_url_prev = traza_prev.get("foto_url", "")
 
                 if item_fijo["etapa"] == "Lavado":
-                    no_aplica = c_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}")
+                    no_aplica = col_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}")
                     permitir_editar = not no_aplica
                     deshabilitar_peso = no_aplica
                 else:
                     no_aplica = False
-                    permitir_editar = c_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
+                    permitir_editar = col_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
                     deshabilitar_peso = not permitir_editar
 
                 if no_aplica:
@@ -1829,14 +1836,14 @@ else:
                     peso_val_ui = peso_prev_val
                     tipo_val_ui = tipo_prev_val
 
-                e_nom = c_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
+                e_nom = col_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
                 
                 deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
-                e_fec_val = c_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
+                e_fec_val = col_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
 
-                e_res = c_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}")
+                e_res = col_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}")
 
-                e_pes_str = c_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_{peso_val_ui:.2f}_{deshabilitar_peso}")
+                e_pes_str = col_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_{peso_val_ui:.2f}_{deshabilitar_peso}")
 
                 try: e_pes_num = float(e_pes_str)
                 except ValueError: e_pes_num = 0.0
@@ -1846,17 +1853,17 @@ else:
                 elif item_fijo["etapa"] == "Corte": 
                     peso_corte_auto = e_pes_num
 
-                e_tip = c_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}")
+                e_tip = col_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}")
                 
                 if no_aplica:
                     e_fot = None
-                    c_foto.info("No aplica")
+                    col_foto.info("No aplica")
                 else:
-                    e_fot = c_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
+                    e_fot = col_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
                     if e_fot is not None:
-                        c_foto.image(e_fot, width=70)
+                        col_foto.image(e_fot, width=70)
                     elif foto_url_prev:
-                        c_foto.image(foto_url_prev, width=70)
+                        col_foto.image(foto_url_prev, width=70)
 
                 lista_trazabilidad.append({
                     "etapa": e_nom, "fecha": e_fec_val.strftime("%d/%m/%Y"), "responsable": e_res,
@@ -1875,9 +1882,9 @@ else:
                 tab_p_add, tab_p_edit, tab_p_del = st.tabs(["➕ Agregar Producto", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
 
                 with tab_p_add:
-                    c_pa1, c_pa2 = st.columns([3, 1])
-                    nuevo_producto_cat = c_pa1.text_input("Nombre del nuevo producto:", placeholder="Ej. Mochila ejecutiva", key="adm_prod_input_add")
-                    if c_pa2.button("Guardar en Catálogo", use_container_width=True, key="btn_add_prod_cat"):
+                    col_pa1, col_pa2 = st.columns([3, 1])
+                    nuevo_producto_cat = col_pa1.text_input("Nombre del nuevo producto:", placeholder="Ej. Mochila ejecutiva", key="adm_prod_input_add")
+                    if col_pa2.button("Guardar en Catálogo", use_container_width=True, key="btn_add_prod_cat"):
                         np_limpio = nuevo_producto_cat.strip()
                         if np_limpio and np_limpio not in st.session_state.catalogo_productos:
                             if "➕ Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
@@ -1888,11 +1895,11 @@ else:
                             st.rerun()
 
                 with tab_p_edit:
-                    c_pe1, c_pe2, c_pe3 = st.columns([2, 2, 1])
+                    col_pe1, col_pe2, col_pe3 = st.columns([2, 2, 1])
                     prods_editables = [p for p in st.session_state.catalogo_productos if "Otro" not in p]
-                    prod_a_mod = c_pe1.selectbox("Producto a modificar:", prods_editables, key="adm_prod_sel_mod")
-                    prod_modificado = c_pe2.text_input("Nombre corregido:", value=prod_a_mod if prod_a_mod else "", key=f"adm_prod_txt_mod_{prod_a_mod}")
-                    if c_pe3.button("Actualizar", use_container_width=True, key="btn_edit_prod_cat"):
+                    prod_a_mod = col_pe1.selectbox("Producto a modificar:", prods_editables, key="adm_prod_sel_mod")
+                    prod_modificado = col_pe2.text_input("Nombre corregido:", value=prod_a_mod if prod_a_mod else "", key=f"adm_prod_txt_mod_{prod_a_mod}")
+                    if col_pe3.button("Actualizar", use_container_width=True, key="btn_edit_prod_cat"):
                         if prod_modificado.strip() and prod_a_mod in st.session_state.catalogo_productos:
                             idx_mod = st.session_state.catalogo_productos.index(prod_a_mod)
                             st.session_state.catalogo_productos[idx_mod] = prod_modificado.strip()
@@ -1900,10 +1907,10 @@ else:
                             st.rerun()
 
                 with tab_p_del:
-                    c_pd1, c_pd2 = st.columns([3, 1])
+                    col_pd1, col_pd2 = st.columns([3, 1])
                     prods_borrables = [p for p in st.session_state.catalogo_productos if "Otro" not in p]
-                    prod_a_borrar = c_pd1.selectbox("Producto a eliminar del catálogo:", prods_borrables, key="adm_prod_sel_del")
-                    if c_pd2.button("Eliminar", use_container_width=True, key="btn_del_prod_cat"):
+                    prod_a_borrar = col_pd1.selectbox("Producto a eliminar del catálogo:", prods_borrables, key="adm_prod_sel_del")
+                    if col_pd2.button("Eliminar", use_container_width=True, key="btn_del_prod_cat"):
                         if prod_a_borrar in st.session_state.catalogo_productos:
                             st.session_state.catalogo_productos.remove(prod_a_borrar)
                             st.toast(f"🗑️ Producto eliminado: {prod_a_borrar}")
@@ -1912,11 +1919,11 @@ else:
             if "num_prods" not in st.session_state:
                 st.session_state.num_prods = 2
 
-            cp_btn1, cp_btn2, _ = st.columns([1, 1, 4])
-            if cp_btn1.button("➕     Agregar Producto"):
+            col_btnp1, col_btnp2, _ = st.columns([1, 1, 4])
+            if col_btnp1.button("➕     Agregar Producto"):
                 st.session_state.num_prods += 1
                 st.rerun()
-            if cp_btn2.button("➖     Quitar Producto") and st.session_state.num_prods > 1:
+            if col_btnp2.button("➖     Quitar Producto") and st.session_state.num_prods > 1:
                 st.session_state.num_prods -= 1
                 st.rerun()
 
@@ -1927,7 +1934,6 @@ else:
             for i in range(st.session_state.num_prods):
                 st.markdown(f"**Producto {i+1}**")
                 
-                # RECREANDO TU ESTRUCTURA ORIGINAL
                 col_psel, col_pnom_nuevo, col_pcant, col_pfoto = st.columns([3, 2.5, 1.5, 3])
 
                 prod_prev = saved_prods[i] if i < len(saved_prods) else {}
@@ -2038,8 +2044,8 @@ else:
             dist_sel_prev = saved_trans.get("distrito", list(DISTANCIAS_LIMA_SJL.keys())[0])
             idx_dist = list(DISTANCIAS_LIMA_SJL.keys()).index(dist_sel_prev) if dist_sel_prev in DISTANCIAS_LIMA_SJL else 0
 
-            ct1, ct2, ct3, ct4 = st.columns([2.5, 1.2, 1.8, 1.5])
-            distrito_sel = ct1.selectbox(
+            col_t1, col_t2, col_t3, col_t4 = st.columns([2.5, 1.2, 1.8, 1.5])
+            distrito_sel = col_t1.selectbox(
                 "Distrito de Origen (Recojo de Material) *", list(DISTANCIAS_LIMA_SJL.keys()), index=idx_dist, key="transporte_distrito_origen"
             )
 
@@ -2047,18 +2053,18 @@ else:
             saved_dist_km = float(saved_trans.get("distancia", dist_defecto)) if dist_sel_prev == distrito_sel else dist_defecto
 
             if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)":
-                distancia_km = ct2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key="dist_km_manual")
+                distancia_km = col_t2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key="dist_km_manual")
             else:
-                distancia_km = ct2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_{distrito_sel}")
+                distancia_km = col_t2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_{distrito_sel}")
 
             vehiculo_prev = saved_trans.get("vehiculo", list(FACTORES_TRANSPORTE.keys())[0])
             idx_veh = list(FACTORES_TRANSPORTE.keys()).index(vehiculo_prev) if vehiculo_prev in FACTORES_TRANSPORTE else 0
 
-            vehiculo_sel = ct3.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh)
+            vehiculo_sel = col_t3.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh)
 
             rec_prev = saved_trans.get("recorrido", "Ida y Vuelta (2)")
             idx_rec = 0 if "2" in rec_prev else 1
-            recorrido_tipo = ct4.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec)
+            recorrido_tipo = col_t4.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec)
 
             factor_veh = FACTORES_TRANSPORTE[vehiculo_sel]
             mult_recorrido = 2.0 if "2" in recorrido_tipo else 1.0
@@ -2180,9 +2186,9 @@ else:
                 tab_add, tab_edit, tab_del = st.tabs(["➕ Agregar Personal", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
 
                 with tab_add:
-                    c_a1, c_a2 = st.columns([3, 1])
-                    nuevo_integrante = c_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key="adm_input_add")
-                    if c_a2.button("Guardar en Lista", use_container_width=True):
+                    col_a1, col_a2 = st.columns([3, 1])
+                    nuevo_integrante = col_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key="adm_input_add")
+                    if col_a2.button("Guardar en Lista", use_container_width=True):
                         n_limpio = nuevo_integrante.strip()
                         if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
                             st.session_state.lista_personal_confeccion.append(n_limpio)
@@ -2191,10 +2197,10 @@ else:
                             st.rerun()
 
                 with tab_edit:
-                    c_e1, c_e2, c_e3 = st.columns([2, 2, 1])
-                    pers_a_mod = c_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key="adm_sel_mod")
-                    nombre_modificado = c_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_{pers_a_mod}")
-                    if c_e3.button("Actualizar", use_container_width=True):
+                    col_e1, col_e2, col_e3 = st.columns([2, 2, 1])
+                    pers_a_mod = col_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key="adm_sel_mod")
+                    nombre_modificado = col_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_{pers_a_mod}")
+                    if col_e3.button("Actualizar", use_container_width=True):
                         if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
                             idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
                             st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
@@ -2203,9 +2209,9 @@ else:
                             st.rerun()
 
                 with tab_del:
-                    c_d1, c_d2 = st.columns([3, 1])
-                    pers_a_borrar = c_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key="adm_sel_del")
-                    if c_d2.button("Eliminar", use_container_width=True):
+                    col_d1, col_d2 = st.columns([3, 1])
+                    pers_a_borrar = col_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key="adm_sel_del")
+                    if col_d2.button("Eliminar", use_container_width=True):
                         if pers_a_borrar in st.session_state.lista_personal_confeccion:
                             st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
                             st.toast(f"🗑️ Eliminado/a: {pers_a_borrar}")
@@ -2240,7 +2246,6 @@ else:
 
                 for p_idx in range(st.session_state[key_num_pers]):
                     
-                    # RECREANDO TU ESTRUCTURA ORIGINAL
                     c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([1.8, 3.0, 1.4, 1.8, 1.8])
 
                     c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
@@ -2324,7 +2329,6 @@ else:
             for a_i in range(st.session_state.num_anexos):
                 st.markdown(f"**Evidencia Anexa {a_i+1}**")
                 
-                # RECREANDO TU ESTRUCTURA ORIGINAL
                 col_afoto, col_anota = st.columns([1.5, 3])
 
                 anx_prev = saved_anexos[a_i] if a_i < len(saved_anexos) else {}
