@@ -782,7 +782,7 @@ else:
             st.rerun()
 
     titulo_header = st.session_state.pestaña_activa
-    if st.session_state.pestaña_activa == "Dashboard Analítico":
+    if st.session_state.pestaña_activa == "📊 Dashboard Analítico":
         titulo_header = "Dashboard Analítico"
         
     st.markdown(
