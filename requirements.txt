@@ -8,3 +8,4 @@ docxtpl
 google-api-python-client
 google-auth
 openpyxl
+plotly
