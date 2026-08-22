@@ -453,7 +453,7 @@ def eliminar_proyecto_bd(proyecto_id, codigo_proy):
         st.error(f"❌ Error al eliminar el proyecto: {e}")
         return False
 
-# --- DIÁLOGO MODAL DE CONFIRMACIÓN DE ELIMINACIÓN ---
+# --- DIÁLOGO MODAL DE CONFIRMACIÓN DE ELIMINACIÓN INDIVIDUAL ---
 @st.dialog("⚠️ Confirmar Eliminación Permanente")
 def modal_confirmar_eliminacion(proyecto):
     st.warning(
@@ -471,6 +471,35 @@ def modal_confirmar_eliminacion(proyecto):
             st.session_state.proyecto_editar = {}
             st.toast("🗑️ Proyecto eliminado con éxito.")
             st.rerun()
+
+    if col_cancel.button(" Cancelar", use_container_width=True):
+        st.rerun()
+
+# --- DIÁLOGO MODAL DE CONFIRMACIÓN DE ELIMINACIÓN MASIVA ---
+@st.dialog("⚠️ Confirmar Eliminación Masiva")
+def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
+    st.warning(
+        f"¿Estás seguro de que deseas eliminar permanentemente **{len(proyectos_a_borrar)}** proyectos seleccionados?\n\nEsta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos."
+    )
+    col_confirm, col_cancel = st.columns(2)
+
+    if col_confirm.button(
+        "🚨 Sí, Eliminar Todos",
+        use_container_width=True,
+        type="primary",
+    ):
+        for p in proyectos_a_borrar:
+            eliminar_proyecto_bd(p.get("id"), p.get("codigo"))
+        st.session_state.proyecto_editar = {}
+        st.toast(f"🗑️ {len(proyectos_a_borrar)} proyectos eliminados con éxito.")
+        
+        # Limpiar el estado de los checkboxes
+        for p in proyectos_a_borrar:
+            k = f"bulk_del_{p.get('id', p.get('codigo'))}"
+            if k in st.session_state:
+                del st.session_state[k]
+                
+        st.rerun()
 
     if col_cancel.button(" Cancelar", use_container_width=True):
         st.rerun()
@@ -1164,7 +1193,7 @@ else:
         unsafe_allow_html=True,
     )
 
-    # --- VISTA: CARGA RÁPIDA HISTÓRICA (CON CARGA MASIVA Y PROTECCIÓN CSV) ---
+    # --- VISTA: CARGA RÁPIDA HISTÓRICA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos")
         st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
@@ -1252,7 +1281,7 @@ else:
                             try:
                                 df_subido = pd.read_excel(archivo_cargado)
                             except ImportError:
-                                st.error("⚠️ Para archivos Excel (.xlsx) se requiere la librería 'openpyxl'. Te recomendamos guardarlo como archivo **CSV** para una lectura inmediata.")
+                                st.error("⚠️ Para archivos Excel (.xlsx) se requiere 'openpyxl'. Por favor, guarda tu archivo como **CSV** y súbelo.")
                                 df_subido = None
 
                         if df_subido is not None:
@@ -1421,9 +1450,30 @@ else:
 
         proyectos_lista = cargar_proyectos()
         if proyectos_lista:
+            # Identificar qué proyectos han sido seleccionados con el checkbox
+            proyectos_seleccionados = [p for p in proyectos_lista if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
+
+            col_top1, col_top2 = st.columns([4, 2])
+            
+            # Botón superior de Eliminación Masiva
+            if col_top2.button(
+                f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
+                disabled=len(proyectos_seleccionados) == 0, 
+                type="primary", 
+                use_container_width=True
+            ):
+                modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
+                
+            st.write("---")
+
             for p in proyectos_lista:
                 with st.container(border=True):
-                    hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
+                    # Se agregó una columna extra al inicio (c_chk) para la casilla de selección
+                    c_chk, hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([0.4, 2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
+                    
+                    c_chk.write("") # Pequeño espacio para centrar el checkbox verticalmente
+                    c_chk.checkbox(" ", key=f"bulk_del_{p.get('id', p.get('codigo'))}", label_visibility="collapsed")
+                    
                     nombre_cli_ui = p.get('cliente', 'Sin Nombre')
 
                     hc1.markdown(f"**{nombre_cli_ui}**")
@@ -1445,7 +1495,8 @@ else:
                     else:
                         hc5.caption("📜 Sin Constancia")
 
-                    if hc6.button("🗑️", key=f"hist_del_{p.get('id', p.get('codigo'))}", use_container_width=True, help="Eliminar proyecto"):
+                    # Botón individual por si se quiere borrar solo uno rápido
+                    if hc6.button("🗑️", key=f"hist_del_{p.get('id', p.get('codigo'))}", use_container_width=True, help="Eliminar este proyecto individualmente"):
                         modal_confirmar_eliminacion(p)
         else:
             st.info("📭 No hay proyectos registrados en el historial.")
@@ -1758,7 +1809,7 @@ else:
 
             pct_aprov_auto = st.session_state.pct_aprovechamiento_random
             pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
-            pct_retazos_auto = pct_aprov_auto - pct_transf_auto
+            pct_retazos_auto = pct_aprovechamiento_total = pct_aprov_auto - pct_transf_auto
 
             saved_bm = dc.get("balance", {})
             editar_balance_prev = saved_bm.get("editar_manual", False)
