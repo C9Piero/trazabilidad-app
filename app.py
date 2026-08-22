@@ -31,6 +31,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta: str):
+    """Crea o busca la estructura de carpetas: AÑO / MES / CLIENTE / SUBCARPETA en Google Drive"""
     try:
         if "drive_oauth" not in st.secrets:
             return None
@@ -50,18 +51,25 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
         
         if not res_anio.get('files', []):
-            carpeta_anio = service.files().create(body={'name': nombre_carpeta_anio, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [root_folder_id]}, fields='id').execute()
+            carpeta_anio = service.files().create(
+                body={'name': nombre_carpeta_anio, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [root_folder_id]}, 
+                fields='id'
+            ).execute()
             id_anio = carpeta_anio.get('id')
         else:
             id_anio = res_anio.get('files')[0].get('id')
 
-        meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
+        meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 
+                 7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
         nombre_carpeta_mes = meses.get(fecha_fin_dt.month, 'MES')
         query_mes = f"name='{nombre_carpeta_mes}' and mimeType='application/vnd.google-apps.folder' and '{id_anio}' in parents and trashed=false"
         res_mes = service.files().list(q=query_mes, fields='files(id)').execute()
         
         if not res_mes.get('files', []):
-            carpeta_mes = service.files().create(body={'name': nombre_carpeta_mes, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_anio]}, fields='id').execute()
+            carpeta_mes = service.files().create(
+                body={'name': nombre_carpeta_mes, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_anio]}, 
+                fields='id'
+            ).execute()
             id_mes = carpeta_mes.get('id')
         else:
             id_mes = res_mes.get('files')[0].get('id')
@@ -71,7 +79,10 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         res_cli = service.files().list(q=query_cli, fields='files(id)').execute()
         
         if not res_cli.get('files', []):
-            carpeta_cli = service.files().create(body={'name': nombre_cliente, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_mes]}, fields='id').execute()
+            carpeta_cli = service.files().create(
+                body={'name': nombre_cliente, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_mes]}, 
+                fields='id'
+            ).execute()
             id_cli = carpeta_cli.get('id')
         else:
             id_cli = res_cli.get('files')[0].get('id')
@@ -80,7 +91,10 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         res_proy = service.files().list(q=query_proy, fields='files(id)').execute()
         
         if not res_proy.get('files', []):
-            carpeta_proy = service.files().create(body={'name': nombre_subcarpeta, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_cli]}, fields='id').execute()
+            carpeta_proy = service.files().create(
+                body={'name': nombre_subcarpeta, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_cli]}, 
+                fields='id'
+            ).execute()
             id_proy = carpeta_proy.get('id')
         else:
             id_proy = res_proy.get('files')[0].get('id')
@@ -91,114 +105,165 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         return None
 
 def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
+    """Sube un archivo a Google Drive usando las credenciales del usuario (OAuth)."""
     try:
         if "drive_oauth" not in st.secrets:
             return None 
         creds_data = st.secrets["drive_oauth"]
-        credentials = Credentials(token=None, refresh_token=creds_data["refresh_token"], client_id=creds_data["client_id"], client_secret=creds_data["client_secret"], token_uri="https://oauth2.googleapis.com/token")
+        credentials = Credentials(
+            token=None,
+            refresh_token=creds_data["refresh_token"],
+            client_id=creds_data["client_id"],
+            client_secret=creds_data["client_secret"],
+            token_uri="https://oauth2.googleapis.com/token"
+        )
         service = build('drive', 'v3', credentials=credentials)
         folder_id = custom_folder_id if custom_folder_id else creds_data["folder_id"]
         
         file_metadata = {'name': nombre_archivo, 'parents': [folder_id]}
         media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
         
-        archivo_subido = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        archivo_subido = service.files().create(
+            body=file_metadata, media_body=media, fields='id'
+        ).execute()
         return archivo_subido.get('id')
     except Exception as e:
         st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
         return None
 
 # --- CONSTANTES GLOBALES ---
-MESES_ESPANOL = {1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio", 7: "julio", 8: "agosto", 9: "setiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"}
+MESES_ESPANOL = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+    7: "julio", 8: "agosto", 9: "setiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
+}
 MESES_ORDEN = [m.capitalize() for m in MESES_ESPANOL.values()]
 
 PRODUCTOS_CATALOGO_BASE = [
-    "Estrellas", "Cartuchera", "Cúbica", "Bolso", "Mochila", "Llavero", "Monedero", "Canguro", "Tote bag", "Neceser", 
-    "Portalaptop", "Portacepillos", "Pelota", "Portacubierto", "Juguete", "Cubo", "Corazones", "Peluche", "Morral", 
-    "Portaútiles", "Portabotella", "Cama perrito", "Colets", "Rombo", "Mandiles", "Lonchera", "➕ Otro (Escribir nuevo producto)"
+    "Estrellas", "Cartuchera", "Cúbica", "Bolso", "Mochila", "Llavero",
+    "Monedero", "Canguro", "Tote bag", "Neceser", "Portalaptop",
+    "Portacepillos", "Pelota", "Portacubierto", "Juguete", "Cubo",
+    "Corazones", "Peluche", "Morral", "Portaútiles", "Portabotella",
+    "Cama perrito", "Colets", "Rombo", "Mandiles", "Lonchera",
+    "➕ Otro (Escribir nuevo producto)",
 ]
 
 PERSONAL_CONFECCION_BASE = [
-    "Celinda Gutierrez Delgado", "Guadalupe Guerra Cespedes", "Isabel Estrada Sandoval", "Carmen Cespedes Borda", 
-    "Mavela Espinoza", "Juana Padilla Ruiz", "Felicita Sandoval Vilchez", "Luciana Jara Estrada", "Genaro Jara Garcia", 
-    "Yovana Davila", "Katherine Hilario Vilca", "Rody Jara Rucana", "Lucila Campos", "Tiffany Landa Rios", "Sara Mallqui Herrada",
-    "Erlith Paima", "Sonia Panduro Torres", "Cintya Rincon", "Dixie Hidalgo Martel", "Janeth Mescco Bautista", 
-    "Judith Cueva Vargas", "Linfa Tauche", "Maricela Nieto", "Sofia Moya Reyes", "Carmen Vizarreta Lozada", 
-    "Genoveva Vizarreta Lozada", "Gathy Perez Ortiz", "Omar Prada", "Yovana Davila Ramirez", "Rosario Evelin Blas Alcala",
-    "Esmeralda Tandazo Briceño", "Jhoel Angel Dominguez Rementeria", "Pedro Estrada Ramos", "Victor Auccapuri San Miguel", 
-    "Gabriel Manrique Hurtado", "Evelyn Prada Vizarreta", "Eugenia Almanza Huere", "Nicolle Estrada Yabe", 
-    "Oswaldo Jara Garcia", "Noelia Gonzales Lopez"
+    "Celinda Gutierrez Delgado", "Guadalupe Guerra Cespedes", "Isabel Estrada Sandoval",
+    "Carmen Cespedes Borda", "Mavela Espinoza", "Juana Padilla Ruiz", "Felicita Sandoval Vilchez",
+    "Luciana Jara Estrada", "Genaro Jara Garcia", "Yovana Davila", "Katherine Hilario Vilca",
+    "Rody Jara Rucana", "Lucila Campos", "Tiffany Landa Rios", "Sara Mallqui Herrada",
+    "Erlith Paima", "Sonia Panduro Torres", "Cintya Rincon", "Dixie Hidalgo Martel",
+    "Janeth Mescco Bautista", "Judith Cueva Vargas", "Linfa Tauche", "Maricela Nieto",
+    "Sofia Moya Reyes", "Carmen Vizarreta Lozada", "Genoveva Vizarreta Lozada",
+    "Gathy Perez Ortiz", "Omar Prada", "Yovana Davila Ramirez", "Rosario Evelin Blas Alcala",
+    "Esmeralda Tandazo Briceño", "Jhoel Angel Dominguez Rementeria", "Pedro Estrada Ramos",
+    "Victor Auccapuri San Miguel", "Gabriel Manrique Hurtado", "Evelyn Prada Vizarreta",
+    "Eugenia Almanza Huere", "Nicolle Estrada Yabe", "Oswaldo Jara Garcia", "Noelia Gonzales Lopez",
 ]
 
 TIEMPOS_CONFECCION_PURO = {
-    "mochila": 0.60, "bolso": 0.45, "tote bag": 0.30, "portalaptop": 0.75, "canguro": 0.50, "neceser": 0.35, 
-    "lonchera": 0.50, "cartuchera": 0.25, "morral": 0.50, "mandiles": 0.30, "cama perrito": 0.80, "cama": 0.80, 
-    "casa": 0.80, "peluche": 0.60, "pelota": 0.30, "estrellas": 0.15, "corazones": 0.15, "rombo": 0.15, 
-    "cúbica": 0.25, "cubo": 0.25, "llavero": 0.10, "monedero": 0.15, "portacepillos": 0.12, "portacubierto": 0.12, 
-    "portaútiles": 0.20, "portabotella": 0.20, "colets": 0.08, "juguete": 0.40
+    "mochila": 0.60, "bolso": 0.45, "tote bag": 0.30, "portalaptop": 0.75,
+    "canguro": 0.50, "neceser": 0.35, "lonchera": 0.50, "cartuchera": 0.25,
+    "morral": 0.50, "mandiles": 0.30, "cama perrito": 0.80, "cama": 0.80, 
+    "casa": 0.80, "peluche": 0.60, "pelota": 0.30, "estrellas": 0.15, 
+    "corazones": 0.15, "rombo": 0.15, "cúbica": 0.25, "cubo": 0.25, 
+    "llavero": 0.10, "monedero": 0.15, "portacepillos": 0.12, 
+    "portacubierto": 0.12, "portaútiles": 0.20, "portabotella": 0.20, 
+    "colets": 0.08, "juguete": 0.40,
 }
 
 def estimar_tiempo_unidad(nombre_producto: str) -> float:
-    if not nombre_producto: return 0.35
+    if not nombre_producto:
+        return 0.35
     nombre_lower = nombre_producto.lower().strip()
     tiempo_costura = 0.40
     encontrado = False
     
     for prod_key, tiempo in TIEMPOS_CONFECCION_PURO.items():
         if prod_key in nombre_lower:
-            tiempo_costura = tiempo; encontrado = True; break
+            tiempo_costura = tiempo
+            encontrado = True
+            break
             
     if not encontrado:
-        if any(w in nombre_lower for w in ["casa", "cama", "colchón", "almohadón", "organizador"]): tiempo_costura = 0.80
-        elif any(w in nombre_lower for w in ["mochila", "morral", "maletín", "set", "conjunto"]): tiempo_costura = 0.70
-        elif any(w in nombre_lower for w in ["bolso", "tote", "lonchera", "funda", "delantal"]): tiempo_costura = 0.45
-        elif any(w in nombre_lower for w in ["cartuchera", "neceser", "monedero", "estuche"]): tiempo_costura = 0.30
-        else: tiempo_costura = 0.35
+        if any(w in nombre_lower for w in ["casa", "cama", "colchón", "almohadón", "organizador"]):
+            tiempo_costura = 0.80
+        elif any(w in nombre_lower for w in ["mochila", "morral", "maletín", "set", "conjunto"]):
+            tiempo_costura = 0.70
+        elif any(w in nombre_lower for w in ["bolso", "tote", "lonchera", "funda", "delantal"]):
+            tiempo_costura = 0.45
+        elif any(w in nombre_lower for w in ["cartuchera", "neceser", "monedero", "estuche"]):
+            tiempo_costura = 0.30
+        else:
+            tiempo_costura = 0.35
 
-    if any(w in nombre_lower for w in ["gran", "grande", "maxi", "complejo", "completo", "xl", "pesado"]): tiempo_costura += 0.25
-    elif any(w in nombre_lower for w in ["mini", "pequeño", "simple", "corto", "sencillo"]): tiempo_costura = max(0.10, tiempo_costura - 0.15)
+    if any(w in nombre_lower for w in ["gran", "grande", "maxi", "complejo", "completo", "xl", "pesado"]):
+        tiempo_costura += 0.25
+    elif any(w in nombre_lower for w in ["mini", "pequeño", "simple", "corto", "sencillo"]):
+        tiempo_costura = max(0.10, tiempo_costura - 0.15)
         
     return round(max(0.10, tiempo_costura), 2)
 
 FACTORES_CO2 = {
-    "Banner": 9.5, "Bata de laboratorio": 6.575, "Bolsas": 8.0, "Camisa": 6.575, "Camisa algodón": 5.0, "Camisa drill": 5.9, 
-    "Camisa ignífuga": 5.35, "Camisa jean / denim": 5.0, "Camisaco": 5.0, "Camisaco drill": 5.9, "Camisaco drill con cinta": 6.25, 
-    "Casaca": 6.575, "Casaca drill": 5.9, "Casaca polar": 6.0, "Casaca polar con cinta reflectiva": 6.3, "Casaca térmica": 6.1, 
-    "Chaleco": 6.575, "Chaleco con cinta": 6.925, "Chaleco de seguridad": 9.75, "Chaleco Fluorescente": 9.625, "Chaleco polar": 6.0, 
-    "Chaleco reversible": 9.5, "Chompa": 7.1, "Chompa con cinta reflectiva": 7.45, "Chompa Jorge Chavez": 6.0, 
-    "Chompa Jorge Chavez con cinta reflectiva": 6.3, "Chompa polar": 6.0, "Enterizo": 6.575, "Gorro": 7.925, "Impermeable": 9.425, 
-    "Mameluco": 6.575, "Mameluco acolchado": 5.825, "Mameluco drill": 5.9, "Mameluco jean reflectivo": 5.35, "Merma": 6.575, 
-    "Overol": 6.575, "Pantalón": 6.575, "Pantalón algodón": 5.0, "Pantalón drill": 5.9, "Pantalón drill con cinta": 6.25, 
-    "Pantalón ignífugo": 5.35, "Pantalón jean": 5.0, "Pantalón jean / drill": 5.675, "Pantalón jean con cinta reflectiva": 5.35, 
-    "Pantalón polar": 6.0, "Pantalón térmico": 6.0, "Polera": 5.0, "Polera polar": 6.0, "Polo": 6.8, "Polo algodón": 5.0, 
-    "Polo con cinta reflectiva": 6.925, "Polo manga corta": 6.8, "Polo manga larga": 6.8, "Polo manga larga con cinta reflectiva": 6.7, 
+    "Banner": 9.5, "Bata de laboratorio": 6.575, "Bolsas": 8.0, "Camisa": 6.575,
+    "Camisa algodón": 5.0, "Camisa drill": 5.9, "Camisa ignífuga": 5.35,
+    "Camisa jean / denim": 5.0, "Camisaco": 5.0, "Camisaco drill": 5.9,
+    "Camisaco drill con cinta": 6.25, "Casaca": 6.575, "Casaca drill": 5.9,
+    "Casaca polar": 6.0, "Casaca polar con cinta reflectiva": 6.3,
+    "Casaca térmica": 6.1, "Chaleco": 6.575, "Chaleco con cinta": 6.925,
+    "Chaleco de seguridad": 9.75, "Chaleco Fluorescente": 9.625, "Chaleco polar": 6.0,
+    "Chaleco reversible": 9.5, "Chompa": 7.1, "Chompa con cinta reflectiva": 7.45,
+    "Chompa Jorge Chavez": 6.0, "Chompa Jorge Chavez con cinta reflectiva": 6.3,
+    "Chompa polar": 6.0, "Enterizo": 6.575, "Gorro": 7.925, "Impermeable": 9.425,
+    "Mameluco": 6.575, "Mameluco acolchado": 5.825, "Mameluco drill": 5.9,
+    "Mameluco jean reflectivo": 5.35, "Merma": 6.575, "Overol": 6.575,
+    "Pantalón": 6.575, "Pantalón algodón": 5.0, "Pantalón drill": 5.9,
+    "Pantalón drill con cinta": 6.25, "Pantalón ignífugo": 5.35, "Pantalón jean": 5.0,
+    "Pantalón jean / drill": 5.675, "Pantalón jean con cinta reflectiva": 5.35,
+    "Pantalón polar": 6.0, "Pantalón térmico": 6.0, "Polera": 5.0, "Polera polar": 6.0,
+    "Polo": 6.8, "Polo algodón": 5.0, "Polo con cinta reflectiva": 6.925,
+    "Polo manga corta": 6.8, "Polo manga larga": 6.8, "Polo manga larga con cinta reflectiva": 6.7,
     "Polo piqué": 5.0, "Short": 6.575, "Toalla": 5.0, "Otro": 6.575,
 }
 
 FACTORES_TRANSPORTE = {
-    "Auto": {"consumo": 0.10, "factor": 2.31}, "Minivan": {"consumo": 0.12, "factor": 2.00}, "Mototaxi": {"consumo": 0.04, "factor": 2.31},
-    "Moto": {"consumo": 0.03, "factor": 2.31}, "Camión mediano": {"consumo": 0.30, "factor": 2.68}, "Camión grande": {"consumo": 0.40, "factor": 2.68},
+    "Auto": {"consumo": 0.10, "factor": 2.31},
+    "Minivan": {"consumo": 0.12, "factor": 2.00},
+    "Mototaxi": {"consumo": 0.04, "factor": 2.31},
+    "Moto": {"consumo": 0.03, "factor": 2.31},
+    "Camión mediano": {"consumo": 0.30, "factor": 2.68},
+    "Camión grande": {"consumo": 0.40, "factor": 2.68},
 }
 
 DISTANCIAS_LIMA_SJL = {
-    "San Juan de Lurigancho (Local)": 4.0, "Ancón": 48.0, "Ate": 14.0, "Barranco": 18.5, "Bellavista (Callao)": 17.0, "Breña": 10.5, 
-    "Callao (Cercado)": 18.0, "Carabayllo": 25.0, "Carmen de la Legua Reynoso (Callao)": 15.0, "Chaclacayo": 28.0, "Chorrillos": 22.0, 
-    "Cieneguilla": 32.0, "Comas": 18.0, "El Agustino": 6.0, "Independencia": 12.0, "Jesús María": 12.0, "La Molina": 15.0, 
-    "La Perla (Callao)": 18.0, "La Punta (Callao)": 21.0, "La Victoria": 9.5, "Lima (Cercado de Lima)": 9.0, "Lince": 12.5, 
-    "Los Olivos": 15.0, "Lurigancho-Chosica": 36.0, "Lurín": 36.0, "Magdalena del Mar": 15.0, "Mi Perú (Callao)": 32.0, 
-    "Miraflores": 16.0, "Pachacámac": 34.0, "Pucusana": 72.0, "Pueblo Libre": 13.5, "Puente Piedra": 28.0, "Punta Hermosa": 52.0, 
-    "Punta Negra": 56.0, "Rímac": 7.5, "San Bartolo": 60.0, "San Borja": 12.0, "San Isidro": 13.5, "San Juan de Miraflores": 20.0, 
-    "San Luis": 10.0, "San Martín de Porres": 13.0, "San Miguel": 15.5, "Santa Anita": 8.0, "Santa María del Mar": 63.0, 
-    "Santa Rosa": 42.0, "Santiago de Surco": 17.0, "Surquillo": 14.5, "Ventanilla (Callao)": 30.0, "Villa El Salvador": 28.0, 
+    "San Juan de Lurigancho (Local)": 4.0, "Ancón": 48.0, "Ate": 14.0, "Barranco": 18.5,
+    "Bellavista (Callao)": 17.0, "Breña": 10.5, "Callao (Cercado)": 18.0, "Carabayllo": 25.0,
+    "Carmen de la Legua Reynoso (Callao)": 15.0, "Chaclacayo": 28.0, "Chorrillos": 22.0,
+    "Cieneguilla": 32.0, "Comas": 18.0, "El Agustino": 6.0, "Independencia": 12.0,
+    "Jesús María": 12.0, "La Molina": 15.0, "La Perla (Callao)": 18.0, "La Punta (Callao)": 21.0,
+    "La Victoria": 9.5, "Lima (Cercado de Lima)": 9.0, "Lince": 12.5, "Los Olivos": 15.0,
+    "Lurigancho-Chosica": 36.0, "Lurín": 36.0, "Magdalena del Mar": 15.0, "Mi Perú (Callao)": 32.0,
+    "Miraflores": 16.0, "Pachacámac": 34.0, "Pucusana": 72.0, "Pueblo Libre": 13.5,
+    "Puente Piedra": 28.0, "Punta Hermosa": 52.0, "Punta Negra": 56.0, "Rímac": 7.5,
+    "San Bartolo": 60.0, "San Borja": 12.0, "San Isidro": 13.5, "San Juan de Miraflores": 20.0,
+    "San Luis": 10.0, "San Martín de Porres": 13.0, "San Miguel": 15.5, "Santa Anita": 8.0,
+    "Santa María del Mar": 63.0, "Santa Rosa": 42.0, "Santiago de Surco": 17.0,
+    "Surquillo": 14.5, "Ventanilla (Callao)": 30.0, "Villa El Salvador": 28.0,
     "Villa María del Triunfo": 24.0, "➕ Otro / Fuera de Lima (Ingreso manual)": 0.0,
 }
 
-FACTORES_BORDADO = {"Sin bordado / Ninguno": 0.0, "Estampado DTF": 0.020, "Simple (5 min/pieza)": 0.020, "Medio (9 min/pieza)": 0.037, "Complejo (10 min/pieza)": 0.041}
+FACTORES_BORDADO = {
+    "Sin bordado / Ninguno": 0.0, "Estampado DTF": 0.020, "Simple (5 min/pieza)": 0.020,
+    "Medio (9 min/pieza)": 0.037, "Complejo (10 min/pieza)": 0.041,
+}
 
 PERSONAL_FIJO_OPERACIONES = [
-    {"rol": "Corte", "nombre": "Maria Isabel Estrada Sandoval"}, {"rol": "Corte", "nombre": "Genaro Jara García"},
-    {"rol": "Corte", "nombre": "Luciana Jara estrada"}, {"rol": "Corte", "nombre": "Felicita Sandoval vilchez"},
-    {"rol": "Corte", "nombre": "Nicolle Estrada"}, {"rol": "Logística", "nombre": "Evelyn Prada Vizarreta"},
+    {"rol": "Corte", "nombre": "Maria Isabel Estrada Sandoval"},
+    {"rol": "Corte", "nombre": "Genaro Jara García"},
+    {"rol": "Corte", "nombre": "Luciana Jara estrada"},
+    {"rol": "Corte", "nombre": "Felicita Sandoval vilchez"},
+    {"rol": "Corte", "nombre": "Nicolle Estrada"},
+    {"rol": "Logística", "nombre": "Evelyn Prada Vizarreta"},
 ]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
@@ -272,19 +337,21 @@ st.markdown(
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
     }
 
-    div[data-testid="stButton"] button, div[data-testid="stDownloadButton"] button {
+    /* Estilo general para botones primarios */
+    div[data-testid="stButton"] button {
         border-radius: 10px;
         font-weight: 600;
         transition: transform 0.12s ease, box-shadow 0.12s ease;
         border: 1px solid var(--border);
     }
-    div[data-testid="stButton"] button:hover, div[data-testid="stDownloadButton"] button:hover {
+    div[data-testid="stButton"] button:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
     }
     div[data-testid="stButton"] button[kind="primary"] {
         background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 100%);
         border: none;
+        color: white;
     }
 
     div[data-testid="stMetric"] {
@@ -732,7 +799,6 @@ else:
             st.session_state.documentos_descarga = None
             st.rerun()
 
-    # Título superior dependiendo de la pestaña
     titulo_header = st.session_state.pestaña_activa
     if st.session_state.pestaña_activa == "Dashboard Analítico":
         titulo_header = "Dashboard Analítico"
@@ -749,10 +815,10 @@ else:
 
     # --- VISTA: CARGA RÁPIDA HISTÓRICA E IMPORTACIÓN MASIVA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
-        st.subheader("⚡ Carga Rápida de Proyectos Históricos")
+        st.subheader("Carga Rápida de Proyectos Históricos")
         st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
 
-        tab_manual, tab_masiva = st.tabs(["✍️ Carga Manual Individual", "📂 Carga Masiva Inteligente (CSV/Excel)"])
+        tab_manual, tab_masiva = st.tabs(["Carga Manual Individual", "Carga Masiva Inteligente (CSV/Excel)"])
 
         with tab_manual:
             with st.container(border=True):
@@ -781,7 +847,7 @@ else:
 
             st.write("")
 
-            if st.button("🚀 Guardar Proyecto Histórico", type="primary", use_container_width=True):
+            if st.button("Guardar Proyecto Histórico", type="primary", use_container_width=True):
                 if not fast_cliente.strip():
                     st.error("El campo **Cliente / Razón Social** es obligatorio.")
                 else:
@@ -814,7 +880,7 @@ else:
 
         with tab_masiva:
             with st.container(border=True):
-                st.markdown("##### 📂 Carga Masiva Automática")
+                st.markdown("##### Carga Masiva Automática")
                 st.markdown("El sistema lee CSV (recomendado) o Excel automáticamente. Detecta columnas y soluciona errores de codificación o separadores.")
                 
                 archivo_cargado = st.file_uploader("Selecciona tu archivo CSV o Excel", type=["csv", "xlsx"])
@@ -840,7 +906,7 @@ else:
                     if df_subido is not None:
                         st.write("Vista previa inteligente (Columnas detectadas):", df_subido.head(3))
 
-                        if st.button("🚀 Importar Todos los Proyectos", type="primary", use_container_width=True):
+                        if st.button("Importar Todos los Proyectos", type="primary", use_container_width=True):
                             with st.spinner("Importando masivamente..."):
                                 meses_map = {m.lower(): i for i, m in MESES_ESPANOL.items()}
                                 
@@ -906,7 +972,7 @@ else:
 
     # --- VISTA: PROYECTOS EN PROCESO ---
     elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
-        st.subheader("📋 Lista de Proyectos en Proceso (Borradores)")
+        st.subheader("Lista de Proyectos en Proceso (Borradores)")
         st.caption("Proyectos guardados pendientes de culminación o emisión definitiva.")
 
         proyectos_lista = cargar_proyectos("EN_PROCESO")
@@ -923,7 +989,7 @@ else:
                     bc2.caption(f"Fecha: {b.get('fecha', '')}")
 
                     if bc3.button(
-                        "✏️ Retomar Edición",
+                        "Retomar Edición",
                         key=f"retomar_{b.get('id', b.get('codigo'))}",
                         use_container_width=True,
                         type="primary",
@@ -1059,32 +1125,44 @@ else:
 
     # --- VISTA: HISTORIAL COMPLETO ---
     elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
-        st.subheader("🗂️ Historial Completo de Proyectos")
-        st.caption("Listado general de todos los proyectos registrados. Selecciona casillas para borrado masivo.")
+        st.subheader("Historial Completo de Proyectos")
+        st.caption("Listado general de todos los proyectos registrados. Puedes habilitar el modo edición para borrar varios a la vez.")
 
         proyectos_lista = cargar_proyectos()
         if proyectos_lista:
-            # Identificar qué proyectos han sido seleccionados
-            proyectos_seleccionados = [p for p in proyectos_lista if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
-
+            
             col_top1, col_top2 = st.columns([4, 2])
             
-            if col_top2.button(
-                f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
-                disabled=len(proyectos_seleccionados) == 0, 
-                type="primary", 
-                use_container_width=True
-            ):
-                modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
+            # --- INTERRUPTOR DE MODO EDICIÓN ---
+            modo_edicion = col_top1.toggle("🛠️ Habilitar selección múltiple para borrar")
+            
+            if modo_edicion:
+                proyectos_seleccionados = [p for p in proyectos_lista if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
+                if col_top2.button(
+                    f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
+                    disabled=len(proyectos_seleccionados) == 0, 
+                    type="secondary", # Color gris normal para que se lea siempre
+                    use_container_width=True
+                ):
+                    modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
+            else:
+                # Limpiar selecciones si se apaga el modo
+                for p in proyectos_lista:
+                    k = f"bulk_del_{p.get('id', p.get('codigo'))}"
+                    if k in st.session_state:
+                        st.session_state[k] = False
                 
             st.write("---")
 
             for p in proyectos_lista:
                 with st.container(border=True):
-                    c_chk, hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([0.4, 2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
                     
-                    c_chk.write("") 
-                    c_chk.checkbox(" ", key=f"bulk_del_{p.get('id', p.get('codigo'))}", label_visibility="collapsed")
+                    if modo_edicion:
+                        c_chk, hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([0.4, 2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
+                        c_chk.write("") 
+                        c_chk.checkbox(" ", key=f"bulk_del_{p.get('id', p.get('codigo'))}", label_visibility="collapsed")
+                    else:
+                        hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.9, 1.6, 1.6, 1.8, 1.8, 0.7])
                     
                     nombre_cli_ui = p.get('cliente', 'Sin Nombre')
 
@@ -1117,7 +1195,7 @@ else:
         else:
             st.info("📭 No hay proyectos registrados en el historial.")
 
-    # --- VISTA: NUEVO REPORTE PDF ---
+    # --- VISTA: NUEVO REPORTE PDF (ESTRUCTURA ORIGINAL EXPANDIDA) ---
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
         p_edit = st.session_state.proyecto_editar
 
