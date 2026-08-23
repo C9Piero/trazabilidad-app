@@ -379,7 +379,7 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
         st.rerun()
     if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
 
-# --- CLASE CANVAS MODIFICADA PARA PINTAR LOGO ABSOLUTO EN PÁGINA 1 ---
+# --- CLASE CANVAS VUELVE A SU FORMA ORIGINAL (SIN DIBUJO FLOTANTE) ---
 class ReporteCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -389,11 +389,9 @@ class ReporteCanvas(canvas.Canvas):
         self._startPage()
     def save(self):
         num_pages = len(self.pages)
-        for i, page in enumerate(self.pages):
+        for page in self.pages:
             self.__dict__.update(page)
             self.draw_footer()
-            if i == 0:  # SOLO SE DIBUJA EL LOGO EN LA PRIMERA PÁGINA
-                self.draw_logo_top_right()
             super().showPage()
         super().save()
     def draw_footer(self):
@@ -402,33 +400,6 @@ class ReporteCanvas(canvas.Canvas):
         self.setFillColor(colors.HexColor("#94A3B8"))
         self.drawCentredString(612 / 2.0, 22, "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres")
         self.drawCentredString(612 / 2.0, 12, "emprendedoras")
-        self.restoreState()
-    def draw_logo_top_right(self):
-        self.saveState()
-        logo_path_png = "pequeños detalles logo.png"
-        logo_path_jpg = "pequeños detalles logo.jpg"
-        logo_path = None
-        if os.path.exists(logo_path_png):
-            logo_path = logo_path_png
-        elif os.path.exists(logo_path_jpg):
-            logo_path = logo_path_jpg
-            
-        if logo_path:
-            try:
-                img_reader = ImageReader(logo_path)
-                iw, ih = img_reader.getSize()
-                aspect = ih / float(iw)
-                target_width = 120
-                target_height = target_width * aspect
-                
-                # Hoja letter: 612 x 792. Margen derecho=45, Margen superior (tope de página) = 45
-                x_pos = 612 - 45 - target_width
-                # ALINEACIÓN PERFECTA: Hacemos que el tope del logo choque exactamente con el margen 747 (792-45)
-                y_pos = 792 - 45 - target_height 
-                
-                self.drawImage(logo_path, x_pos, y_pos, width=target_width, height=target_height, preserveAspectRatio=True, anchor='ne', mask='auto')
-            except Exception:
-                pass
         self.restoreState()
 
 
@@ -492,9 +463,9 @@ def generar_pdf_oficial(
 
     styles = getSampleStyleSheet()
 
-    # --- LA MAGIA ESTÁ AQUÍ: spaceBefore=0 OBLIGA AL TEXTO A PEGARSE ARRIBA ---
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceBefore=0, spaceAfter=4, rightIndent=130)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20, rightIndent=130)
+    # --- SE QUITÓ EL RIGHTINDENT, YA NO ES NECESARIO ---
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceBefore=0, spaceAfter=4)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=0)
     
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#334155"), leading=12)
@@ -514,13 +485,49 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # ENCABEZADO LIBRE: Ahora fluye perfectamente pegado arriba
+    # --- LECTURA MATEMÁTICA EXACTA DEL LOGO ---
+    logo_path_png = "pequeños detalles logo.png"
+    logo_path_jpg = "pequeños detalles logo.jpg"
+    logo_img = None
+    
+    for path in [logo_path_png, logo_path_jpg]:
+        if os.path.exists(path):
+            try:
+                img_reader = ImageReader(path)
+                iw, ih = img_reader.getSize()
+                aspect = ih / float(iw)
+                target_width = 110
+                target_height = target_width * aspect
+                # Al dibujar la imagen así, su caja encaja 100% perfecto. Cero padding invisible.
+                logo_img = Image(path, width=target_width, height=target_height)
+                break
+            except Exception:
+                pass
+
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
-    elements.append(titulo)
-    elements.append(subtitulo)
-    
+    celda_texto = [titulo, subtitulo]
+
+    if logo_img:
+        logo_img.hAlign = 'RIGHT'
+        # --- TABLA HEADER ---
+        # Garantiza que el título y el logo comiencen exactamente en la misma línea
+        t_header = Table([[celda_texto, logo_img]], colWidths=[410, 110])
+        t_header.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Alineación TOP estricta
+            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0), # Sin espacios escondidos arriba
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(t_header)
+        elements.append(Spacer(1, 15))
+    else:
+        elements.extend(celda_texto)
+        elements.append(Spacer(1, 15))
+
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
     <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO2e evitados</b> 
@@ -745,19 +752,36 @@ def generar_pdf_oficial(
 
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
-    # Estandarizamos márgenes a 45 como el oficial
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
     styles = getSampleStyleSheet()
     
-    # --- LA MAGIA ESTÁ AQUÍ: spaceBefore=0 OBLIGA AL TEXTO A PEGARSE ARRIBA ---
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceBefore=0, spaceAfter=6, rightIndent=130)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20, rightIndent=130)
+    # --- SE QUITÓ EL RIGHTINDENT, YA NO ES NECESARIO ---
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceBefore=0, spaceAfter=6)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20)
     
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
     
     elements = []
+    
+    # --- LECTURA MATEMÁTICA EXACTA DEL LOGO ---
+    logo_path_png = "pequeños detalles logo.png"
+    logo_path_jpg = "pequeños detalles logo.jpg"
+    logo_img = None
+    
+    for path in [logo_path_png, logo_path_jpg]:
+        if os.path.exists(path):
+            try:
+                img_reader = ImageReader(path)
+                iw, ih = img_reader.getSize()
+                aspect = ih / float(iw)
+                target_width = 110
+                target_height = target_width * aspect
+                logo_img = Image(path, width=target_width, height=target_height)
+                break
+            except Exception:
+                pass
 
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
         titulo_str = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
@@ -772,9 +796,25 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     titulo = Paragraph(titulo_str, h1_style)
     subtitulo = Paragraph(sub_str, sub_style)
     
-    # ENCABEZADO LIBRE: Ahora fluye perfectamente pegado arriba
-    elements.append(titulo)
-    elements.append(subtitulo)
+    celda_texto = [titulo, subtitulo]
+    
+    if logo_img:
+        logo_img.hAlign = 'RIGHT'
+        # --- TABLA HEADER ---
+        t_header = Table([[celda_texto, logo_img]], colWidths=[430, 110]) 
+        t_header.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Alineación TOP estricta
+            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(t_header)
+        elements.append(Spacer(1, 15))
+    else:
+        elements.extend(celda_texto)
+        elements.append(Spacer(1, 15))
     
     if df_fil.empty:
         elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
