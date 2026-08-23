@@ -341,7 +341,7 @@ def subir_imagen_supabase(nombre_archivo: str, img_bytes: bytes) -> str:
 
 def cargar_proyectos(estado=None):
     try:
-        query = supabase.table("proyectos").select("*").order('id', desc=True) # Mostrar más recientes primero
+        query = supabase.table("proyectos").select("*").order('id', desc=True)
         if estado: query = query.eq("estado", estado)
         return query.execute().data
     except Exception: return []
@@ -484,13 +484,18 @@ def generar_pdf_oficial(
     elements = []
 
     # --- AGREGAR LOGO DE LA EMPRESA (ALINEADO A LA DERECHA DEL TÍTULO) ---
-    logo_path = "pequeños detalles logo.png"
+    logo_path_png = "pequeños detalles logo.png"
+    logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
-    if os.path.exists(logo_path):
+    
+    if os.path.exists(logo_path_png):
         try:
-            logo_img = Image(logo_path, width=140, height=45) 
-        except Exception:
-            pass
+            logo_img = Image(logo_path_png, width=120, height=40) 
+        except: pass
+    elif os.path.exists(logo_path_jpg):
+        try:
+            logo_img = Image(logo_path_jpg, width=120, height=40) 
+        except: pass
 
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy} | <b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
@@ -498,8 +503,7 @@ def generar_pdf_oficial(
     celda_texto = [titulo, subtitulo]
 
     if logo_img:
-        # Usar una tabla sin bordes para colocar título a la izq y logo a la der
-        # Ancho total de la página (612) - leftMargin (45) - rightMargin (45) = 522
+        logo_img.hAlign = 'RIGHT'
         t_header = Table([[celda_texto, logo_img]], colWidths=[382, 140])
         t_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -722,13 +726,18 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     elements = []
     
     # --- AGREGAR LOGO ALINEADO A LA DERECHA ---
-    logo_path = "pequeños detalles logo.png"
+    logo_path_png = "pequeños detalles logo.png"
+    logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
-    if os.path.exists(logo_path):
+    
+    if os.path.exists(logo_path_png):
         try:
-            logo_img = Image(logo_path, width=140, height=45)
-        except Exception:
-            pass
+            logo_img = Image(logo_path_png, width=120, height=40)
+        except: pass
+    elif os.path.exists(logo_path_jpg):
+        try:
+            logo_img = Image(logo_path_jpg, width=120, height=40)
+        except: pass
 
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
         titulo_str = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
@@ -746,7 +755,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     celda_texto = [titulo, subtitulo]
     
     if logo_img:
-        # Ancho total de Dashboard (612 - 72 = 540)
+        logo_img.hAlign = 'RIGHT'
         t_header = Table([[celda_texto, logo_img]], colWidths=[400, 140])
         t_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
