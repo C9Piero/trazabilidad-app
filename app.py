@@ -14,6 +14,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader  # --- NUEVO: Para leer proporciones de imagen ---
 from reportlab.platypus import (
     Image,
     PageBreak,
@@ -438,6 +439,8 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
             with open(pdf_temp, "rb") as f: return f.read()
         else: raise RuntimeError("Error al convertir DOCX a PDF con LibreOffice.")
 
+
+# --- GENERADOR DEL INFORME TÉCNICO COMPLETO (ESTILO PREMIUM B2B) ---
 def generar_pdf_oficial(
     cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area, tipo_material,
     valorizacion, unidad_medida, guia_remision, origen, destino, lista_items, lista_trazabilidad,
@@ -480,16 +483,25 @@ def generar_pdf_oficial(
 
     elements = []
 
+    # --- LECTURA MATEMÁTICA DEL LOGO PARA EVITAR PADDING INVISIBLE ---
     logo_path_png = "pequeños detalles logo.png"
     logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
     
-    if os.path.exists(logo_path_png):
-        try: logo_img = Image(logo_path_png, width=90, height=90, kind='proportional') 
-        except: pass
-    elif os.path.exists(logo_path_jpg):
-        try: logo_img = Image(logo_path_jpg, width=90, height=90, kind='proportional') 
-        except: pass
+    for path in [logo_path_png, logo_path_jpg]:
+        if os.path.exists(path):
+            try:
+                img_reader = ImageReader(path)
+                iw, ih = img_reader.getSize()
+                aspect = ih / float(iw)
+                target_width = 110
+                target_height = target_width * aspect
+                # Al no usar kind='proportional' y darle la medida exacta calculada,
+                # la "caja invisible" de ReportLab abraza el logo perfectamente, con 0 relleno.
+                logo_img = Image(path, width=target_width, height=target_height)
+                break
+            except Exception:
+                pass
 
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
@@ -498,9 +510,9 @@ def generar_pdf_oficial(
 
     if logo_img:
         logo_img.hAlign = 'RIGHT'
-        t_header = Table([[celda_texto, logo_img]], colWidths=[400, 100])
+        t_header = Table([[celda_texto, logo_img]], colWidths=[410, 110])
         t_header.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Ahora sí se anclará exactamente arriba
             ("ALIGN", (1, 0), (1, 0), "RIGHT"),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
             ("TOPPADDING", (0, 0), (-1, -1), 0),
@@ -734,6 +746,7 @@ def generar_pdf_oficial(
     buffer.seek(0)
     return buffer
 
+# --- NUEVA FUNCIÓN: GENERAR PDF DEL DASHBOARD ANALÍTICO ---
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
@@ -747,16 +760,24 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     
     elements = []
     
+    # --- CÁLCULO DINÁMICO DE LOGO EN DASHBOARD TAMBIÉN ---
     logo_path_png = "pequeños detalles logo.png"
     logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
     
-    if os.path.exists(logo_path_png):
-        try: logo_img = Image(logo_path_png, width=90, height=90, kind='proportional')
-        except: pass
-    elif os.path.exists(logo_path_jpg):
-        try: logo_img = Image(logo_path_jpg, width=90, height=90, kind='proportional')
-        except: pass
+    for path in [logo_path_png, logo_path_jpg]:
+        if os.path.exists(path):
+            try:
+                img_reader = ImageReader(path)
+                iw, ih = img_reader.getSize()
+                aspect = ih / float(iw)
+                target_width = 110
+                target_height = target_width * aspect
+                # Cero relleno invisible
+                logo_img = Image(path, width=target_width, height=target_height)
+                break
+            except Exception:
+                pass
 
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
         titulo_str = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
@@ -775,9 +796,9 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     
     if logo_img:
         logo_img.hAlign = 'RIGHT'
-        t_header = Table([[celda_texto, logo_img]], colWidths=[400, 100])
+        t_header = Table([[celda_texto, logo_img]], colWidths=[430, 110]) # La suma debe dar el ancho disponible (540 pt)
         t_header.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Anclaje perfecto arriba
             ("ALIGN", (1, 0), (1, 0), "RIGHT"),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
             ("TOPPADDING", (0, 0), (-1, -1), 0),
