@@ -272,7 +272,6 @@ st.markdown(
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
     }
 
-    /* Estilo general para botones primarios */
     div[data-testid="stButton"] button {
         border-radius: 10px;
         font-weight: 600;
@@ -498,14 +497,12 @@ def generar_pdf_oficial(
 
     # ENCABEZADO CON TABLA INVISIBLE PARA ALINEAR TEXTO Y LOGO EN LA MISMA LÍNEA
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
-    
-    # El salto de línea <br/> arregla el problema de la fecha debajo del código
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
     celda_texto = [titulo, subtitulo]
 
     if logo_img:
-        # colWidths define el espacio: 400 pt para el texto a la izquierda, 100 pt para el logo a la derecha
+        logo_img.hAlign = 'RIGHT'
         t_header = Table([[celda_texto, logo_img]], colWidths=[400, 100])
         t_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -520,7 +517,7 @@ def generar_pdf_oficial(
     else:
         elements.extend(celda_texto)
 
-    # RESUMEN EJECUTIVO (CO2e sin emoji)
+    # RESUMEN EJECUTIVO (CO2e limpio)
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
     <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO2e evitados</b> 
@@ -563,6 +560,7 @@ def generar_pdf_oficial(
     ]))
     elements.append(t_ficha)
 
+    # --- FUNCIÓN INTERNA MEJORADA PARA IMÁGENES NO APLASTADAS ---
     def obtener_imagen_pdf(foto_data, width, height):
         if foto_data is not None and foto_data != "":
             import urllib.request
@@ -570,10 +568,10 @@ def generar_pdf_oficial(
                 if isinstance(foto_data, str) and foto_data.startswith("http"):
                     req = urllib.request.Request(foto_data, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(req) as response: img_data = io.BytesIO(response.read())
-                    return Image(img_data, width=width, height=height)
+                    return Image(img_data, width=width, height=height, kind='proportional') # KIND='PROPORTIONAL' EVITA EL APLASTAMIENTO
                 elif hasattr(foto_data, 'read'):
                     foto_data.seek(0); img_data = io.BytesIO(foto_data.read()); foto_data.seek(0)
-                    return Image(img_data, width=width, height=height)
+                    return Image(img_data, width=width, height=height, kind='proportional')
             except Exception: pass
         return Paragraph("Sin foto", cell_style)
 
@@ -589,11 +587,9 @@ def generar_pdf_oficial(
     data_prendas_pdf.append([Paragraph("<b>TOTAL</b>", cell_bold), "", Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold), Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold), ""])
     
     t_prendas = Table(data_prendas_pdf, colWidths=[40, 210, 80, 80, 110])
-    
     estilo_prendas = list(modern_table_style._cmds)
     estilo_prendas.extend([("ALIGN", (2, 0), (3, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_prendas.setStyle(TableStyle(estilo_prendas))
-    
     elements.append(t_prendas)
 
     # 3. TRAZABILIDAD
@@ -669,7 +665,7 @@ def generar_pdf_oficial(
     elements.append(t_master)
     elements.append(Spacer(1, 15))
 
-    # --- CÁLCULO DE MÉTRICAS MÁGICAS SIN EMOJIS (Para compatibilidad PDF) ---
+    # --- CÁLCULO DE MÉTRICAS MÁGICAS (SIN EMOJIS, SOLO VIÑETAS LIMPIAS) ---
     equiv_agua = int(max(0, total_procesado * 2500))
     equiv_arboles = round(co2_neto / 22.0, 1) if co2_neto < 22 else int(max(0, co2_neto / 22.0))
     if equiv_arboles == 0: equiv_arboles = 0.1 
@@ -693,12 +689,12 @@ def generar_pdf_oficial(
     elements.append(Spacer(1, 15))
 
 
-    # 6. IMPACTO SOCIAL (CORREGIDO ERROR DE LOGÍSTICA/PREPARACIÓN)
+    # 6. IMPACTO SOCIAL (TEXTOS LIMPIOS)
     elements.append(Paragraph("6. MATRIZ DE IMPACTO SOCIAL", h2_style))
     data_ops_pdf = [[Paragraph("Colaborador/a", cell_bold), Paragraph("Rol Operativo", cell_bold), Paragraph("Horas Totales", cell_bold)]]
     
     for op in lista_operaciones_pdf:
-        # Aquí se quitó el texto fijo que causaba el error (Logística/Preparación)
+        # Pasa directamente el valor guardado ("Corte" o "Logística"), sin añadirle nada extra.
         data_ops_pdf.append([Paragraph(str(op["nombre"]), cell_style), Paragraph(str(op["rol"]), cell_style), Paragraph(f"{op['horas_totales']:.2f} hrs", cell_style)])
         
     for c_item in lista_confeccion:
@@ -712,18 +708,20 @@ def generar_pdf_oficial(
     t_soc.setStyle(TableStyle(estilo_soc))
     elements.append(t_soc)
 
-    # 7. ANEXOS FOTOGRÁFICOS
+    # 7. ANEXOS FOTOGRÁFICOS (DISEÑO MEJORADO Y LLENADO DE HOJA)
     anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
     if anexos_validos:
         elements.append(PageBreak())
         elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL", h2_style))
         elements.append(Paragraph("Evidencias visuales complementarias de la gestión en taller y detalle de productos.", sub_style))
+        elements.append(Spacer(1, 10))
         
         for idx_a, anexo in enumerate(anexos_validos, 1):
-            img_cell = obtener_imagen_pdf(anexo["foto"], width=460, height=200)
+            # Aumentamos el tamaño a 480x270 para que llenen mejor el espacio vertical y horizontal
+            img_cell = obtener_imagen_pdf(anexo["foto"], width=480, height=270)
             nota_texto = anexo["nota"].strip() if anexo["nota"].strip() else "Sin descripción adicional provista."
             card_data = [[img_cell], [Paragraph(f"<b>Nota Evidencia {idx_a}:</b> {nota_texto}", cell_style)]]
-            t_card = Table(card_data, colWidths=[500])
+            t_card = Table(card_data, colWidths=[520])
             t_card.setStyle(TableStyle([
                 ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
                 ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
@@ -732,7 +730,15 @@ def generar_pdf_oficial(
                 ("PADDING", (0, 0), (-1, -1), 10),
             ]))
             elements.append(t_card)
-            elements.append(Spacer(1, 15))
+            
+            # Forzar un salto de página después de cada 2 imágenes exactamente
+            if idx_a % 2 == 0 and idx_a < len(anexos_validos):
+                elements.append(PageBreak())
+                elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL (Cont.)", h2_style))
+                elements.append(Spacer(1, 10))
+            else:
+                # Si solo es la primera foto de la página, agregar un espaciador grande antes de la siguiente
+                elements.append(Spacer(1, 25))
 
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
@@ -741,7 +747,7 @@ def generar_pdf_oficial(
 # --- NUEVA FUNCIÓN: GENERAR PDF DEL DASHBOARD ANALÍTICO ---
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50)
     styles = getSampleStyleSheet()
     
     h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6)
