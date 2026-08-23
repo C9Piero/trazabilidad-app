@@ -272,6 +272,7 @@ st.markdown(
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
     }
 
+    /* Estilo general para botones primarios */
     div[data-testid="stButton"] button {
         border-radius: 10px;
         font-weight: 600;
@@ -498,7 +499,7 @@ def generar_pdf_oficial(
     # ENCABEZADO CON TABLA INVISIBLE PARA ALINEAR TEXTO Y LOGO EN LA MISMA LÍNEA
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     
-    # El salto de línea <br/> arregla el problema de la fecha que querías abajo del código
+    # El salto de línea <br/> arregla el problema de la fecha debajo del código
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
     celda_texto = [titulo, subtitulo]
@@ -519,7 +520,7 @@ def generar_pdf_oficial(
     else:
         elements.extend(celda_texto)
 
-    # RESUMEN EJECUTIVO (CO2e modificado a CO2e sin el subíndice roto)
+    # RESUMEN EJECUTIVO (CO2e sin emoji)
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
     <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO2e evitados</b> 
@@ -588,9 +589,11 @@ def generar_pdf_oficial(
     data_prendas_pdf.append([Paragraph("<b>TOTAL</b>", cell_bold), "", Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold), Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold), ""])
     
     t_prendas = Table(data_prendas_pdf, colWidths=[40, 210, 80, 80, 110])
+    
     estilo_prendas = list(modern_table_style._cmds)
     estilo_prendas.extend([("ALIGN", (2, 0), (3, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_prendas.setStyle(TableStyle(estilo_prendas))
+    
     elements.append(t_prendas)
 
     # 3. TRAZABILIDAD
@@ -666,19 +669,17 @@ def generar_pdf_oficial(
     elements.append(t_master)
     elements.append(Spacer(1, 15))
 
-    # --- NUEVO: CÁLCULO DE MÉTRICAS DE EQUIVALENCIA MAGICAS (Árboles, Plástico, Agua) ---
+    # --- CÁLCULO DE MÉTRICAS MÁGICAS SIN EMOJIS (Para compatibilidad PDF) ---
     equiv_agua = int(max(0, total_procesado * 2500))
-    # Un arbol absorbe aprox 22kg de co2 por año. Si es menos de 22, mostramos 1 decimal, sino numero entero.
     equiv_arboles = round(co2_neto / 22.0, 1) if co2_neto < 22 else int(max(0, co2_neto / 22.0))
     if equiv_arboles == 0: equiv_arboles = 0.1 
-    # 1 kg de co2 = fabricar aprox 30 bolsas de plástico
     equiv_plastico = int(max(0, co2_neto * 30))
 
-    texto_equiv = f"""<b>🌱 ¿Qué significa este impacto ambiental?</b><br/>
+    texto_equiv = f"""<b>¿Qué significa este impacto ambiental?</b><br/>
     El ahorro de {co2_neto:.2f} kg de CO2e y la recuperación de {total_procesado:.2f} kg de textiles logrados en este proyecto equivalen a:<br/>
-    • 🌳 <b>Fijación de Carbono:</b> El equivalente al CO2 que absorberían <b>{equiv_arboles} árboles maduros</b> durante un año entero.<br/>
-    • ♻️ <b>Materiales Vírgenes:</b> Evitar las emisiones equivalentes a fabricar <b>{equiv_plastico:,} bolsas de plástico</b> nuevas.<br/>
-    • 💧 <b>Huella Hídrica:</b> Ahorrar aproximadamente <b>{equiv_agua:,} litros de agua</b> en el ecosistema mundial."""
+    • <b>Fijación de Carbono:</b> El equivalente al CO2 que absorberían <b>{equiv_arboles} árboles maduros</b> durante un año entero.<br/>
+    • <b>Materiales Vírgenes:</b> Evitar las emisiones equivalentes a fabricar <b>{equiv_plastico:,} bolsas de plástico</b> nuevas.<br/>
+    • <b>Huella Hídrica:</b> Ahorrar aproximadamente <b>{equiv_agua:,} litros de agua</b> en el ecosistema mundial."""
     
     texto_equiv = texto_equiv.replace(',', '.') 
 
@@ -692,12 +693,13 @@ def generar_pdf_oficial(
     elements.append(Spacer(1, 15))
 
 
-    # 6. IMPACTO SOCIAL
+    # 6. IMPACTO SOCIAL (CORREGIDO ERROR DE LOGÍSTICA/PREPARACIÓN)
     elements.append(Paragraph("6. MATRIZ DE IMPACTO SOCIAL", h2_style))
     data_ops_pdf = [[Paragraph("Colaborador/a", cell_bold), Paragraph("Rol Operativo", cell_bold), Paragraph("Horas Totales", cell_bold)]]
     
     for op in lista_operaciones_pdf:
-        data_ops_pdf.append([Paragraph(str(op["nombre"]), cell_style), Paragraph(f"{op['rol']} (Logística/Preparación)", cell_style), Paragraph(f"{op['horas_totales']:.2f} hrs", cell_style)])
+        # Aquí se quitó el texto fijo que causaba el error (Logística/Preparación)
+        data_ops_pdf.append([Paragraph(str(op["nombre"]), cell_style), Paragraph(str(op["rol"]), cell_style), Paragraph(f"{op['horas_totales']:.2f} hrs", cell_style)])
         
     for c_item in lista_confeccion:
         data_ops_pdf.append([Paragraph(c_item["persona"], cell_style), Paragraph(f"{c_item['rol']} ({c_item['producto']})", cell_style), Paragraph(f"{c_item['horas_totales']:.2f} hrs", cell_style)])
@@ -822,17 +824,17 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     
     elements.append(Spacer(1, 15))
 
-    # --- AGREGAR CÁLCULO DE MÉTRICAS MÁGICAS AL DASHBOARD TAMBIÉN ---
+    # --- CÁLCULO DE MÉTRICAS MÁGICAS DASHBOARD SIN EMOJIS ---
     equiv_agua_dash = int(max(0, kg_tot * 2500))
     equiv_arboles_dash = round(co2_tot / 22.0, 1) if co2_tot < 22 else int(max(0, co2_tot / 22.0))
     if equiv_arboles_dash == 0: equiv_arboles_dash = 0.1 
     equiv_plastico_dash = int(max(0, co2_tot * 30))
 
-    texto_equiv_dash = f"""<b>🌱 Equivalencias Ambientales</b><br/>
+    texto_equiv_dash = f"""<b>Equivalencias Ambientales</b><br/>
     El impacto total registrado en este periodo equivale a:<br/>
-    • 🌳 <b>Fijación de Carbono:</b> El equivalente al CO2 que absorberían <b>{equiv_arboles_dash} árboles maduros</b> durante un año entero.<br/>
-    • ♻️ <b>Materiales Vírgenes:</b> Evitar las emisiones equivalentes a fabricar <b>{equiv_plastico_dash:,} bolsas de plástico</b> nuevas.<br/>
-    • 💧 <b>Huella Hídrica:</b> Ahorrar aproximadamente <b>{equiv_agua_dash:,} litros de agua</b> en el ecosistema mundial."""
+    • <b>Fijación de Carbono:</b> El equivalente al CO2 que absorberían <b>{equiv_arboles_dash} árboles maduros</b> durante un año entero.<br/>
+    • <b>Materiales Vírgenes:</b> Evitar las emisiones equivalentes a fabricar <b>{equiv_plastico_dash:,} bolsas de plástico</b> nuevas.<br/>
+    • <b>Huella Hídrica:</b> Ahorrar aproximadamente <b>{equiv_agua_dash:,} litros de agua</b> en el ecosistema mundial."""
     
     texto_equiv_dash = texto_equiv_dash.replace(',', '.') 
 
@@ -1557,7 +1559,6 @@ else:
             if p_edit.get("codigo"):
                 codigo_proy = p_edit["codigo"]
             else:
-                # Generar código más limpio: EMPRESA_MES_AÑO
                 cliente_clean = re.sub(r'[^a-zA-Z0-9]', '', str_empresa).upper()[:8]
                 codigo_proy = f"{cliente_clean}_{mes_fin_nombre}{fe_fin_dt.year}"
 
