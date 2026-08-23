@@ -421,9 +421,10 @@ class ReporteCanvas(canvas.Canvas):
                 target_width = 120
                 target_height = target_width * aspect
                 
-                # Hoja letter: 612 x 792. Margen derecho=45, Margen superior=45
+                # Hoja letter: 612 x 792. Margen derecho=45, Margen superior (tope de página)
+                # Elevamos la posición Y para que quede alineado perfecto con el título
                 x_pos = 612 - 45 - target_width
-                y_pos = 792 - 45 - target_height
+                y_pos = 792 - 45 - target_height + 15
                 
                 # Se dibuja la imagen libremente sobre la hoja, en la coordenada exacta
                 self.drawImage(logo_path, x_pos, y_pos, width=target_width, height=target_height, preserveAspectRatio=True, anchor='ne', mask='auto')
@@ -514,15 +515,15 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # ENCABEZADO LIBRE DE TABLAS (Se dibuja natural, el logo va por la clase ReporteCanvas)
+    # ENCABEZADO LIBRE DE TABLAS 
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
     elements.append(titulo)
     elements.append(subtitulo)
-    # Se agrega un Spacer extra para compensar la altura del logo que está "flotando"
-    elements.append(Spacer(1, 20))
-
+    
+    # ELIMINAMOS EL SPACER ARTIFICIAL. El texto ahora fluye libremente.
+    
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
     <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO2e evitados</b> 
@@ -747,7 +748,7 @@ def generar_pdf_oficial(
 
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50)
     styles = getSampleStyleSheet()
     
     h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6, rightIndent=130)
@@ -771,10 +772,9 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     titulo = Paragraph(titulo_str, h1_style)
     subtitulo = Paragraph(sub_str, sub_style)
     
-    # ENCABEZADO LIBRE (Sin Tabla)
+    # ENCABEZADO LIBRE (Sin Tabla, sin Spacers escondidos)
     elements.append(titulo)
     elements.append(subtitulo)
-    elements.append(Spacer(1, 20))
     
     if df_fil.empty:
         elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
