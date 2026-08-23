@@ -379,7 +379,7 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
         st.rerun()
     if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
 
-# --- CLASE CANVAS VUELVE A SU FORMA ORIGINAL (SIN DIBUJO FLOTANTE) ---
+# --- CLASE CANVAS: DIBUJO DE MARCA DE AGUA FLOTANTE ---
 class ReporteCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -389,9 +389,11 @@ class ReporteCanvas(canvas.Canvas):
         self._startPage()
     def save(self):
         num_pages = len(self.pages)
-        for page in self.pages:
+        for i, page in enumerate(self.pages):
             self.__dict__.update(page)
             self.draw_footer()
+            if i == 0:  # EL LOGO SOLO SE PINTA EN LA PRIMERA PÁGINA
+                self.draw_logo_top_right()
             super().showPage()
         super().save()
     def draw_footer(self):
@@ -400,6 +402,33 @@ class ReporteCanvas(canvas.Canvas):
         self.setFillColor(colors.HexColor("#94A3B8"))
         self.drawCentredString(612 / 2.0, 22, "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres")
         self.drawCentredString(612 / 2.0, 12, "emprendedoras")
+        self.restoreState()
+    def draw_logo_top_right(self):
+        self.saveState()
+        logo_path_png = "pequeños detalles logo.png"
+        logo_path_jpg = "pequeños detalles logo.jpg"
+        logo_path = None
+        if os.path.exists(logo_path_png):
+            logo_path = logo_path_png
+        elif os.path.exists(logo_path_jpg):
+            logo_path = logo_path_jpg
+            
+        if logo_path:
+            try:
+                img_reader = ImageReader(logo_path)
+                iw, ih = img_reader.getSize()
+                aspect = ih / float(iw)
+                target_width = 115
+                target_height = target_width * aspect
+                
+                # Coordenadas exactas para la esquina.
+                # 612 es el ancho, 792 es el alto. 40 es el margen.
+                x_pos = 612 - 40 - target_width
+                y_pos = 792 - 35 - target_height 
+                
+                self.drawImage(logo_path, x_pos, y_pos, width=target_width, height=target_height, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
         self.restoreState()
 
 
@@ -442,7 +471,7 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
         else: raise RuntimeError("Error al convertir DOCX a PDF con LibreOffice.")
 
 
-# --- GENERADOR DEL INFORME TÉCNICO COMPLETO (ESTILO PREMIUM B2B) ---
+# --- GENERADOR DEL INFORME TÉCNICO COMPLETO ---
 def generar_pdf_oficial(
     cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area, tipo_material,
     valorizacion, unidad_medida, guia_remision, origen, destino, lista_items, lista_trazabilidad,
@@ -457,15 +486,16 @@ def generar_pdf_oficial(
     total_prod_unidades = sum([p_item["cantidad"] for p_item in lista_productos])
 
     buffer = io.BytesIO()
+    # Se ajustaron los márgenes para que el documento suba más en la hoja (topMargin=35)
     doc = SimpleDocTemplate(
-        buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50
+        buffer, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=35, bottomMargin=40
     )
 
     styles = getSampleStyleSheet()
 
-    # --- SE QUITÓ EL RIGHTINDENT, YA NO ES NECESARIO ---
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceBefore=0, spaceAfter=4)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=0)
+    # rightIndent evita que el texto sobreescriba el logo flotante.
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceBefore=0, spaceAfter=4, rightIndent=130)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=0, rightIndent=130)
     
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#334155"), leading=12)
@@ -485,48 +515,15 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # --- LECTURA MATEMÁTICA EXACTA DEL LOGO ---
-    logo_path_png = "pequeños detalles logo.png"
-    logo_path_jpg = "pequeños detalles logo.jpg"
-    logo_img = None
-    
-    for path in [logo_path_png, logo_path_jpg]:
-        if os.path.exists(path):
-            try:
-                img_reader = ImageReader(path)
-                iw, ih = img_reader.getSize()
-                aspect = ih / float(iw)
-                target_width = 110
-                target_height = target_width * aspect
-                # Al dibujar la imagen así, su caja encaja 100% perfecto. Cero padding invisible.
-                logo_img = Image(path, width=target_width, height=target_height)
-                break
-            except Exception:
-                pass
-
+    # ENCABEZADO LIBRE (100% libre de tablas, el logo es puesto por el Canvas)
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
-    celda_texto = [titulo, subtitulo]
-
-    if logo_img:
-        logo_img.hAlign = 'RIGHT'
-        # --- TABLA HEADER ---
-        # Garantiza que el título y el logo comiencen exactamente en la misma línea
-        t_header = Table([[celda_texto, logo_img]], colWidths=[410, 110])
-        t_header.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Alineación TOP estricta
-            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0), # Sin espacios escondidos arriba
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        elements.append(t_header)
-        elements.append(Spacer(1, 15))
-    else:
-        elements.extend(celda_texto)
-        elements.append(Spacer(1, 15))
+    elements.append(titulo)
+    elements.append(subtitulo)
+    
+    # Se deja este espacio en blanco para asegurar que el resumen nunca choque con la parte baja del logo flotante
+    elements.append(Spacer(1, 35))
 
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
@@ -539,7 +536,7 @@ def generar_pdf_oficial(
         [Paragraph(f"{kg_recibidos:.2f} kg", card_val), Paragraph(f"{pct_aprovechamiento_total:.2f}%", card_val), Paragraph(f"{co2_neto:.2f} kg", card_val), Paragraph(f"{total_horas_social:.1f} hrs", card_val)],
         [Paragraph("MATERIAL RECUPERADO", card_lbl), Paragraph("TASA APROVECHAMIENTO", card_lbl), Paragraph("CO2e NETO EVITADO", card_lbl), Paragraph(f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_lbl)],
     ]
-    t_cards = Table(cards_data, colWidths=[125, 125, 125, 125])
+    t_cards = Table(cards_data, colWidths=[133, 133, 133, 133]) # Ajustado al nuevo ancho (532)
     t_cards.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
@@ -561,7 +558,7 @@ def generar_pdf_oficial(
         [Paragraph("Guía de Remisión:", cell_bold), Paragraph(guia_remision if guia_remision else "N/A", cell_style)],
         [Paragraph("Responsable Interno:", cell_bold), Paragraph(responsable, cell_style)],
     ]
-    t_ficha = Table(data_ficha, colWidths=[140, 380])
+    t_ficha = Table(data_ficha, colWidths=[150, 382])
     t_ficha.setStyle(TableStyle([
         ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("PADDING", (0, 0), (-1, -1), 6),
@@ -595,7 +592,7 @@ def generar_pdf_oficial(
 
     data_prendas_pdf.append([Paragraph("<b>TOTAL</b>", cell_bold), "", Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold), Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold), ""])
     
-    t_prendas = Table(data_prendas_pdf, colWidths=[40, 200, 70, 70, 140]) 
+    t_prendas = Table(data_prendas_pdf, colWidths=[40, 202, 70, 70, 150]) 
     estilo_prendas = list(modern_table_style._cmds)
     estilo_prendas.extend([("ALIGN", (2, 0), (3, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_prendas.setStyle(TableStyle(estilo_prendas))
@@ -613,7 +610,7 @@ def generar_pdf_oficial(
             img_cell = obtener_imagen_pdf(t_item["foto"], 100, 75)
             data_traza_pdf.append([Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style), Paragraph(t_item["responsable"], cell_style), Paragraph(f"{t_item['peso']:.2f} kg", cell_style), img_cell])
 
-    t_traza = Table(data_traza_pdf, colWidths=[90, 70, 140, 70, 150])
+    t_traza = Table(data_traza_pdf, colWidths=[90, 70, 152, 70, 150])
     estilo_traza = list(modern_table_style._cmds)
     estilo_traza.extend([("ALIGN", (3, 0), (3, -1), "CENTER")])
     t_traza.setStyle(TableStyle(estilo_traza))
@@ -629,7 +626,7 @@ def generar_pdf_oficial(
         data_prod_pdf.append([Paragraph(p_item["producto"], cell_style), Paragraph(str(p_item["cantidad"]), cell_style), img_cell])
 
     data_prod_pdf.append([Paragraph("<b>TOTAL PRODUCTOS</b>", cell_bold), Paragraph(f"<b>{total_prod_unidades}</b>", cell_bold), ""])
-    t_prod = Table(data_prod_pdf, colWidths=[200, 100, 220])
+    t_prod = Table(data_prod_pdf, colWidths=[200, 100, 232])
     estilo_prod = list(modern_table_style._cmds)
     estilo_prod.extend([("ALIGN", (1, 0), (1, -1), "CENTER")])
     t_prod.setStyle(TableStyle(estilo_prod))
@@ -657,8 +654,8 @@ def generar_pdf_oficial(
         [Paragraph("<b>Impacto Ambiental Neto:</b>", cell_bold), Paragraph(f"<b>{co2_neto:.2f} kg CO2e</b>", cell_bold)],
     ]
     
-    t_balance = Table(col_izq, colWidths=[150, 100])
-    t_emisiones = Table(col_der, colWidths=[150, 100])
+    t_balance = Table(col_izq, colWidths=[160, 106])
+    t_emisiones = Table(col_der, colWidths=[160, 106])
     
     estilo_bloques = TableStyle([
         ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#1E3A8A")),
@@ -671,7 +668,7 @@ def generar_pdf_oficial(
     t_balance.setStyle(estilo_bloques)
     t_emisiones.setStyle(estilo_bloques)
     
-    t_master = Table([[t_balance, t_emisiones]], colWidths=[260, 260])
+    t_master = Table([[t_balance, t_emisiones]], colWidths=[266, 266])
     t_master.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 0)]))
     bloque_5.append(t_master)
     bloque_5.append(Spacer(1, 15))
@@ -689,7 +686,7 @@ def generar_pdf_oficial(
     
     texto_equiv = texto_equiv.replace(',', '.') 
 
-    t_equiv = Table([[Paragraph(texto_equiv, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[520])
+    t_equiv = Table([[Paragraph(texto_equiv, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[532])
     t_equiv.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ECFDF5")), 
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     
@@ -710,7 +707,7 @@ def generar_pdf_oficial(
         
     data_ops_pdf.append([Paragraph("<b>TOTAL TRABAJO GENERADO</b>", cell_bold), "", Paragraph(f"<b>{total_horas_social:.2f} horas</b>", cell_bold)])
     
-    t_soc = Table(data_ops_pdf, colWidths=[200, 220, 100])
+    t_soc = Table(data_ops_pdf, colWidths=[200, 232, 100])
     estilo_soc = list(modern_table_style._cmds)
     estilo_soc.extend([("ALIGN", (2, 0), (2, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_soc.setStyle(TableStyle(estilo_soc))
@@ -728,7 +725,7 @@ def generar_pdf_oficial(
             img_cell = obtener_imagen_pdf(anexo["foto"], width=480, height=270) 
             nota_texto = anexo["nota"].strip() if anexo["nota"].strip() else "Sin descripción adicional provista."
             card_data = [[img_cell], [Paragraph(f"<b>Nota Evidencia {idx_a}:</b> {nota_texto}", cell_style)]]
-            t_card = Table(card_data, colWidths=[520])
+            t_card = Table(card_data, colWidths=[532])
             t_card.setStyle(TableStyle([
                 ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
                 ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
@@ -752,36 +749,17 @@ def generar_pdf_oficial(
 
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=35, bottomMargin=40)
     styles = getSampleStyleSheet()
     
-    # --- SE QUITÓ EL RIGHTINDENT, YA NO ES NECESARIO ---
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceBefore=0, spaceAfter=6)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20)
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceBefore=0, spaceAfter=6, rightIndent=130)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20, rightIndent=130)
     
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
     
     elements = []
-    
-    # --- LECTURA MATEMÁTICA EXACTA DEL LOGO ---
-    logo_path_png = "pequeños detalles logo.png"
-    logo_path_jpg = "pequeños detalles logo.jpg"
-    logo_img = None
-    
-    for path in [logo_path_png, logo_path_jpg]:
-        if os.path.exists(path):
-            try:
-                img_reader = ImageReader(path)
-                iw, ih = img_reader.getSize()
-                aspect = ih / float(iw)
-                target_width = 110
-                target_height = target_width * aspect
-                logo_img = Image(path, width=target_width, height=target_height)
-                break
-            except Exception:
-                pass
 
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
         titulo_str = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
@@ -796,25 +774,9 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     titulo = Paragraph(titulo_str, h1_style)
     subtitulo = Paragraph(sub_str, sub_style)
     
-    celda_texto = [titulo, subtitulo]
-    
-    if logo_img:
-        logo_img.hAlign = 'RIGHT'
-        # --- TABLA HEADER ---
-        t_header = Table([[celda_texto, logo_img]], colWidths=[430, 110]) 
-        t_header.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Alineación TOP estricta
-            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        elements.append(t_header)
-        elements.append(Spacer(1, 15))
-    else:
-        elements.extend(celda_texto)
-        elements.append(Spacer(1, 15))
+    elements.append(titulo)
+    elements.append(subtitulo)
+    elements.append(Spacer(1, 35))
     
     if df_fil.empty:
         elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
@@ -835,7 +797,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         [Paragraph("<b>CO2e Neto Evitado</b>", cell_bold), Paragraph("<b>Horas Generadas</b>", cell_bold), ""],
         [Paragraph(f"{co2_tot:.2f} kg", cell_style), Paragraph(f"{hrs_tot:.2f} hrs", cell_style), ""]
     ]
-    t_metrics = Table(data_metrics, colWidths=[180, 180, 180])
+    t_metrics = Table(data_metrics, colWidths=[177, 177, 177])
     t_metrics.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
@@ -858,7 +820,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     
     texto_equiv_dash = texto_equiv_dash.replace(',', '.') 
 
-    t_equiv_dash = Table([[Paragraph(texto_equiv_dash, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[540])
+    t_equiv_dash = Table([[Paragraph(texto_equiv_dash, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[532])
     t_equiv_dash.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ECFDF5")), 
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     
@@ -874,7 +836,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         data_t5 = [[Paragraph("Ranking", cell_bold), Paragraph("Cliente / Empresa", cell_bold), Paragraph("CO2e Evitado", cell_bold)]]
         for i, r in enumerate(top5.itertuples(), 1):
             data_t5.append([Paragraph(str(i), cell_style), Paragraph(str(r.Cliente), cell_style), Paragraph(f"{r._2:.2f} kg", cell_style)])
-        t_top5 = Table(data_t5, colWidths=[60, 320, 160])
+        t_top5 = Table(data_t5, colWidths=[60, 312, 160])
         t_top5.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
@@ -894,7 +856,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
             Paragraph(f"{r['CO₂ Evitado']:.1f}", cell_style),
             Paragraph(f"{r['Horas de Trabajo']:.1f}", cell_style)
         ])
-    t_proy = Table(data_proy, colWidths=[180, 80, 90, 90, 100])
+    t_proy = Table(data_proy, colWidths=[180, 72, 90, 90, 100])
     t_proy.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
