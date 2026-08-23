@@ -421,12 +421,11 @@ class ReporteCanvas(canvas.Canvas):
                 target_width = 120
                 target_height = target_width * aspect
                 
-                # Hoja letter: 612 x 792. Margen derecho=45, Margen superior (tope de página)
-                # Elevamos la posición Y para que quede alineado perfecto con el título
+                # Hoja letter: 612 x 792. Margen derecho=45, Margen superior (tope de página) = 45
                 x_pos = 612 - 45 - target_width
-                y_pos = 792 - 45 - target_height + 15
+                # ALINEACIÓN PERFECTA: Hacemos que el tope del logo choque exactamente con el margen 747 (792-45)
+                y_pos = 792 - 45 - target_height 
                 
-                # Se dibuja la imagen libremente sobre la hoja, en la coordenada exacta
                 self.drawImage(logo_path, x_pos, y_pos, width=target_width, height=target_height, preserveAspectRatio=True, anchor='ne', mask='auto')
             except Exception:
                 pass
@@ -493,9 +492,9 @@ def generar_pdf_oficial(
 
     styles = getSampleStyleSheet()
 
-    # rightIndent=130 hace que si el título es larguísimo, nunca toque el logo que está a la derecha
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceAfter=4, rightIndent=130)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20, rightIndent=130)
+    # --- LA MAGIA ESTÁ AQUÍ: spaceBefore=0 OBLIGA AL TEXTO A PEGARSE ARRIBA ---
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceBefore=0, spaceAfter=4, rightIndent=130)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20, rightIndent=130)
     
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#334155"), leading=12)
@@ -515,14 +514,12 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # ENCABEZADO LIBRE DE TABLAS 
+    # ENCABEZADO LIBRE: Ahora fluye perfectamente pegado arriba
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
     elements.append(titulo)
     elements.append(subtitulo)
-    
-    # ELIMINAMOS EL SPACER ARTIFICIAL. El texto ahora fluye libremente.
     
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
@@ -748,11 +745,14 @@ def generar_pdf_oficial(
 
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
+    # Estandarizamos márgenes a 45 como el oficial
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50)
     styles = getSampleStyleSheet()
     
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6, rightIndent=130)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20, rightIndent=130)
+    # --- LA MAGIA ESTÁ AQUÍ: spaceBefore=0 OBLIGA AL TEXTO A PEGARSE ARRIBA ---
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceBefore=0, spaceAfter=6, rightIndent=130)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20, rightIndent=130)
+    
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
@@ -772,7 +772,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     titulo = Paragraph(titulo_str, h1_style)
     subtitulo = Paragraph(sub_str, sub_style)
     
-    # ENCABEZADO LIBRE (Sin Tabla, sin Spacers escondidos)
+    # ENCABEZADO LIBRE: Ahora fluye perfectamente pegado arriba
     elements.append(titulo)
     elements.append(subtitulo)
     
@@ -900,10 +900,13 @@ if "uid_proyecto" not in st.session_state:
     st.session_state.uid_proyecto = str(random.randint(1000, 9999))
 
 try:
-    USUARIO_ADMIN = st.secrets["auth"]["USUARIO"]
-    PASSWORD_ADMIN = st.secrets["auth"]["PASSWORD"]
+    USUARIO_ADMIN = st.secrets["auth"]["ADMIN_USER"]
+    PASSWORD_ADMIN = st.secrets["auth"]["ADMIN_PASS"]
+    
+    USUARIO_OPE = st.secrets["auth"]["OPERARIO_USER"]
+    PASSWORD_OPE = st.secrets["auth"]["OPERARIO_PASS"]
 except KeyError:
-    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.")
+    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`. Asegúrate de tener ADMIN_USER y OPERARIO_USER.")
     st.stop()
 
 # --- PANTALLA DE INICIO DE SESIÓN CON ROLES ---
@@ -931,7 +934,7 @@ if not st.session_state.autenticado:
                     st.session_state.rol = "admin"
                     st.success("¡Bienvenido Administrador!")
                     st.rerun()
-                elif usuario_input == "Detalles" and password_input == "123456":
+                elif usuario_input == USUARIO_OPE and password_input == PASSWORD_OPE:
                     st.session_state.autenticado = True
                     st.session_state.rol = "operario"
                     st.success("¡Bienvenido al panel operativo!")
