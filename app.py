@@ -23,11 +23,9 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-# --- NUEVOS IMPORTS PARA FUENTES PERSONALIZADAS ---
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-
 from supabase import Client, create_client
+
+# --- LIBRERÍAS DE GOOGLE DRIVE (OAUTH) ---
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -456,64 +454,65 @@ def generar_pdf_oficial(
     total_prod_unidades = sum([p_item["cantidad"] for p_item in lista_productos])
 
     buffer = io.BytesIO()
-    # Aumentamos márgenes para que el documento respire y se vea elegante
     doc = SimpleDocTemplate(
         buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50
     )
 
     styles = getSampleStyleSheet()
 
-    # --- CONFIGURACIÓN DE FUENTE PERSONALIZADA ---
-    fuente_titulo = "Helvetica-Bold"
-    fuente_negrita = "Helvetica-Bold"
-    
-    try:
-        # Intenta cargar League Spartan Black si el archivo existe en la carpeta
-        pdfmetrics.registerFont(TTFont('LeagueSpartan-Black', 'LeagueSpartan-Black.ttf'))
-        fuente_titulo = "LeagueSpartan-Black"
-        fuente_negrita = "LeagueSpartan-Black"
-    except Exception:
-        pass # Si no encuentra el archivo .ttf, usa Helvetica-Bold por defecto
-    
-    # TIPOGRAFÍAS CORPORATIVAS ACTUALIZADAS
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName=fuente_titulo, fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceAfter=4)
+    # TIPOGRAFÍAS CORPORATIVAS (HELVETICA ESTÁNDAR)
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceAfter=4)
     sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
-    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName=fuente_titulo, fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
+    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
     
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#334155"), leading=12)
-    cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName=fuente_negrita, fontSize=8.5, textColor=colors.HexColor("#0F172A"), leading=12)
+    cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8.5, textColor=colors.HexColor("#0F172A"), leading=12)
     
-    # ESTILOS PARA LAS TARJETAS SUPERIORES
-    card_val = ParagraphStyle("CardV", parent=styles["Normal"], fontName=fuente_negrita, fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1)
+    card_val = ParagraphStyle("CardV", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1)
     card_lbl = ParagraphStyle("CardL", parent=styles["Normal"], fontName="Helvetica", fontSize=7.5, textColor=colors.HexColor("#64748B"), alignment=1, spaceBefore=4)
 
-    # --- ESTILO GENERAL PARA TABLAS MODERNAS (SIN REJILLA) ---
     modern_table_style = TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F8FAFC")), # Encabezado sutil
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F8FAFC")), 
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LINEBELOW", (0, 0), (-1, 0), 1.5, colors.HexColor("#1E3A8A")), # Línea azul gruesa en header
-        ("LINEBELOW", (0, 1), (-1, -1), 0.5, colors.HexColor("#E2E8F0")), # Separadores finos grises
+        ("LINEBELOW", (0, 0), (-1, 0), 1.5, colors.HexColor("#1E3A8A")), 
+        ("LINEBELOW", (0, 1), (-1, -1), 0.5, colors.HexColor("#E2E8F0")), 
         ("PADDING", (0, 0), (-1, -1), 8),
     ])
 
     elements = []
 
-    # --- AGREGAR LOGO DE LA EMPRESA ---
+    # --- AGREGAR LOGO DE LA EMPRESA (ALINEADO A LA DERECHA DEL TÍTULO) ---
     logo_path = "pequeños detalles logo.png"
+    logo_img = None
     if os.path.exists(logo_path):
         try:
             logo_img = Image(logo_path, width=140, height=45) 
-            logo_img.hAlign = 'LEFT'
-            elements.append(logo_img)
-            elements.append(Spacer(1, 15))
         except Exception:
             pass
 
-    # ENCABEZADO
-    elements.append(Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style))
-    elements.append(Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy} | <b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style))
+    titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
+    subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy} | <b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
+    
+    celda_texto = [titulo, subtitulo]
+
+    if logo_img:
+        # Usar una tabla sin bordes para colocar título a la izq y logo a la der
+        # Ancho total de la página (612) - leftMargin (45) - rightMargin (45) = 522
+        t_header = Table([[celda_texto, logo_img]], colWidths=[382, 140])
+        t_header.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(t_header)
+        elements.append(Spacer(1, 15))
+    else:
+        elements.extend(celda_texto)
 
     # RESUMEN EJECUTIVO
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
@@ -539,7 +538,7 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 10))
 
-    # 1. FICHA GENERAL (AHORA INCLUYE PUNTO DE DESTINO)
+    # 1. FICHA GENERAL
     elements.append(Paragraph("1. FICHA TÉCNICA DEL PROYECTO", h2_style))
     data_ficha = [
         [Paragraph("Cliente / Razón Social:", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style)],
@@ -714,62 +713,65 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
     styles = getSampleStyleSheet()
     
-    # --- APLICAMOS LA MISMA FUENTE PARA LA MEMORIA ANUAL ---
-    fuente_titulo = "Helvetica-Bold"
-    fuente_negrita = "Helvetica-Bold"
-    try:
-        pdfmetrics.registerFont(TTFont('LeagueSpartan-Black', 'LeagueSpartan-Black.ttf'))
-        fuente_titulo = "LeagueSpartan-Black"
-        fuente_negrita = "LeagueSpartan-Black"
-    except Exception:
-        pass
-        
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName=fuente_titulo, fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=1, spaceAfter=6)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=20)
-    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName=fuente_titulo, fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
+    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
-    cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName=fuente_negrita, fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
+    cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
     
     elements = []
     
-    # --- AGREGAR LOGO DE LA EMPRESA AL DASHBOARD TAMBIÉN ---
+    # --- AGREGAR LOGO ALINEADO A LA DERECHA ---
     logo_path = "pequeños detalles logo.png"
+    logo_img = None
     if os.path.exists(logo_path):
         try:
             logo_img = Image(logo_path, width=140, height=45)
-            logo_img.hAlign = 'CENTER'
-            elements.append(logo_img)
-            elements.append(Spacer(1, 10))
         except Exception:
             pass
 
-    # Determinar Títulos Dinámicos según los filtros aplicados
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
-        titulo = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
-        sub = "Reporte consolidado del impacto ambiental y social generado durante el año."
+        titulo_str = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
+        sub_str = "Reporte consolidado del impacto ambiental y social generado durante el año."
     elif sel_mes != "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
-        titulo = f"REPORTE MENSUAL DE SOSTENIBILIDAD - {sel_mes.upper()} {sel_anio}"
-        sub = "Resumen del impacto ambiental y social generado en el mes seleccionado."
+        titulo_str = f"REPORTE MENSUAL DE SOSTENIBILIDAD - {sel_mes.upper()} {sel_anio}"
+        sub_str = "Resumen del impacto ambiental y social generado en el mes seleccionado."
     else:
-        titulo = "REPORTE EJECUTIVO DE SOSTENIBILIDAD"
-        sub = f"Filtros: Año: {sel_anio} | Mes: {sel_mes} | Cliente: {sel_cli} | Tipo: {sel_tipo}"
+        titulo_str = "REPORTE EJECUTIVO DE SOSTENIBILIDAD"
+        sub_str = f"Filtros: Año: {sel_anio} | Mes: {sel_mes} | Cliente: {sel_cli} | Tipo: {sel_tipo}"
         
-    elements.append(Paragraph(titulo, h1_style))
-    elements.append(Paragraph(sub, sub_style))
+    titulo = Paragraph(titulo_str, h1_style)
+    subtitulo = Paragraph(sub_str, sub_style)
+    
+    celda_texto = [titulo, subtitulo]
+    
+    if logo_img:
+        # Ancho total de Dashboard (612 - 72 = 540)
+        t_header = Table([[celda_texto, logo_img]], colWidths=[400, 140])
+        t_header.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(t_header)
+        elements.append(Spacer(1, 15))
+    else:
+        elements.extend(celda_texto)
     
     if df_fil.empty:
         elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
         doc.build(elements, canvasmaker=ReporteCanvas)
         return buffer.getvalue()
         
-    # Calcular Métricas Totales
     kg_tot = df_fil['Kg Procesados'].sum()
     co2_tot = df_fil['CO₂ Evitado'].sum()
     hrs_tot = df_fil['Horas de Trabajo'].sum()
     prods_tot = df_fil['Productos Creados'].sum()
     unid_tot = df_fil['Unidades Recibidas'].sum()
     
-    # Tabla de Impacto Global
     elements.append(Paragraph("1. RESUMEN DE IMPACTO GLOBAL", h2_style))
     data_metrics = [
         [Paragraph("<b>Unidades Recibidas</b>", cell_bold), Paragraph("<b>Peso Procesado</b>", cell_bold), Paragraph("<b>Productos Creados</b>", cell_bold)],
@@ -786,7 +788,6 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     ]))
     elements.append(t_metrics)
     
-    # Top 5 Clientes
     top5 = df_fil.groupby("Cliente")["CO₂ Evitado"].sum().reset_index().sort_values(by="CO₂ Evitado", ascending=False).head(5)
     if not top5.empty:
         elements.append(Paragraph("2. TOP CLIENTES POR IMPACTO AMBIENTAL (CO2e)", h2_style))
@@ -801,7 +802,6 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         ]))
         elements.append(t_top5)
         
-    # Detalle de Proyectos
     elements.append(Paragraph("3. DESGLOSE DE PROYECTOS", h2_style))
     data_proy = [[Paragraph("Cliente", cell_bold), Paragraph("Mes", cell_bold), Paragraph("Kg Procesados", cell_bold), Paragraph("CO2e Evitado", cell_bold), Paragraph("Horas", cell_bold)]]
     for idx, r in df_fil.iterrows():
@@ -1235,7 +1235,6 @@ else:
             c_tit1, c_tit2 = st.columns([3, 1])
             c_tit1.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Impacto Acumulado</h5>", unsafe_allow_html=True)
             
-            # --- NUEVO: BOTÓN DE DESCARGA PDF DEL DASHBOARD ---
             if not df_fil.empty:
                 pdf_bytes = generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo)
                 
@@ -1329,14 +1328,12 @@ else:
         proyectos_lista = cargar_proyectos()
 
         if proyectos_lista:
-            # --- NUEVO: BARRA DE BÚSQUEDA Y FILTROS ---
             with st.expander("🔍 Buscar y Filtrar Historial", expanded=True):
                 f1, f2, f3 = st.columns([2, 1, 1])
                 busqueda = f1.text_input("Buscar por Cliente o Código", placeholder="Ej. Antamina o HIST_...")
                 filtro_estado = f2.selectbox("Estado del Proyecto", ["Todos", "COMPLETADO", "EN_PROCESO"])
                 filtro_tipo = f3.selectbox("Tipo de Servicio", ["Todos", "UPCYCLING", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
             
-            # Aplicar filtros
             proyectos_filtrados = []
             for p in proyectos_lista:
                 match_txt = busqueda.lower() in str(p.get("cliente", "")).lower() or busqueda.lower() in str(p.get("codigo", "")).lower() if busqueda else True
@@ -1349,21 +1346,18 @@ else:
             st.write("---")
             col_top1, col_top2 = st.columns([4, 2])
             
-            # --- INTERRUPTOR DE MODO EDICIÓN ---
             modo_edicion = col_top1.toggle("🛠️ Habilitar selección múltiple para borrar")
             
             if modo_edicion:
-                # Usar la lista filtrada para no borrar cosas sin querer
                 proyectos_seleccionados = [p for p in proyectos_filtrados if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
                 if col_top2.button(
                     f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
                     disabled=len(proyectos_seleccionados) == 0, 
-                    type="secondary", # Color secundario para no desentonar
+                    type="secondary",
                     use_container_width=True
                 ):
                     modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
             else:
-                # Limpiar selecciones de la vista actual si se apaga el modo
                 for p in proyectos_filtrados:
                     k = f"bulk_del_{p.get('id', p.get('codigo'))}"
                     if k in st.session_state:
