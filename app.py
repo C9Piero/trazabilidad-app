@@ -14,7 +14,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader  # --- NUEVO: Para leer proporciones de imagen ---
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Image,
     PageBreak,
@@ -379,6 +379,7 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
         st.rerun()
     if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
 
+# --- CLASE CANVAS MODIFICADA PARA PINTAR LOGO ABSOLUTO EN PÁGINA 1 ---
 class ReporteCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -388,9 +389,11 @@ class ReporteCanvas(canvas.Canvas):
         self._startPage()
     def save(self):
         num_pages = len(self.pages)
-        for page in self.pages:
+        for i, page in enumerate(self.pages):
             self.__dict__.update(page)
             self.draw_footer()
+            if i == 0:  # SOLO SE DIBUJA EL LOGO EN LA PRIMERA PÁGINA
+                self.draw_logo_top_right()
             super().showPage()
         super().save()
     def draw_footer(self):
@@ -400,6 +403,34 @@ class ReporteCanvas(canvas.Canvas):
         self.drawCentredString(612 / 2.0, 22, "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres")
         self.drawCentredString(612 / 2.0, 12, "emprendedoras")
         self.restoreState()
+    def draw_logo_top_right(self):
+        self.saveState()
+        logo_path_png = "pequeños detalles logo.png"
+        logo_path_jpg = "pequeños detalles logo.jpg"
+        logo_path = None
+        if os.path.exists(logo_path_png):
+            logo_path = logo_path_png
+        elif os.path.exists(logo_path_jpg):
+            logo_path = logo_path_jpg
+            
+        if logo_path:
+            try:
+                img_reader = ImageReader(logo_path)
+                iw, ih = img_reader.getSize()
+                aspect = ih / float(iw)
+                target_width = 120
+                target_height = target_width * aspect
+                
+                # Hoja letter: 612 x 792. Margen derecho=45, Margen superior=45
+                x_pos = 612 - 45 - target_width
+                y_pos = 792 - 45 - target_height
+                
+                # Se dibuja la imagen libremente sobre la hoja, en la coordenada exacta
+                self.drawImage(logo_path, x_pos, y_pos, width=target_width, height=target_height, preserveAspectRatio=True, anchor='ne', mask='auto')
+            except Exception:
+                pass
+        self.restoreState()
+
 
 def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None) -> bytes:
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -461,13 +492,13 @@ def generar_pdf_oficial(
 
     styles = getSampleStyleSheet()
 
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceAfter=4)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
-    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
+    # rightIndent=130 hace que si el título es larguísimo, nunca toque el logo que está a la derecha
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceAfter=4, rightIndent=130)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20, rightIndent=130)
     
+    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#334155"), leading=12)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8.5, textColor=colors.HexColor("#0F172A"), leading=12)
-    
     card_val = ParagraphStyle("CardV", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1)
     card_lbl = ParagraphStyle("CardL", parent=styles["Normal"], fontName="Helvetica", fontSize=7.5, textColor=colors.HexColor("#64748B"), alignment=1, spaceBefore=4)
 
@@ -483,46 +514,13 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # --- LECTURA MATEMÁTICA DEL LOGO PARA EVITAR PADDING INVISIBLE ---
-    logo_path_png = "pequeños detalles logo.png"
-    logo_path_jpg = "pequeños detalles logo.jpg"
-    logo_img = None
-    
-    for path in [logo_path_png, logo_path_jpg]:
-        if os.path.exists(path):
-            try:
-                img_reader = ImageReader(path)
-                iw, ih = img_reader.getSize()
-                aspect = ih / float(iw)
-                target_width = 110
-                target_height = target_width * aspect
-                # Al no usar kind='proportional' y darle la medida exacta calculada,
-                # la "caja invisible" de ReportLab abraza el logo perfectamente, con 0 relleno.
-                logo_img = Image(path, width=target_width, height=target_height)
-                break
-            except Exception:
-                pass
-
+    # ENCABEZADO LIBRE DE TABLAS (Se dibuja natural, el logo va por la clase ReporteCanvas)
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
-    celda_texto = [titulo, subtitulo]
-
-    if logo_img:
-        logo_img.hAlign = 'RIGHT'
-        t_header = Table([[celda_texto, logo_img]], colWidths=[410, 110])
-        t_header.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Ahora sí se anclará exactamente arriba
-            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        elements.append(t_header)
-        elements.append(Spacer(1, 10))
-    else:
-        elements.extend(celda_texto)
+    elements.append(titulo)
+    elements.append(subtitulo)
+    elements.append(Spacer(1, 10))
 
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
@@ -752,32 +750,13 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
     styles = getSampleStyleSheet()
     
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6, rightIndent=130)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20, rightIndent=130)
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
     
     elements = []
-    
-    # --- CÁLCULO DINÁMICO DE LOGO EN DASHBOARD TAMBIÉN ---
-    logo_path_png = "pequeños detalles logo.png"
-    logo_path_jpg = "pequeños detalles logo.jpg"
-    logo_img = None
-    
-    for path in [logo_path_png, logo_path_jpg]:
-        if os.path.exists(path):
-            try:
-                img_reader = ImageReader(path)
-                iw, ih = img_reader.getSize()
-                aspect = ih / float(iw)
-                target_width = 110
-                target_height = target_width * aspect
-                # Cero relleno invisible
-                logo_img = Image(path, width=target_width, height=target_height)
-                break
-            except Exception:
-                pass
 
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
         titulo_str = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
@@ -792,23 +771,9 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     titulo = Paragraph(titulo_str, h1_style)
     subtitulo = Paragraph(sub_str, sub_style)
     
-    celda_texto = [titulo, subtitulo]
-    
-    if logo_img:
-        logo_img.hAlign = 'RIGHT'
-        t_header = Table([[celda_texto, logo_img]], colWidths=[430, 110]) # La suma debe dar el ancho disponible (540 pt)
-        t_header.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"), # Anclaje perfecto arriba
-            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        elements.append(t_header)
-        elements.append(Spacer(1, 15))
-    else:
-        elements.extend(celda_texto)
+    elements.append(titulo)
+    elements.append(subtitulo)
+    elements.append(Spacer(1, 10))
     
     if df_fil.empty:
         elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
