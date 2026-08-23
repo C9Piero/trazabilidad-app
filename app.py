@@ -22,7 +22,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    KeepTogether, # --- NUEVO: FUNCIÓN PARA EVITAR QUE LAS TABLAS SE CORTEN ---
+    KeepTogether,
 )
 from supabase import Client, create_client
 
@@ -438,8 +438,6 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
             with open(pdf_temp, "rb") as f: return f.read()
         else: raise RuntimeError("Error al convertir DOCX a PDF con LibreOffice.")
 
-
-# --- GENERADOR DEL INFORME TÉCNICO COMPLETO (ESTILO PREMIUM B2B) ---
 def generar_pdf_oficial(
     cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area, tipo_material,
     valorizacion, unidad_medida, guia_remision, origen, destino, lista_items, lista_trazabilidad,
@@ -536,7 +534,6 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 10))
 
-    # --- INICIO BLOQUE 1: FICHA TÉCNICA ---
     bloque_1 = []
     bloque_1.append(Paragraph("1. FICHA TÉCNICA DEL PROYECTO", h2_style))
     data_ficha = [
@@ -571,7 +568,6 @@ def generar_pdf_oficial(
             except Exception: pass
         return Paragraph("Sin foto", cell_style)
 
-    # --- INICIO BLOQUE 2: INGRESO DE MATERIAL ---
     bloque_2 = []
     bloque_2.append(Paragraph("2. REGISTRO DE MATERIAL RECIBIDO", h2_style))
     data_prendas_pdf = [[Paragraph("Ítem", cell_bold), Paragraph("Descripción", cell_bold), Paragraph("Unidades", cell_bold), Paragraph("Peso (kg)", cell_bold), Paragraph("Evidencia", cell_bold)]]
@@ -590,7 +586,6 @@ def generar_pdf_oficial(
     bloque_2.append(t_prendas)
     elements.append(KeepTogether(bloque_2))
 
-    # --- INICIO BLOQUE 3: TRAZABILIDAD ---
     bloque_3 = []
     bloque_3.append(Paragraph("3. TRAZABILIDAD DE PROCESOS", h2_style))
     data_traza_pdf = [[Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold), Paragraph("Responsable", cell_bold), Paragraph("Peso", cell_bold), Paragraph("Evidencia", cell_bold)]]
@@ -609,7 +604,6 @@ def generar_pdf_oficial(
     bloque_3.append(t_traza)
     elements.append(KeepTogether(bloque_3))
 
-    # --- INICIO BLOQUE 4: SALIDA DE PRODUCTOS ---
     bloque_4 = []
     bloque_4.append(Paragraph("4. PRODUCTOS ELABORADOS (UPCYCLING)", h2_style))
     data_prod_pdf = [[Paragraph("Producto Generado", cell_bold), Paragraph("Cantidad", cell_bold), Paragraph("Evidencia Fotográfica", cell_bold)]]
@@ -626,7 +620,6 @@ def generar_pdf_oficial(
     bloque_4.append(t_prod)
     elements.append(KeepTogether(bloque_4))
 
-    # --- INICIO BLOQUE 5: BALANCE Y EMISIONES ---
     bloque_5 = []
     bloque_5.append(Paragraph("5. BALANCE DE MATERIA Y ANÁLISIS DE EMISIONES (CO2e)", h2_style))
     
@@ -689,7 +682,6 @@ def generar_pdf_oficial(
     bloque_5.append(t_equiv)
     elements.append(KeepTogether(bloque_5))
 
-    # --- INICIO BLOQUE 6: IMPACTO SOCIAL ---
     bloque_6 = []
     bloque_6.append(Paragraph("6. MATRIZ DE IMPACTO SOCIAL", h2_style))
     data_ops_pdf = [[Paragraph("Colaborador/a", cell_bold), Paragraph("Rol Operativo", cell_bold), Paragraph("Horas Totales", cell_bold)]]
@@ -709,7 +701,6 @@ def generar_pdf_oficial(
     bloque_6.append(t_soc)
     elements.append(KeepTogether(bloque_6))
 
-    # 7. ANEXOS FOTOGRÁFICOS
     anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
     if anexos_validos:
         elements.append(PageBreak())
@@ -730,10 +721,8 @@ def generar_pdf_oficial(
                 ("PADDING", (0, 0), (-1, -1), 10),
             ]))
             
-            # Encapsulamos la tabla de imagen para que no se corte por la mitad
             elements.append(KeepTogether([t_card]))
             
-            # Control estricto de salto de página cada 2 imágenes
             if idx_a % 2 == 0 and idx_a < len(anexos_validos):
                 elements.append(PageBreak())
                 elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL (Cont.)", h2_style))
@@ -745,7 +734,6 @@ def generar_pdf_oficial(
     buffer.seek(0)
     return buffer
 
-# --- NUEVA FUNCIÓN: GENERAR PDF DEL DASHBOARD ANALÍTICO ---
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
@@ -812,7 +800,6 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     prods_tot = df_fil['Productos Creados'].sum()
     unid_tot = df_fil['Unidades Recibidas'].sum()
     
-    # --- BLOQUE 1: IMPACTO GLOBAL ---
     bloque_1 = []
     bloque_1.append(Paragraph("1. RESUMEN DE IMPACTO GLOBAL", h2_style))
     data_metrics = [
@@ -853,7 +840,6 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     bloque_1.append(t_equiv_dash)
     elements.append(KeepTogether(bloque_1))
     
-    # --- BLOQUE 2: TOP CLIENTES ---
     top5 = df_fil.groupby("Cliente")["CO₂ Evitado"].sum().reset_index().sort_values(by="CO₂ Evitado", ascending=False).head(5)
     if not top5.empty:
         bloque_2 = []
@@ -870,7 +856,6 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         bloque_2.append(t_top5)
         elements.append(KeepTogether(bloque_2))
         
-    # --- BLOQUE 3: DESGLOSE ---
     bloque_3 = []
     bloque_3.append(Paragraph("3. DESGLOSE DE PROYECTOS", h2_style))
     data_proy = [[Paragraph("Cliente", cell_bold), Paragraph("Mes", cell_bold), Paragraph("Kg Procesados", cell_bold), Paragraph("CO2e Evitado", cell_bold), Paragraph("Horas", cell_bold)]]
@@ -894,10 +879,11 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     doc.build(elements, canvasmaker=ReporteCanvas)
     return buffer.getvalue()
 
-
-# --- ESTADOS DE SESIÓN ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
+
+if "rol" not in st.session_state:
+    st.session_state.rol = "operario"
 
 if "pestaña_activa" not in st.session_state:
     st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
@@ -927,13 +913,13 @@ if "uid_proyecto" not in st.session_state:
     st.session_state.uid_proyecto = str(random.randint(1000, 9999))
 
 try:
-    USUARIO_CORRECTO = st.secrets["auth"]["USUARIO"]
-    PASSWORD_CORRECTO = st.secrets["auth"]["PASSWORD"]
+    USUARIO_ADMIN = st.secrets["auth"]["USUARIO"]
+    PASSWORD_ADMIN = st.secrets["auth"]["PASSWORD"]
 except KeyError:
-    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.\n\nAgrega `USUARIO` y `PASSWORD` dentro de `[auth]` en `.streamlit/secrets.toml`.")
+    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.")
     st.stop()
 
-# --- PANTALLA DE INICIO DE SESIÓN ---
+# --- PANTALLA DE INICIO DE SESIÓN CON ROLES ---
 if not st.session_state.autenticado:
     st.markdown(
         """
@@ -953,9 +939,15 @@ if not st.session_state.autenticado:
             password_input = st.text_input("Contraseña", type="password")
 
             if st.button("Ingresar al Sistema", use_container_width=True, type="primary"):
-                if usuario_input == USUARIO_CORRECTO and password_input == PASSWORD_CORRECTO:
+                if usuario_input == USUARIO_ADMIN and password_input == PASSWORD_ADMIN:
                     st.session_state.autenticado = True
-                    st.success("¡Bienvenido/a!")
+                    st.session_state.rol = "admin"
+                    st.success("¡Bienvenido Administrador!")
+                    st.rerun()
+                elif usuario_input == "Detalles" and password_input == "123456":
+                    st.session_state.autenticado = True
+                    st.session_state.rol = "operario"
+                    st.success("¡Bienvenido al panel operativo!")
                     st.rerun()
                 else:
                     st.error("⚠️ Usuario o contraseña incorrectos.")
@@ -965,7 +957,8 @@ else:
 
     with st.sidebar:
         st.markdown("### ♻️ Pequeños Detalles")
-        st.caption("Panel de Control Interno")
+        rol_display = "Administrador" if st.session_state.rol == "admin" else "Operario"
+        st.caption(f"Perfil activo: **{rol_display}**")
         st.write("---")
 
         st.markdown('<p class="sidebar-section-title">Navegación</p>', unsafe_allow_html=True)
@@ -1059,7 +1052,6 @@ else:
         unsafe_allow_html=True,
     )
 
-    # --- VISTA: CARGA RÁPIDA HISTÓRICA E IMPORTACIÓN MASIVA ---
     if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos")
         st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
@@ -1216,7 +1208,6 @@ else:
                                 st.success(f"🎉 ¡Se han importado exitosamente **{count_exito} proyectos** a tu Dashboard!")
                                 st.balloons()
 
-    # --- VISTA: PROYECTOS EN PROCESO ---
     elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
         st.subheader("📋 Lista de Proyectos en Proceso (Borradores)")
         st.caption("Proyectos guardados pendientes de culminación o emisión definitiva.")
@@ -1247,7 +1238,6 @@ else:
         else:
             st.info("📭 No hay borradores en proceso actualmente.")
 
-    # --- VISTA: DASHBOARD SÚPER DINÁMICO (PLOTLY) ---
     elif st.session_state.pestaña_activa == "📊 Dashboard Analítico":
         st.markdown("<h3 style='color: #1E293B; font-weight: 700; margin-bottom: 5px;'>Panel de Control y Analítica Avanzada</h3>", unsafe_allow_html=True)
         st.markdown("<p style='color: #64748B; font-size: 0.95rem; margin-bottom: 25px;'>Filtra, analiza y visualiza el impacto histórico generado por los proyectos de sostenibilidad.</p>", unsafe_allow_html=True)
@@ -1281,7 +1271,8 @@ else:
                     "Horas de Trabajo": float(p.get("horas_totales") or 0),
                     "Productos Creados": int(p.get("productos_unids") or 0),
                     "Participantes": partic,
-                    "Tipo de Servicio": p.get("tipo_proyecto", "UPCYCLING")
+                    "Tipo de Servicio": p.get("tipo_proyecto", "UPCYCLING"),
+                    "DatosCompletos": dc # Guardamos para extraer productos luego
                 })
 
             df = pd.DataFrame(tabla_data)
@@ -1309,7 +1300,6 @@ else:
             if not df_fil.empty:
                 pdf_bytes = generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo)
                 
-                # Nombre de archivo dinámico
                 if sel_mes == "Todos" and sel_anio != "Todos":
                     nombre_archivo = f"Memoria_Anual_Sostenibilidad_{sel_anio}.pdf"
                 elif sel_mes != "Todos" and sel_anio != "Todos":
@@ -1335,7 +1325,43 @@ else:
 
             st.write("---")
 
-            # 4. GRÁFICOS Y TOP 5 EN UNA SOLA FILA
+            # --- NUEVA SECCIÓN: ANÁLISIS DE PRODUCCIÓN E INNOVACIÓN ---
+            st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>🛍️ Análisis de Producción e Innovación</h5>", unsafe_allow_html=True)
+            
+            prod_list_dash = []
+            for _, row in df_fil.iterrows():
+                dc_row = row["DatosCompletos"]
+                if isinstance(dc_row, dict) and "productos" in dc_row:
+                    for pr in dc_row["productos"]:
+                        prod_list_dash.append({
+                            "Producto": pr.get("producto", "N/D"),
+                            "Cantidad": int(pr.get("cantidad", 0))
+                        })
+            
+            if prod_list_dash:
+                df_p = pd.DataFrame(prod_list_dash)
+                df_p_grp = df_p.groupby("Producto")["Cantidad"].sum().reset_index().sort_values(by="Cantidad", ascending=False)
+                
+                cp1, cp2 = st.columns([1, 2])
+                with cp1:
+                    with st.container(border=True):
+                        st.metric("Total Productos Diferentes", len(df_p_grp), help="Mide la diversificación e innovación de tu catálogo en el periodo seleccionado.")
+                    with st.container(border=True):
+                        st.metric("Producto Estrella 🌟", df_p_grp.iloc[0]["Producto"], f"{df_p_grp.iloc[0]['Cantidad']} unid.")
+                    if len(df_p_grp) > 1:
+                        with st.container(border=True):
+                            st.metric("Menos Fabricado 📉", df_p_grp.iloc[-1]["Producto"], f"{df_p_grp.iloc[-1]['Cantidad']} unid.")
+                
+                with cp2:
+                    fig_p = px.bar(df_p_grp.head(10), x="Cantidad", y="Producto", orientation='h', title="Top 10 Productos Más Fabricados", color_discrete_sequence=["#10B981"])
+                    fig_p.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=30, b=0))
+                    st.plotly_chart(fig_p, use_container_width=True)
+            else:
+                st.info("No hay datos de productos detallados para los filtros seleccionados.")
+
+            st.write("---")
+
+            # GRÁFICOS Y TOP 5 EN UNA SOLA FILA
             cg1, cg2, cg3 = st.columns([2.5, 1.2, 1.2])
             with cg1:
                 st.markdown("<span style='font-weight: 600; color: #475569;'>Evolución Mensual (CO₂e)</span>", unsafe_allow_html=True)
@@ -1372,8 +1398,10 @@ else:
                 max_k = float(df_fil["Kg Procesados"].max()) if not df_fil.empty else 100.0
                 max_c = float(df_fil["CO₂ Evitado"].max()) if not df_fil.empty else 100.0
                 
+                df_vista = df_fil.drop(columns=["DatosCompletos"]) # Quitamos la columna técnica
+                
                 st.dataframe(
-                    df_fil,
+                    df_vista,
                     use_container_width=True,
                     hide_index=True,
                     height=300,
@@ -1417,22 +1445,27 @@ else:
             st.write("---")
             col_top1, col_top2 = st.columns([4, 2])
             
-            modo_edicion = col_top1.toggle("🛠️ Habilitar selección múltiple para borrar")
-            
-            if modo_edicion:
-                proyectos_seleccionados = [p for p in proyectos_filtrados if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
-                if col_top2.button(
-                    f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
-                    disabled=len(proyectos_seleccionados) == 0, 
-                    type="secondary",
-                    use_container_width=True
-                ):
-                    modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
+            # --- CONTROL DE SEGURIDAD POR ROLES PARA BORRADO MASIVO ---
+            if st.session_state.rol == "admin":
+                modo_edicion = col_top1.toggle("🛠️ Habilitar selección múltiple para borrar")
+                
+                if modo_edicion:
+                    proyectos_seleccionados = [p for p in proyectos_filtrados if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
+                    if col_top2.button(
+                        f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
+                        disabled=len(proyectos_seleccionados) == 0, 
+                        type="secondary",
+                        use_container_width=True
+                    ):
+                        modal_confirmar_eliminacion_masiva(proyectos_seleccionados)
+                else:
+                    for p in proyectos_filtrados:
+                        k = f"bulk_del_{p.get('id', p.get('codigo'))}"
+                        if k in st.session_state:
+                            st.session_state[k] = False
             else:
-                for p in proyectos_filtrados:
-                    k = f"bulk_del_{p.get('id', p.get('codigo'))}"
-                    if k in st.session_state:
-                        st.session_state[k] = False
+                modo_edicion = False
+                col_top1.info("🔒 Modo de solo lectura y edición. La eliminación masiva requiere permisos de Administrador.")
 
             if len(proyectos_filtrados) == 0:
                 st.info("No se encontraron proyectos con los filtros seleccionados.")
@@ -1442,12 +1475,15 @@ else:
                 for p in proyectos_filtrados:
                     with st.container(border=True):
                         
-                        if modo_edicion:
+                        if modo_edicion and st.session_state.rol == "admin":
                             c_chk, hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([0.4, 2.5, 1.6, 1.6, 1.8, 1.8, 0.7])
                             c_chk.write("") 
                             c_chk.checkbox(" ", key=f"bulk_del_{p.get('id', p.get('codigo'))}", label_visibility="collapsed")
-                        else:
+                        elif st.session_state.rol == "admin":
                             hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.9, 1.6, 1.6, 1.8, 1.8, 0.7])
+                        else:
+                            # Si es operario, ocultamos el botón de borrar (columna 6)
+                            hc1, hc2, hc3, hc4, hc5 = st.columns([2.9, 1.6, 1.6, 1.8, 1.8])
                         
                         nombre_cli_ui = p.get('cliente', 'Sin Nombre')
 
@@ -1466,17 +1502,23 @@ else:
 
                         const_link = p.get("constancia_url")
                         if const_link:
-                            hc5.link_button("📜 Constancia PDF", const_link, use_container_width=True)
+                            if st.session_state.rol == "admin":
+                                hc5.link_button("📜 Constancia PDF", const_link, use_container_width=True)
+                            else:
+                                # Si no hay columna 6, usamos la 5 de forma normal
+                                hc5.link_button("📜 Constancia", const_link, use_container_width=True)
                         else:
                             hc5.caption("📜 Sin Constancia")
 
-                        if hc6.button(
-                            "🗑️",
-                            key=f"hist_del_{p.get('id', p.get('codigo'))}",
-                            use_container_width=True,
-                            help="Eliminar proyecto",
-                        ):
-                            modal_confirmar_eliminacion(p)
+                        # --- SEGURIDAD: SOLO ADMIN PUEDE BORRAR ---
+                        if st.session_state.rol == "admin":
+                            if hc6.button(
+                                "🗑️",
+                                key=f"hist_del_{p.get('id', p.get('codigo'))}",
+                                use_container_width=True,
+                                help="Eliminar proyecto",
+                            ):
+                                modal_confirmar_eliminacion(p)
         else:
             st.info("📭 No hay proyectos registrados en el historial.")
 
@@ -1542,8 +1584,12 @@ else:
                 st.session_state.documentos_descarga = None
                 st.rerun()
 
-            if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
-                modal_confirmar_eliminacion(p_edit)
+            # --- SEGURIDAD EN EDICIÓN ---
+            if st.session_state.rol == "admin":
+                if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
+                    modal_confirmar_eliminacion(p_edit)
+            else:
+                col_elim.info("🔒 Solo los Administradores pueden borrar proyectos guardados.")
 
         # --- SECCIÓN 1: FICHA GENERAL ---
         with st.container(border=True):
