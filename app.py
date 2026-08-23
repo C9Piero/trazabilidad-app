@@ -482,11 +482,12 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # --- AGREGAR LOGO DE LA EMPRESA ---
+    # --- AGREGAR LOGO DE LA EMPRESA (PROPORCIONAL Y A LA DERECHA) ---
     logo_path_png = "pequeños detalles logo.png"
     logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
     
+    # Se usa kind='proportional' para que no se deforme ni se aplaste
     if os.path.exists(logo_path_png):
         try: logo_img = Image(logo_path_png, width=90, height=90, kind='proportional') 
         except: pass
@@ -494,13 +495,16 @@ def generar_pdf_oficial(
         try: logo_img = Image(logo_path_jpg, width=90, height=90, kind='proportional') 
         except: pass
 
+    # ENCABEZADO CON TABLA INVISIBLE PARA ALINEAR TEXTO Y LOGO EN LA MISMA LÍNEA
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
+    
+    # El salto de línea <br/> arregla el problema de la fecha que querías abajo del código
     subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
     celda_texto = [titulo, subtitulo]
 
     if logo_img:
-        logo_img.hAlign = 'RIGHT'
+        # colWidths define el espacio: 400 pt para el texto a la izquierda, 100 pt para el logo a la derecha
         t_header = Table([[celda_texto, logo_img]], colWidths=[400, 100])
         t_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -515,6 +519,7 @@ def generar_pdf_oficial(
     else:
         elements.extend(celda_texto)
 
+    # RESUMEN EJECUTIVO (CO2e modificado a CO2e sin el subíndice roto)
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
     <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO2e evitados</b> 
@@ -522,6 +527,7 @@ def generar_pdf_oficial(
     
     elements.append(Paragraph(resumen_texto, ParagraphStyle("Resumen", parent=styles["Normal"], fontName="Helvetica", fontSize=9.5, leading=14, alignment=4, textColor=colors.HexColor("#334155"), spaceAfter=15)))
 
+    # TARJETAS DE IMPACTO
     cards_data = [
         [Paragraph(f"{kg_recibidos:.2f} kg", card_val), Paragraph(f"{pct_aprovechamiento_total:.2f}%", card_val), Paragraph(f"{co2_neto:.2f} kg", card_val), Paragraph(f"{total_horas_social:.1f} hrs", card_val)],
         [Paragraph("MATERIAL RECUPERADO", card_lbl), Paragraph("TASA APROVECHAMIENTO", card_lbl), Paragraph("CO2e NETO EVITADO", card_lbl), Paragraph(f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_lbl)],
@@ -537,6 +543,7 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 10))
 
+    # 1. FICHA GENERAL
     elements.append(Paragraph("1. FICHA TÉCNICA DEL PROYECTO", h2_style))
     data_ficha = [
         [Paragraph("Cliente / Razón Social:", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style)],
@@ -569,6 +576,7 @@ def generar_pdf_oficial(
             except Exception: pass
         return Paragraph("Sin foto", cell_style)
 
+    # 2. INGRESO DE MATERIAL
     elements.append(Paragraph("2. REGISTRO DE MATERIAL RECIBIDO", h2_style))
     data_prendas_pdf = [[Paragraph("Ítem", cell_bold), Paragraph("Descripción", cell_bold), Paragraph("Unidades", cell_bold), Paragraph("Peso (kg)", cell_bold), Paragraph("Evidencia", cell_bold)]]
     total_unidades_ingreso = 0
@@ -585,6 +593,7 @@ def generar_pdf_oficial(
     t_prendas.setStyle(TableStyle(estilo_prendas))
     elements.append(t_prendas)
 
+    # 3. TRAZABILIDAD
     elements.append(Paragraph("3. TRAZABILIDAD DE PROCESOS", h2_style))
     data_traza_pdf = [[Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold), Paragraph("Responsable", cell_bold), Paragraph("Peso", cell_bold), Paragraph("Evidencia", cell_bold)]]
 
@@ -602,6 +611,7 @@ def generar_pdf_oficial(
     elements.append(t_traza)
     elements.append(PageBreak())
 
+    # 4. SALIDA DE PRODUCTOS
     elements.append(Paragraph("4. PRODUCTOS ELABORADOS (UPCYCLING)", h2_style))
     data_prod_pdf = [[Paragraph("Producto Generado", cell_bold), Paragraph("Cantidad", cell_bold), Paragraph("Evidencia Fotográfica", cell_bold)]]
 
@@ -616,6 +626,7 @@ def generar_pdf_oficial(
     t_prod.setStyle(TableStyle(estilo_prod))
     elements.append(t_prod)
 
+    # 5. BALANCE Y EMISIONES
     elements.append(Paragraph("5. BALANCE DE MATERIA Y ANÁLISIS DE EMISIONES (CO2e)", h2_style))
     
     col_izq = [
@@ -653,26 +664,28 @@ def generar_pdf_oficial(
     t_master = Table([[t_balance, t_emisiones]], colWidths=[260, 260])
     t_master.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 0)]))
     elements.append(t_master)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 15))
 
-    # --- NUEVO: CÁLCULO DE MÉTRICAS DE EQUIVALENCIA MAGICAS ---
-    equiv_smartphones = int(max(0, co2_neto * 122))
-    equiv_km = int(max(0, co2_neto * 4))
+    # --- NUEVO: CÁLCULO DE MÉTRICAS DE EQUIVALENCIA MAGICAS (Árboles, Plástico, Agua) ---
     equiv_agua = int(max(0, total_procesado * 2500))
+    # Un arbol absorbe aprox 22kg de co2 por año. Si es menos de 22, mostramos 1 decimal, sino numero entero.
+    equiv_arboles = round(co2_neto / 22.0, 1) if co2_neto < 22 else int(max(0, co2_neto / 22.0))
+    if equiv_arboles == 0: equiv_arboles = 0.1 
+    # 1 kg de co2 = fabricar aprox 30 bolsas de plástico
+    equiv_plastico = int(max(0, co2_neto * 30))
 
     texto_equiv = f"""<b>🌱 ¿Qué significa este impacto ambiental?</b><br/>
     El ahorro de {co2_neto:.2f} kg de CO2e y la recuperación de {total_procesado:.2f} kg de textiles logrados en este proyecto equivalen a:<br/>
-    • 📱 Evitar las emisiones producidas al cargar <b>{equiv_smartphones:,} teléfonos celulares</b>.<br/>
-    • 🚗 Dejar de conducir un automóvil a gasolina por <b>{equiv_km:,} kilómetros</b>.<br/>
-    • 💧 Ahorrar aproximadamente <b>{equiv_agua:,} litros de agua</b> en la huella hídrica textil."""
+    • 🌳 <b>Fijación de Carbono:</b> El equivalente al CO2 que absorberían <b>{equiv_arboles} árboles maduros</b> durante un año entero.<br/>
+    • ♻️ <b>Materiales Vírgenes:</b> Evitar las emisiones equivalentes a fabricar <b>{equiv_plastico:,} bolsas de plástico</b> nuevas.<br/>
+    • 💧 <b>Huella Hídrica:</b> Ahorrar aproximadamente <b>{equiv_agua:,} litros de agua</b> en el ecosistema mundial."""
     
-    # Reemplazamos la coma por punto para el formato en español si lo deseas, o lo dejamos así.
     texto_equiv = texto_equiv.replace(',', '.') 
 
     t_equiv = Table([[Paragraph(texto_equiv, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[520])
     t_equiv.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ECFDF5")), # Fondo verde ultra claro
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     # Borde verde esmeralda
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ECFDF5")), 
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     
         ("PADDING", (0, 0), (-1, -1), 12),
     ]))
     elements.append(t_equiv)
@@ -726,18 +739,18 @@ def generar_pdf_oficial(
 # --- NUEVA FUNCIÓN: GENERAR PDF DEL DASHBOARD ANALÍTICO ---
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
     styles = getSampleStyleSheet()
     
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=4)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
     
     elements = []
     
-    # --- AGREGAR LOGO DE LA EMPRESA AL DASHBOARD (PROPORCIONAL Y A LA DERECHA) ---
+    # --- AGREGAR LOGO ALINEADO A LA DERECHA EN EL DASHBOARD ---
     logo_path_png = "pequeños detalles logo.png"
     logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
@@ -776,7 +789,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]))
         elements.append(t_header)
-        elements.append(Spacer(1, 10))
+        elements.append(Spacer(1, 15))
     else:
         elements.extend(celda_texto)
     
@@ -806,6 +819,30 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
     ]))
     elements.append(t_metrics)
+    
+    elements.append(Spacer(1, 15))
+
+    # --- AGREGAR CÁLCULO DE MÉTRICAS MÁGICAS AL DASHBOARD TAMBIÉN ---
+    equiv_agua_dash = int(max(0, kg_tot * 2500))
+    equiv_arboles_dash = round(co2_tot / 22.0, 1) if co2_tot < 22 else int(max(0, co2_tot / 22.0))
+    if equiv_arboles_dash == 0: equiv_arboles_dash = 0.1 
+    equiv_plastico_dash = int(max(0, co2_tot * 30))
+
+    texto_equiv_dash = f"""<b>🌱 Equivalencias Ambientales</b><br/>
+    El impacto total registrado en este periodo equivale a:<br/>
+    • 🌳 <b>Fijación de Carbono:</b> El equivalente al CO2 que absorberían <b>{equiv_arboles_dash} árboles maduros</b> durante un año entero.<br/>
+    • ♻️ <b>Materiales Vírgenes:</b> Evitar las emisiones equivalentes a fabricar <b>{equiv_plastico_dash:,} bolsas de plástico</b> nuevas.<br/>
+    • 💧 <b>Huella Hídrica:</b> Ahorrar aproximadamente <b>{equiv_agua_dash:,} litros de agua</b> en el ecosistema mundial."""
+    
+    texto_equiv_dash = texto_equiv_dash.replace(',', '.') 
+
+    t_equiv_dash = Table([[Paragraph(texto_equiv_dash, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[540])
+    t_equiv_dash.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ECFDF5")), 
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     
+        ("PADDING", (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(t_equiv_dash)
     
     top5 = df_fil.groupby("Cliente")["CO₂ Evitado"].sum().reset_index().sort_values(by="CO₂ Evitado", ascending=False).head(5)
     if not top5.empty:
@@ -1835,7 +1872,7 @@ else:
                     "foto_up": p_foto, "foto_url": foto_url_prev, "foto": p_foto if p_foto is not None else foto_url_prev
                 })
 
-            st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} units")
+            st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
 
         st.write("")
 
