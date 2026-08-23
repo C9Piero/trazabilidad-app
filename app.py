@@ -223,6 +223,13 @@ st.markdown(
         --radius: 14px;
     }
 
+    /* --- ESTAS SON LAS LÍNEAS NUEVAS PARA OCULTAR ELEMENTOS --- */
+    [data-testid="stHeader"] {visibility: hidden; height: 0px;}
+    footer {visibility: hidden;}
+    .stAppDeployButton {display: none !important;}
+    [data-testid="stAppViewCreator"] {display: none !important;}
+    /* ---------------------------------------------------------- */
+
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
     div[data-testid="stNumberInput"] button { display: none !important; }
