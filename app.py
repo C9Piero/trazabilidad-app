@@ -272,7 +272,6 @@ st.markdown(
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
     }
 
-    /* Estilo general para botones primarios */
     div[data-testid="stButton"] button {
         border-radius: 10px;
         font-weight: 600;
@@ -483,28 +482,30 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # --- AGREGAR LOGO DE LA EMPRESA (ALINEADO A LA DERECHA DEL TÍTULO) ---
+    # --- AGREGAR LOGO DE LA EMPRESA (PROPORCIONAL Y A LA DERECHA) ---
     logo_path_png = "pequeños detalles logo.png"
     logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
     
+    # Se usa kind='proportional' para que no se deforme ni se aplaste
     if os.path.exists(logo_path_png):
-        try:
-            logo_img = Image(logo_path_png, width=120, height=40) 
+        try: logo_img = Image(logo_path_png, width=90, height=90, kind='proportional') 
         except: pass
     elif os.path.exists(logo_path_jpg):
-        try:
-            logo_img = Image(logo_path_jpg, width=120, height=40) 
+        try: logo_img = Image(logo_path_jpg, width=90, height=90, kind='proportional') 
         except: pass
 
+    # ENCABEZADO CON TABLA INVISIBLE PARA ALINEAR TEXTO Y LOGO EN LA MISMA LÍNEA
     titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
-    subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy} | <b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
+    
+    # El salto de línea <br/> arregla el problema de la fecha que querías abajo del código
+    subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
     
     celda_texto = [titulo, subtitulo]
 
     if logo_img:
-        logo_img.hAlign = 'RIGHT'
-        t_header = Table([[celda_texto, logo_img]], colWidths=[382, 140])
+        # colWidths define el espacio: 400 pt para el texto a la izquierda, 100 pt para el logo a la derecha
+        t_header = Table([[celda_texto, logo_img]], colWidths=[400, 100])
         t_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("ALIGN", (1, 0), (1, 0), "RIGHT"),
@@ -514,14 +515,14 @@ def generar_pdf_oficial(
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]))
         elements.append(t_header)
-        elements.append(Spacer(1, 15))
+        elements.append(Spacer(1, 10))
     else:
         elements.extend(celda_texto)
 
-    # RESUMEN EJECUTIVO
+    # RESUMEN EJECUTIVO (CO2e modificado a CO2e sin el subíndice roto)
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
-    <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO₂e evitados</b> 
+    <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO2e evitados</b> 
     y fomentó el desarrollo social mediante <b>{total_horas_social:.1f} horas</b> de trabajo gestionadas por <b>{total_personas_social}</b> mujeres emprendedoras."""
     
     elements.append(Paragraph(resumen_texto, ParagraphStyle("Resumen", parent=styles["Normal"], fontName="Helvetica", fontSize=9.5, leading=14, alignment=4, textColor=colors.HexColor("#334155"), spaceAfter=15)))
@@ -714,29 +715,27 @@ def generar_pdf_oficial(
 # --- NUEVA FUNCIÓN: GENERAR PDF DEL DASHBOARD ANALÍTICO ---
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=45, bottomMargin=50)
     styles = getSampleStyleSheet()
     
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=6)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
+    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceAfter=4)
+    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#0F172A"), leading=10)
     
     elements = []
     
-    # --- AGREGAR LOGO ALINEADO A LA DERECHA ---
+    # --- AGREGAR LOGO DE LA EMPRESA AL DASHBOARD (PROPORCIONAL Y A LA DERECHA) ---
     logo_path_png = "pequeños detalles logo.png"
     logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
     
     if os.path.exists(logo_path_png):
-        try:
-            logo_img = Image(logo_path_png, width=120, height=40)
+        try: logo_img = Image(logo_path_png, width=90, height=90, kind='proportional')
         except: pass
     elif os.path.exists(logo_path_jpg):
-        try:
-            logo_img = Image(logo_path_jpg, width=120, height=40)
+        try: logo_img = Image(logo_path_jpg, width=90, height=90, kind='proportional')
         except: pass
 
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
@@ -756,7 +755,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     
     if logo_img:
         logo_img.hAlign = 'RIGHT'
-        t_header = Table([[celda_texto, logo_img]], colWidths=[400, 140])
+        t_header = Table([[celda_texto, logo_img]], colWidths=[400, 100])
         t_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("ALIGN", (1, 0), (1, 0), "RIGHT"),
@@ -766,7 +765,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]))
         elements.append(t_header)
-        elements.append(Spacer(1, 15))
+        elements.append(Spacer(1, 10))
     else:
         elements.extend(celda_texto)
     
@@ -1505,11 +1504,14 @@ else:
             fe_fin = fe_fin_dt.strftime("%d/%m/%Y")
 
             str_empresa = cliente.strip() if cliente.strip() else "EMPRESA"
+            mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "MES").upper()
             
             if p_edit.get("codigo"):
                 codigo_proy = p_edit["codigo"]
             else:
-                codigo_proy = f"{str_empresa}_{fe_inicio_dt.strftime('%d%m%Y')}-{fe_fin_dt.strftime('%d%m%Y')}-{st.session_state.uid_proyecto}"
+                # Generar código más limpio: EMPRESA_MES_AÑO
+                cliente_clean = re.sub(r'[^a-zA-Z0-9]', '', str_empresa).upper()[:8]
+                codigo_proy = f"{cliente_clean}_{mes_fin_nombre}{fe_fin_dt.year}"
 
             st.info(f"🆔 **Código del Proyecto:** `{codigo_proy}`")
 
@@ -1822,7 +1824,7 @@ else:
                     "foto_up": p_foto, "foto_url": foto_url_prev, "foto": p_foto if p_foto is not None else foto_url_prev
                 })
 
-            st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
+            st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} units")
 
         st.write("")
 
