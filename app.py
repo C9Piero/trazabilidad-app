@@ -22,6 +22,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    KeepTogether, # --- NUEVO: FUNCIÓN PARA EVITAR QUE LAS TABLAS SE CORTEN ---
 )
 from supabase import Client, create_client
 
@@ -459,7 +460,6 @@ def generar_pdf_oficial(
 
     styles = getSampleStyleSheet()
 
-    # TIPOGRAFÍAS CORPORATIVAS (HELVETICA ESTÁNDAR)
     h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceAfter=4)
     sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceAfter=20)
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
@@ -482,7 +482,6 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # --- AGREGAR LOGO DE LA EMPRESA (PROPORCIONAL Y A LA DERECHA) ---
     logo_path_png = "pequeños detalles logo.png"
     logo_path_jpg = "pequeños detalles logo.jpg"
     logo_img = None
@@ -537,7 +536,9 @@ def generar_pdf_oficial(
     elements.append(t_cards)
     elements.append(Spacer(1, 10))
 
-    elements.append(Paragraph("1. FICHA TÉCNICA DEL PROYECTO", h2_style))
+    # --- INICIO BLOQUE 1: FICHA TÉCNICA ---
+    bloque_1 = []
+    bloque_1.append(Paragraph("1. FICHA TÉCNICA DEL PROYECTO", h2_style))
     data_ficha = [
         [Paragraph("Cliente / Razón Social:", cell_bold), Paragraph(f"{cliente} (RUC: {ruc})", cell_style)],
         [Paragraph("Periodo de Ejecución:", cell_bold), Paragraph(f"{fe_inicio} al {fe_fin}", cell_style)],
@@ -553,9 +554,9 @@ def generar_pdf_oficial(
         ("PADDING", (0, 0), (-1, -1), 6),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
     ]))
-    elements.append(t_ficha)
+    bloque_1.append(t_ficha)
+    elements.append(KeepTogether(bloque_1))
 
-    # --- FUNCIÓN PARA IMÁGENES A ESCALA REAL ---
     def obtener_imagen_pdf(foto_data, width, height):
         if foto_data is not None and foto_data != "":
             import urllib.request
@@ -570,62 +571,64 @@ def generar_pdf_oficial(
             except Exception: pass
         return Paragraph("Sin foto", cell_style)
 
-    # 2. INGRESO DE MATERIAL (Aumentado a 80x80)
-    elements.append(Paragraph("2. REGISTRO DE MATERIAL RECIBIDO", h2_style))
+    # --- INICIO BLOQUE 2: INGRESO DE MATERIAL ---
+    bloque_2 = []
+    bloque_2.append(Paragraph("2. REGISTRO DE MATERIAL RECIBIDO", h2_style))
     data_prendas_pdf = [[Paragraph("Ítem", cell_bold), Paragraph("Descripción", cell_bold), Paragraph("Unidades", cell_bold), Paragraph("Peso (kg)", cell_bold), Paragraph("Evidencia", cell_bold)]]
     total_unidades_ingreso = 0
     for i, item in enumerate(lista_items, 1):
         total_unidades_ingreso += item["unidades"]
-        img_cell = obtener_imagen_pdf(item["foto"], 80, 80) # FOTO MÁS GRANDE
+        img_cell = obtener_imagen_pdf(item["foto"], 80, 80)
         data_prendas_pdf.append([Paragraph(str(i), cell_style), Paragraph(item["descripcion"], cell_style), Paragraph(str(item["unidades"]), cell_style), Paragraph(f"{item['peso_total']:.2f} kg", cell_style), img_cell])
 
     data_prendas_pdf.append([Paragraph("<b>TOTAL</b>", cell_bold), "", Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold), Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold), ""])
     
-    # Anchos reajustados para foto grande (Total = 520)
     t_prendas = Table(data_prendas_pdf, colWidths=[40, 200, 70, 70, 140]) 
     estilo_prendas = list(modern_table_style._cmds)
     estilo_prendas.extend([("ALIGN", (2, 0), (3, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_prendas.setStyle(TableStyle(estilo_prendas))
-    elements.append(t_prendas)
+    bloque_2.append(t_prendas)
+    elements.append(KeepTogether(bloque_2))
 
-    # 3. TRAZABILIDAD (Aumentado a 100x75)
-    elements.append(Paragraph("3. TRAZABILIDAD DE PROCESOS", h2_style))
+    # --- INICIO BLOQUE 3: TRAZABILIDAD ---
+    bloque_3 = []
+    bloque_3.append(Paragraph("3. TRAZABILIDAD DE PROCESOS", h2_style))
     data_traza_pdf = [[Paragraph("Etapa", cell_bold), Paragraph("Fecha", cell_bold), Paragraph("Responsable", cell_bold), Paragraph("Peso", cell_bold), Paragraph("Evidencia", cell_bold)]]
 
     for t_item in lista_trazabilidad:
         if t_item.get("no_aplica"):
             data_traza_pdf.append([Paragraph(t_item["etapa"], cell_style), Paragraph("-", cell_style), Paragraph("No aplica", cell_style), Paragraph("-", cell_style), Paragraph("-", cell_style)])
         else:
-            img_cell = obtener_imagen_pdf(t_item["foto"], 100, 75) # FOTO MÁS GRANDE
+            img_cell = obtener_imagen_pdf(t_item["foto"], 100, 75)
             data_traza_pdf.append([Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style), Paragraph(t_item["responsable"], cell_style), Paragraph(f"{t_item['peso']:.2f} kg", cell_style), img_cell])
 
-    # Anchos reajustados para foto grande (Total = 520)
     t_traza = Table(data_traza_pdf, colWidths=[90, 70, 140, 70, 150])
     estilo_traza = list(modern_table_style._cmds)
     estilo_traza.extend([("ALIGN", (3, 0), (3, -1), "CENTER")])
     t_traza.setStyle(TableStyle(estilo_traza))
-    elements.append(t_traza)
-    elements.append(PageBreak())
+    bloque_3.append(t_traza)
+    elements.append(KeepTogether(bloque_3))
 
-    # 4. SALIDA DE PRODUCTOS (Aumentado a 130x100)
-    elements.append(Paragraph("4. PRODUCTOS ELABORADOS (UPCYCLING)", h2_style))
+    # --- INICIO BLOQUE 4: SALIDA DE PRODUCTOS ---
+    bloque_4 = []
+    bloque_4.append(Paragraph("4. PRODUCTOS ELABORADOS (UPCYCLING)", h2_style))
     data_prod_pdf = [[Paragraph("Producto Generado", cell_bold), Paragraph("Cantidad", cell_bold), Paragraph("Evidencia Fotográfica", cell_bold)]]
 
     for p_item in lista_productos:
-        img_cell = obtener_imagen_pdf(p_item["foto"], 130, 100) # FOTO MÁS GRANDE
+        img_cell = obtener_imagen_pdf(p_item["foto"], 130, 100) 
         data_prod_pdf.append([Paragraph(p_item["producto"], cell_style), Paragraph(str(p_item["cantidad"]), cell_style), img_cell])
 
     data_prod_pdf.append([Paragraph("<b>TOTAL PRODUCTOS</b>", cell_bold), Paragraph(f"<b>{total_prod_unidades}</b>", cell_bold), ""])
-    
-    # Anchos reajustados para foto grande (Total = 520)
     t_prod = Table(data_prod_pdf, colWidths=[200, 100, 220])
     estilo_prod = list(modern_table_style._cmds)
     estilo_prod.extend([("ALIGN", (1, 0), (1, -1), "CENTER")])
     t_prod.setStyle(TableStyle(estilo_prod))
-    elements.append(t_prod)
+    bloque_4.append(t_prod)
+    elements.append(KeepTogether(bloque_4))
 
-    # 5. BALANCE Y EMISIONES
-    elements.append(Paragraph("5. BALANCE DE MATERIA Y ANÁLISIS DE EMISIONES (CO2e)", h2_style))
+    # --- INICIO BLOQUE 5: BALANCE Y EMISIONES ---
+    bloque_5 = []
+    bloque_5.append(Paragraph("5. BALANCE DE MATERIA Y ANÁLISIS DE EMISIONES (CO2e)", h2_style))
     
     col_izq = [
         [Paragraph("<b>Flujo de Materiales</b>", cell_bold), ""],
@@ -661,8 +664,8 @@ def generar_pdf_oficial(
     
     t_master = Table([[t_balance, t_emisiones]], colWidths=[260, 260])
     t_master.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 0)]))
-    elements.append(t_master)
-    elements.append(Spacer(1, 15))
+    bloque_5.append(t_master)
+    bloque_5.append(Spacer(1, 15))
 
     equiv_agua = int(max(0, total_procesado * 2500))
     equiv_arboles = round(co2_neto / 22.0, 1) if co2_neto < 22 else int(max(0, co2_neto / 22.0))
@@ -683,12 +686,12 @@ def generar_pdf_oficial(
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     
         ("PADDING", (0, 0), (-1, -1), 12),
     ]))
-    elements.append(t_equiv)
-    elements.append(Spacer(1, 15))
+    bloque_5.append(t_equiv)
+    elements.append(KeepTogether(bloque_5))
 
-
-    # 6. IMPACTO SOCIAL
-    elements.append(Paragraph("6. MATRIZ DE IMPACTO SOCIAL", h2_style))
+    # --- INICIO BLOQUE 6: IMPACTO SOCIAL ---
+    bloque_6 = []
+    bloque_6.append(Paragraph("6. MATRIZ DE IMPACTO SOCIAL", h2_style))
     data_ops_pdf = [[Paragraph("Colaborador/a", cell_bold), Paragraph("Rol Operativo", cell_bold), Paragraph("Horas Totales", cell_bold)]]
     
     for op in lista_operaciones_pdf:
@@ -703,7 +706,8 @@ def generar_pdf_oficial(
     estilo_soc = list(modern_table_style._cmds)
     estilo_soc.extend([("ALIGN", (2, 0), (2, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_soc.setStyle(TableStyle(estilo_soc))
-    elements.append(t_soc)
+    bloque_6.append(t_soc)
+    elements.append(KeepTogether(bloque_6))
 
     # 7. ANEXOS FOTOGRÁFICOS
     anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
@@ -714,7 +718,7 @@ def generar_pdf_oficial(
         elements.append(Spacer(1, 10))
         
         for idx_a, anexo in enumerate(anexos_validos, 1):
-            img_cell = obtener_imagen_pdf(anexo["foto"], width=480, height=270) # AUMENTADO TAMAÑO Y HECHO PROPORCIONAL
+            img_cell = obtener_imagen_pdf(anexo["foto"], width=480, height=270) 
             nota_texto = anexo["nota"].strip() if anexo["nota"].strip() else "Sin descripción adicional provista."
             card_data = [[img_cell], [Paragraph(f"<b>Nota Evidencia {idx_a}:</b> {nota_texto}", cell_style)]]
             t_card = Table(card_data, colWidths=[520])
@@ -725,9 +729,11 @@ def generar_pdf_oficial(
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("PADDING", (0, 0), (-1, -1), 10),
             ]))
-            elements.append(t_card)
             
-            # SALTO DE PÁGINA CADA 2 IMÁGENES EXACTAMENTE
+            # Encapsulamos la tabla de imagen para que no se corte por la mitad
+            elements.append(KeepTogether([t_card]))
+            
+            # Control estricto de salto de página cada 2 imágenes
             if idx_a % 2 == 0 and idx_a < len(anexos_validos):
                 elements.append(PageBreak())
                 elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL (Cont.)", h2_style))
@@ -806,7 +812,9 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     prods_tot = df_fil['Productos Creados'].sum()
     unid_tot = df_fil['Unidades Recibidas'].sum()
     
-    elements.append(Paragraph("1. RESUMEN DE IMPACTO GLOBAL", h2_style))
+    # --- BLOQUE 1: IMPACTO GLOBAL ---
+    bloque_1 = []
+    bloque_1.append(Paragraph("1. RESUMEN DE IMPACTO GLOBAL", h2_style))
     data_metrics = [
         [Paragraph("<b>Unidades Recibidas</b>", cell_bold), Paragraph("<b>Peso Procesado</b>", cell_bold), Paragraph("<b>Productos Creados</b>", cell_bold)],
         [Paragraph(f"{int(unid_tot)} unid", cell_style), Paragraph(f"{kg_tot:.2f} kg", cell_style), Paragraph(f"{int(prods_tot)} unid", cell_style)],
@@ -820,10 +828,9 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         ("PADDING", (0, 0), (-1, -1), 8),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
     ]))
-    elements.append(t_metrics)
+    bloque_1.append(t_metrics)
+    bloque_1.append(Spacer(1, 15))
     
-    elements.append(Spacer(1, 15))
-
     equiv_agua_dash = int(max(0, kg_tot * 2500))
     equiv_arboles_dash = round(co2_tot / 22.0, 1) if co2_tot < 22 else int(max(0, co2_tot / 22.0))
     if equiv_arboles_dash == 0: equiv_arboles_dash = 0.1 
@@ -843,11 +850,14 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     
         ("PADDING", (0, 0), (-1, -1), 12),
     ]))
-    elements.append(t_equiv_dash)
+    bloque_1.append(t_equiv_dash)
+    elements.append(KeepTogether(bloque_1))
     
+    # --- BLOQUE 2: TOP CLIENTES ---
     top5 = df_fil.groupby("Cliente")["CO₂ Evitado"].sum().reset_index().sort_values(by="CO₂ Evitado", ascending=False).head(5)
     if not top5.empty:
-        elements.append(Paragraph("2. TOP CLIENTES POR IMPACTO AMBIENTAL (CO2e)", h2_style))
+        bloque_2 = []
+        bloque_2.append(Paragraph("2. TOP CLIENTES POR IMPACTO AMBIENTAL (CO2e)", h2_style))
         data_t5 = [[Paragraph("Ranking", cell_bold), Paragraph("Cliente / Empresa", cell_bold), Paragraph("CO2e Evitado", cell_bold)]]
         for i, r in enumerate(top5.itertuples(), 1):
             data_t5.append([Paragraph(str(i), cell_style), Paragraph(str(r.Cliente), cell_style), Paragraph(f"{r._2:.2f} kg", cell_style)])
@@ -857,9 +867,12 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
             ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
             ("PADDING", (0, 0), (-1, -1), 6)
         ]))
-        elements.append(t_top5)
+        bloque_2.append(t_top5)
+        elements.append(KeepTogether(bloque_2))
         
-    elements.append(Paragraph("3. DESGLOSE DE PROYECTOS", h2_style))
+    # --- BLOQUE 3: DESGLOSE ---
+    bloque_3 = []
+    bloque_3.append(Paragraph("3. DESGLOSE DE PROYECTOS", h2_style))
     data_proy = [[Paragraph("Cliente", cell_bold), Paragraph("Mes", cell_bold), Paragraph("Kg Procesados", cell_bold), Paragraph("CO2e Evitado", cell_bold), Paragraph("Horas", cell_bold)]]
     for idx, r in df_fil.iterrows():
         data_proy.append([
@@ -875,7 +888,8 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
         ("PADDING", (0, 0), (-1, -1), 5)
     ]))
-    elements.append(t_proy)
+    bloque_3.append(t_proy)
+    elements.append(KeepTogether(bloque_3))
     
     doc.build(elements, canvasmaker=ReporteCanvas)
     return buffer.getvalue()
