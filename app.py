@@ -520,7 +520,8 @@ def generar_pdf_oficial(
     
     elements.append(titulo)
     elements.append(subtitulo)
-    elements.append(Spacer(1, 10))
+    # Se agrega un Spacer extra para compensar la altura del logo que está "flotando"
+    elements.append(Spacer(1, 20))
 
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
@@ -744,7 +745,6 @@ def generar_pdf_oficial(
     buffer.seek(0)
     return buffer
 
-# --- NUEVA FUNCIÓN: GENERAR PDF DEL DASHBOARD ANALÍTICO ---
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=45)
@@ -771,9 +771,10 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     titulo = Paragraph(titulo_str, h1_style)
     subtitulo = Paragraph(sub_str, sub_style)
     
+    # ENCABEZADO LIBRE (Sin Tabla)
     elements.append(titulo)
     elements.append(subtitulo)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 20))
     
     if df_fil.empty:
         elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
