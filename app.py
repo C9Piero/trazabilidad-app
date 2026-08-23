@@ -379,23 +379,31 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
         st.rerun()
     if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
 
-# --- CLASE CANVAS: DIBUJO DE MARCA DE AGUA EN ESQUINA ABSOLUTA ---
+# --- CLASE CANVAS: DIBUJO ABSOLUTO DEL TÍTULO Y EL LOGO ---
 class ReporteCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
+        # Aceptar título y subtítulo como parámetros adicionales
+        self.titulo_str = kwargs.pop('titulo_str', "INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD")
+        self.subtitulo_str1 = kwargs.pop('subtitulo_str1', "")
+        self.subtitulo_str2 = kwargs.pop('subtitulo_str2', "")
         super().__init__(*args, **kwargs)
         self.pages = []
+    
     def showPage(self):
         self.pages.append(dict(self.__dict__))
         self._startPage()
+    
     def save(self):
         num_pages = len(self.pages)
         for i, page in enumerate(self.pages):
             self.__dict__.update(page)
             self.draw_footer()
-            if i == 0:  # EL LOGO SOLO SE PINTA EN LA PRIMERA PÁGINA
-                self.draw_logo_top_right()
+            if i == 0:  
+                # EN LA PRIMERA PÁGINA DIBUJAMOS EL HEADER ABSOLUTO
+                self.draw_absolute_header()
             super().showPage()
         super().save()
+        
     def draw_footer(self):
         self.saveState()
         self.setFont("Helvetica", 7)
@@ -403,8 +411,28 @@ class ReporteCanvas(canvas.Canvas):
         self.drawCentredString(612 / 2.0, 22, "Promoviendo el desarrollo sostenible a través de la economía circular y el empoderamiento de mujeres")
         self.drawCentredString(612 / 2.0, 12, "emprendedoras")
         self.restoreState()
-    def draw_logo_top_right(self):
+        
+    def draw_absolute_header(self):
         self.saveState()
+        
+        # 1. Dibujar el Texto (Título y Subtítulo) en posición absoluta
+        # Posiciones base (Hoja Letter = 612 x 792)
+        margin_left = 40
+        top_y = 750  # Muy cerca del borde superior
+        
+        # Título
+        self.setFont("Helvetica-Bold", 16)
+        self.setFillColor(colors.HexColor("#0F172A"))
+        self.drawString(margin_left, top_y, self.titulo_str)
+        
+        # Subtítulos
+        self.setFont("Helvetica", 9)
+        self.setFillColor(colors.HexColor("#64748B"))
+        # Separación entre título y subtítulos
+        self.drawString(margin_left, top_y - 20, self.subtitulo_str1)
+        self.drawString(margin_left, top_y - 32, self.subtitulo_str2)
+
+        # 2. Dibujar el Logo alineado a la misma altura (top_y)
         logo_path_png = "pequeños detalles logo.png"
         logo_path_jpg = "pequeños detalles logo.jpg"
         logo_path = None
@@ -418,18 +446,17 @@ class ReporteCanvas(canvas.Canvas):
                 img_reader = ImageReader(logo_path)
                 iw, ih = img_reader.getSize()
                 aspect = ih / float(iw)
-                target_width = 130 # Logo un poco más grande
+                target_width = 120 
                 target_height = target_width * aspect
                 
-                # Coordenadas exactas pegadas a la esquina física del papel
-                # La hoja mide 612 (ancho) x 792 (alto)
-                # Lo ponemos a 30 pts del borde derecho y 25 pts del borde superior
-                x_pos = 612 - 30 - target_width
-                y_pos = 792 - 25 - target_height 
+                # Alineado a la derecha, y el tope de la imagen toca el top_y (más un par de píxeles para ajuste visual)
+                x_pos = 612 - 40 - target_width
+                y_pos = top_y - target_height + 12
                 
                 self.drawImage(logo_path, x_pos, y_pos, width=target_width, height=target_height, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
+                
         self.restoreState()
 
 
@@ -487,17 +514,14 @@ def generar_pdf_oficial(
     total_prod_unidades = sum([p_item["cantidad"] for p_item in lista_productos])
 
     buffer = io.BytesIO()
-    # MÁRGENES ESTÁNDAR (topMargin 50 para que el título no tape al logo flotante)
+    
+    # Se ajusta topMargin grande (100) para dejarle espacio físico al título absoluto dibujado por Canvas
     doc = SimpleDocTemplate(
-        buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=50, bottomMargin=50
+        buffer, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=100, bottomMargin=40
     )
 
     styles = getSampleStyleSheet()
 
-    # rightIndent=140 evita que el texto invada la zona derecha del logo
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#0F172A"), alignment=0, spaceBefore=0, spaceAfter=4, rightIndent=140)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=0, rightIndent=140)
-    
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#1E3A8A"), spaceBefore=18, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#334155"), leading=12)
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8.5, textColor=colors.HexColor("#0F172A"), leading=12)
@@ -516,14 +540,8 @@ def generar_pdf_oficial(
 
     elements = []
 
-    # ENCABEZADO COMPLETAMENTE LIBRE DE TABLAS
-    titulo = Paragraph("INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", h1_style)
-    subtitulo = Paragraph(f"<b>Código de Proyecto:</b> {codigo_proy}<br/><b>Fecha de Emisión:</b> {datetime.date.today().strftime('%d/%m/%Y')}", sub_style)
+    # El título y logo ya no están en 'elements'. Se dibujan vía ReporteCanvas.
     
-    elements.append(titulo)
-    elements.append(subtitulo)
-    elements.append(Spacer(1, 25))
-
     resumen_texto = f"""Este documento certifica el proceso de economía circular ejecutado para la empresa <b>{cliente}</b>. 
     Se transformaron exitosamente <b>{total_procesado:.2f} kg</b> de textiles en desuso mediante la metodología de upcycling, resultando en 
     <b>{total_prod_unidades}</b> nuevos productos. Este proyecto generó un impacto ambiental neto positivo de <b>{co2_neto:.2f} kg de CO2e evitados</b> 
@@ -535,7 +553,7 @@ def generar_pdf_oficial(
         [Paragraph(f"{kg_recibidos:.2f} kg", card_val), Paragraph(f"{pct_aprovechamiento_total:.2f}%", card_val), Paragraph(f"{co2_neto:.2f} kg", card_val), Paragraph(f"{total_horas_social:.1f} hrs", card_val)],
         [Paragraph("MATERIAL RECUPERADO", card_lbl), Paragraph("TASA APROVECHAMIENTO", card_lbl), Paragraph("CO2e NETO EVITADO", card_lbl), Paragraph(f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_lbl)],
     ]
-    t_cards = Table(cards_data, colWidths=[130, 130, 130, 130])
+    t_cards = Table(cards_data, colWidths=[133, 133, 133, 133]) # Ajustado al nuevo ancho
     t_cards.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
@@ -557,7 +575,7 @@ def generar_pdf_oficial(
         [Paragraph("Guía de Remisión:", cell_bold), Paragraph(guia_remision if guia_remision else "N/A", cell_style)],
         [Paragraph("Responsable Interno:", cell_bold), Paragraph(responsable, cell_style)],
     ]
-    t_ficha = Table(data_ficha, colWidths=[140, 380])
+    t_ficha = Table(data_ficha, colWidths=[150, 382])
     t_ficha.setStyle(TableStyle([
         ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("PADDING", (0, 0), (-1, -1), 6),
@@ -591,7 +609,7 @@ def generar_pdf_oficial(
 
     data_prendas_pdf.append([Paragraph("<b>TOTAL</b>", cell_bold), "", Paragraph(f"<b>{total_unidades_ingreso}</b>", cell_bold), Paragraph(f"<b>{kg_recibidos:.2f} kg</b>", cell_bold), ""])
     
-    t_prendas = Table(data_prendas_pdf, colWidths=[40, 200, 70, 70, 140]) 
+    t_prendas = Table(data_prendas_pdf, colWidths=[40, 202, 70, 70, 150]) 
     estilo_prendas = list(modern_table_style._cmds)
     estilo_prendas.extend([("ALIGN", (2, 0), (3, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_prendas.setStyle(TableStyle(estilo_prendas))
@@ -609,7 +627,7 @@ def generar_pdf_oficial(
             img_cell = obtener_imagen_pdf(t_item["foto"], 100, 75)
             data_traza_pdf.append([Paragraph(t_item["etapa"], cell_style), Paragraph(t_item["fecha"], cell_style), Paragraph(t_item["responsable"], cell_style), Paragraph(f"{t_item['peso']:.2f} kg", cell_style), img_cell])
 
-    t_traza = Table(data_traza_pdf, colWidths=[90, 70, 140, 70, 150])
+    t_traza = Table(data_traza_pdf, colWidths=[90, 70, 152, 70, 150])
     estilo_traza = list(modern_table_style._cmds)
     estilo_traza.extend([("ALIGN", (3, 0), (3, -1), "CENTER")])
     t_traza.setStyle(TableStyle(estilo_traza))
@@ -625,7 +643,7 @@ def generar_pdf_oficial(
         data_prod_pdf.append([Paragraph(p_item["producto"], cell_style), Paragraph(str(p_item["cantidad"]), cell_style), img_cell])
 
     data_prod_pdf.append([Paragraph("<b>TOTAL PRODUCTOS</b>", cell_bold), Paragraph(f"<b>{total_prod_unidades}</b>", cell_bold), ""])
-    t_prod = Table(data_prod_pdf, colWidths=[200, 100, 220])
+    t_prod = Table(data_prod_pdf, colWidths=[200, 100, 232])
     estilo_prod = list(modern_table_style._cmds)
     estilo_prod.extend([("ALIGN", (1, 0), (1, -1), "CENTER")])
     t_prod.setStyle(TableStyle(estilo_prod))
@@ -653,8 +671,8 @@ def generar_pdf_oficial(
         [Paragraph("<b>Impacto Ambiental Neto:</b>", cell_bold), Paragraph(f"<b>{co2_neto:.2f} kg CO2e</b>", cell_bold)],
     ]
     
-    t_balance = Table(col_izq, colWidths=[150, 100])
-    t_emisiones = Table(col_der, colWidths=[150, 100])
+    t_balance = Table(col_izq, colWidths=[160, 106])
+    t_emisiones = Table(col_der, colWidths=[160, 106])
     
     estilo_bloques = TableStyle([
         ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#1E3A8A")),
@@ -667,7 +685,7 @@ def generar_pdf_oficial(
     t_balance.setStyle(estilo_bloques)
     t_emisiones.setStyle(estilo_bloques)
     
-    t_master = Table([[t_balance, t_emisiones]], colWidths=[260, 260])
+    t_master = Table([[t_balance, t_emisiones]], colWidths=[266, 266])
     t_master.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 0)]))
     bloque_5.append(t_master)
     bloque_5.append(Spacer(1, 15))
@@ -685,7 +703,7 @@ def generar_pdf_oficial(
     
     texto_equiv = texto_equiv.replace(',', '.') 
 
-    t_equiv = Table([[Paragraph(texto_equiv, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[520])
+    t_equiv = Table([[Paragraph(texto_equiv, ParagraphStyle("Eq", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=14, textColor=colors.HexColor("#064E3B")))]], colWidths=[532])
     t_equiv.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ECFDF5")), 
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#34D399")),     
@@ -706,7 +724,7 @@ def generar_pdf_oficial(
         
     data_ops_pdf.append([Paragraph("<b>TOTAL TRABAJO GENERADO</b>", cell_bold), "", Paragraph(f"<b>{total_horas_social:.2f} horas</b>", cell_bold)])
     
-    t_soc = Table(data_ops_pdf, colWidths=[200, 220, 100])
+    t_soc = Table(data_ops_pdf, colWidths=[200, 232, 100])
     estilo_soc = list(modern_table_style._cmds)
     estilo_soc.extend([("ALIGN", (2, 0), (2, -1), "CENTER"), ("SPAN", (0, -1), (1, -1))])
     t_soc.setStyle(TableStyle(estilo_soc))
@@ -724,7 +742,7 @@ def generar_pdf_oficial(
             img_cell = obtener_imagen_pdf(anexo["foto"], width=480, height=270) 
             nota_texto = anexo["nota"].strip() if anexo["nota"].strip() else "Sin descripción adicional provista."
             card_data = [[img_cell], [Paragraph(f"<b>Nota Evidencia {idx_a}:</b> {nota_texto}", cell_style)]]
-            t_card = Table(card_data, colWidths=[520])
+            t_card = Table(card_data, colWidths=[532])
             t_card.setStyle(TableStyle([
                 ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
                 ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
@@ -742,17 +760,18 @@ def generar_pdf_oficial(
             else:
                 elements.append(Spacer(1, 25))
 
-    doc.build(elements, canvasmaker=ReporteCanvas)
+    # PASAMOS EL TÍTULO A LA CLASE CANVAS PARA QUE SE DIBUJE ARRIBA
+    sub_1 = f"Código de Proyecto: {codigo_proy}"
+    sub_2 = f"Fecha de Emisión: {datetime.date.today().strftime('%d/%m/%Y')}"
+    
+    doc.build(elements, canvasmaker=lambda *args, **kwargs: ReporteCanvas(*args, titulo_str="INFORME TÉCNICO DE TRAZABILIDAD Y SOSTENIBILIDAD", subtitulo_str1=sub_1, subtitulo_str2=sub_2, **kwargs))
     buffer.seek(0)
     return buffer
 
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=45, rightMargin=45, topMargin=50, bottomMargin=50)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=100, bottomMargin=40)
     styles = getSampleStyleSheet()
-    
-    h1_style = ParagraphStyle("H1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#1E293B"), alignment=0, spaceBefore=0, spaceAfter=6, rightIndent=140)
-    sub_style = ParagraphStyle("Sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#64748B"), alignment=0, spaceBefore=0, spaceAfter=20, rightIndent=140)
     
     h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0F172A"), spaceBefore=15, spaceAfter=8)
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#334155"), leading=10)
@@ -762,25 +781,22 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
 
     if sel_mes == "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
         titulo_str = f"MEMORIA ANUAL DE SOSTENIBILIDAD {sel_anio}"
-        sub_str = "Reporte consolidado del impacto ambiental y social generado durante el año."
+        sub_str1 = "Reporte consolidado del impacto ambiental"
+        sub_str2 = "y social generado durante el año."
     elif sel_mes != "Todos" and sel_anio != "Todos" and sel_cli == "Todos":
         titulo_str = f"REPORTE MENSUAL DE SOSTENIBILIDAD - {sel_mes.upper()} {sel_anio}"
-        sub_str = "Resumen del impacto ambiental y social generado en el mes seleccionado."
+        sub_str1 = "Resumen del impacto ambiental y social"
+        sub_str2 = "generado en el mes seleccionado."
     else:
         titulo_str = "REPORTE EJECUTIVO DE SOSTENIBILIDAD"
-        sub_str = f"Filtros: Año: {sel_anio} | Mes: {sel_mes} | Cliente: {sel_cli} | Tipo: {sel_tipo}"
-        
-    titulo = Paragraph(titulo_str, h1_style)
-    subtitulo = Paragraph(sub_str, sub_style)
+        sub_str1 = f"Filtros: Año: {sel_anio} | Mes: {sel_mes}"
+        sub_str2 = f"Cliente: {sel_cli} | Tipo: {sel_tipo}"
     
-    # ENCABEZADO LIBRE DE TABLAS
-    elements.append(titulo)
-    elements.append(subtitulo)
-    elements.append(Spacer(1, 25))
+    # El encabezado es dibujado por ReporteCanvas, aquí no metemos ni Paragraphs ni Spacers iniciales.
     
     if df_fil.empty:
         elements.append(Paragraph("No hay datos para mostrar con los filtros seleccionados.", cell_style))
-        doc.build(elements, canvasmaker=ReporteCanvas)
+        doc.build(elements, canvasmaker=lambda *args, **kwargs: ReporteCanvas(*args, titulo_str=titulo_str, subtitulo_str1=sub_str1, subtitulo_str2=sub_str2, **kwargs))
         return buffer.getvalue()
         
     kg_tot = df_fil['Kg Procesados'].sum()
@@ -865,7 +881,7 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     bloque_3.append(t_proy)
     elements.append(KeepTogether(bloque_3))
     
-    doc.build(elements, canvasmaker=ReporteCanvas)
+    doc.build(elements, canvasmaker=lambda *args, **kwargs: ReporteCanvas(*args, titulo_str=titulo_str, subtitulo_str1=sub_str1, subtitulo_str2=sub_str2, **kwargs))
     return buffer.getvalue()
 
 if "autenticado" not in st.session_state:
