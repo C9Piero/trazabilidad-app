@@ -2449,12 +2449,11 @@ else:
         with st.container(border=True):
             col_gen1, col_gen2 = st.columns([2, 1])
 
-            if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
+           if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
                 try:
                     with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
                         datos_detalle = procesar_fotos_y_armar_detalle()
 
-                        # 1. Armamos los datos EXACTOS que acepta Supabase
                         datos_borrador = {
                             "codigo": codigo_proy,
                             "cliente": cliente,
@@ -2472,7 +2471,7 @@ else:
                             "punto_origen": origen,
                             "guia": guia_remision,
                             "datos_completos": datos_detalle,
-                            # Se eliminó "datos_formulario" de aquí para no hacer chocar a Supabase
+                            "datos_formulario": datos_detalle,
                         }
 
                         # --- GUARDADO INTELIGENTE BORRADOR ---
@@ -2490,27 +2489,14 @@ else:
                             if res.data:
                                 datos_borrador["id"] = res.data[0]["id"]
 
-                    st.success("✅ Borrador y fotos guardados exitosamente en la nube.")
+                    st.success("✅ Borrador y fotos guardados exitosamente.")
                     
-                    # 2. ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL
-                    # Aquí SÍ le inyectamos el respaldo extra solo para la vista web
-                    datos_borrador["datos_formulario"] = datos_detalle
+                    # ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL
                     st.session_state.proyecto_editar = datos_borrador
-                    
-                    # FIX: Le avisamos al sistema que seguimos en el mismo proyecto para que no borre la pantalla
                     st.session_state._loaded_project_id = datos_borrador.get("id") or datos_borrador.get("codigo")
                     
-                    # LIMPIEZA TOTAL DEL FORMULARIO: Evita el bug visual de Streamlit donde resetea los primeros items
-                    prefijos_limpiar = [
-                        "desc_", "unid_", "tot_input_", "peso_u_", "foto_",
-                        "prod_sel_", "prod_cant_", "prod_nuevo_txt_", "prod_dis_", "prod_foto_",
-                        "tr_etapa_", "tr_fecha_", "tr_resp_", "chk_edit_", "chk_no_aplica_", "tr_peso_", "tr_tipo_", "tr_foto_",
-                        "soc_rol_", "soc_pers_sel_", "soc_pers_txt_custom_", "soc_cant_", "soc_tunit_", "soc_tunit_calc_", "soc_htot_",
-                        "anx_foto_", "anx_nota_", "ops_chk_", "ops_nom_", "ops_dias_", "ops_hdia_", "ops_tot_",
-                        "transporte_distrito_origen", "dist_km_manual", "dist_km_auto_",
-                        "chk_edit_balance", "bm_mat_transf_", "bm_retazos_", "bm_perdida_"
-                    ]
-                    keys_to_delete = [k for k in st.session_state.keys() if any(k.startswith(pfx) for pfx in prefijos_limpiar)]
+                    # LIMPIEZA EXCLUSIVA DE FOTOS (Dejamos intactos los textos y cantidades)
+                    keys_to_delete = [k for k in st.session_state.keys() if "foto" in k]
                     for k in keys_to_delete:
                         del st.session_state[k]
 
