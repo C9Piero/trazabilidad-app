@@ -2266,7 +2266,9 @@ else:
                     cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
                     cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
 
-                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=max(p_cant, cant_init), value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
+                    # Límite ampliado para permitir el triple o más (hasta 9999)
+                    limite_maximo = max(p_cant * 3, cant_init, 9999)
+                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=limite_maximo, value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
 
                     # --- LÓGICA DE TIEMPOS SELLADOS SEGÚN ROL ---
                     if rol_sel == "Confección":
@@ -2299,9 +2301,20 @@ else:
                     })
 
             total_horas_social = total_horas_ops + horas_confeccion_total
-            total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(personas_confeccion_set)
+            
+            # Unificación estricta de nombres para evitar duplicados (Corte + Logística + Confección)
+            nombres_unicos_set = set()
+            for op in lista_operaciones:
+                if op.get("nombre", "").strip():
+                    nombres_unicos_set.add(op["nombre"].strip().title())
+            
+            for conf in lista_confeccion:
+                if conf.get("persona", "").strip():
+                    nombres_unicos_set.add(conf["persona"].strip().title())
+                    
+            total_personas_social = len(nombres_unicos_set)
 
-            st.info(f"🧑‍🤝‍🧑 **Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas.")
+            st.info(f"🧑‍🤝‍🧑 **Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas (conteo único).")
 
         st.write("")
 
