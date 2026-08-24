@@ -716,7 +716,7 @@ def generar_pdf_oficial(
     bloque_6.append(t_soc)
     elements.append(KeepTogether(bloque_6))
 
-    anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
+anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
     if anexos_validos:
         elements.append(PageBreak())
         elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL", h2_style))
@@ -738,12 +738,14 @@ def generar_pdf_oficial(
             
             elements.append(KeepTogether([t_card]))
             
-            if idx_a % 2 == 0 and idx_a < len(anexos_validos):
-                elements.append(PageBreak())
-                elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL (Cont.)", h2_style))
-                elements.append(Spacer(1, 10))
-            else:
-                elements.append(Spacer(1, 25))
+            # Solo agregamos espacios o saltos de página SI NO es la última imagen
+            if idx_a < len(anexos_validos):
+                if idx_a % 2 == 0:
+                    elements.append(PageBreak())
+                    elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL (Cont.)", h2_style))
+                    elements.append(Spacer(1, 10))
+                else:
+                    elements.append(Spacer(1, 25))
 
     doc.build(elements, canvasmaker=ReporteCanvas)
     buffer.seek(0)
