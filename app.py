@@ -2452,6 +2452,7 @@ else:
                     with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
                         datos_detalle = procesar_fotos_y_armar_detalle()
 
+                        # 1. Armamos los datos EXACTOS que acepta Supabase
                         datos_borrador = {
                             "codigo": codigo_proy,
                             "cliente": cliente,
@@ -2469,7 +2470,7 @@ else:
                             "punto_origen": origen,
                             "guia": guia_remision,
                             "datos_completos": datos_detalle,
-                            "datos_formulario": datos_detalle, # <- Doble respaldo para evitar pérdidas
+                            # Se eliminó "datos_formulario" de aquí para no hacer chocar a Supabase
                         }
 
                         # --- GUARDADO INTELIGENTE BORRADOR ---
@@ -2489,13 +2490,15 @@ else:
 
                     st.success("✅ Borrador y fotos guardados exitosamente en la nube.")
                     
-                    # ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL
+                    # 2. ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL
+                    # Aquí SÍ le inyectamos el respaldo extra solo para la vista web
+                    datos_borrador["datos_formulario"] = datos_detalle
                     st.session_state.proyecto_editar = datos_borrador
                     
                     # FIX: Le avisamos al sistema que seguimos en el mismo proyecto para que no borre la pantalla
                     st.session_state._loaded_project_id = datos_borrador.get("id") or datos_borrador.get("codigo")
                     
-                    # LIMPIEZA DE FILE UPLOADERS: Forzamos la actualización visual de las fotos ya subidas a Supabase.
+                    # LIMPIEZA DE FILE UPLOADERS: Forzamos la actualización visual de las fotos ya subidas
                     keys_to_delete = [k for k in st.session_state.keys() if k.startswith("foto_") or k.startswith("tr_foto_") or k.startswith("prod_foto_") or k.startswith("anx_foto_")]
                     for k in keys_to_delete:
                         del st.session_state[k]
