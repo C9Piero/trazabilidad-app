@@ -2500,8 +2500,17 @@ else:
                     # FIX: Le avisamos al sistema que seguimos en el mismo proyecto para que no borre la pantalla
                     st.session_state._loaded_project_id = datos_borrador.get("id") or datos_borrador.get("codigo")
                     
-                    # LIMPIEZA DE FILE UPLOADERS: Forzamos la actualización visual de las fotos ya subidas
-                    keys_to_delete = [k for k in st.session_state.keys() if k.startswith("foto_") or k.startswith("tr_foto_") or k.startswith("prod_foto_") or k.startswith("anx_foto_")]
+                    # LIMPIEZA TOTAL DEL FORMULARIO: Evita el bug visual de Streamlit donde resetea los primeros items
+                    prefijos_limpiar = [
+                        "desc_", "unid_", "tot_input_", "peso_u_", "foto_",
+                        "prod_sel_", "prod_cant_", "prod_nuevo_txt_", "prod_dis_", "prod_foto_",
+                        "tr_etapa_", "tr_fecha_", "tr_resp_", "chk_edit_", "chk_no_aplica_", "tr_peso_", "tr_tipo_", "tr_foto_",
+                        "soc_rol_", "soc_pers_sel_", "soc_pers_txt_custom_", "soc_cant_", "soc_tunit_", "soc_tunit_calc_", "soc_htot_",
+                        "anx_foto_", "anx_nota_", "ops_chk_", "ops_nom_", "ops_dias_", "ops_hdia_", "ops_tot_",
+                        "transporte_distrito_origen", "dist_km_manual", "dist_km_auto_",
+                        "chk_edit_balance", "bm_mat_transf_", "bm_retazos_", "bm_perdida_"
+                    ]
+                    keys_to_delete = [k for k in st.session_state.keys() if any(k.startswith(pfx) for pfx in prefijos_limpiar)]
                     for k in keys_to_delete:
                         del st.session_state[k]
 
