@@ -161,7 +161,8 @@ def estimar_tiempo_unidad(nombre_producto: str) -> float:
         
     return round(max(0.10, tiempo_costura), 2)
 
-FACTORES_CO2 = {
+# Ahora esto es la BASE inicial. Se convertirá en dinámico en st.session_state
+FACTORES_CO2_BASE = {
     "Banner": 9.5, "Bata de laboratorio": 6.575, "Bolsas": 8.0, "Camisa": 6.575, "Camisa algodón": 5.0, "Camisa drill": 5.9, 
     "Camisa ignífuga": 5.35, "Camisa jean / denim": 5.0, "Camisaco": 5.0, "Camisaco drill": 5.9, "Camisaco drill con cinta": 6.25, 
     "Casaca": 6.575, "Casaca drill": 5.9, "Casaca polar": 6.0, "Casaca polar con cinta reflectiva": 6.3, "Casaca térmica": 6.1, 
@@ -913,6 +914,10 @@ if "catalogo_productos" not in st.session_state:
 
 if "lista_personal_confeccion" not in st.session_state:
     st.session_state.lista_personal_confeccion = list(PERSONAL_CONFECCION_BASE)
+
+# --- INICIALIZACIÓN CATÁLOGO MATERIALES ---
+if "factores_co2" not in st.session_state:
+    st.session_state.factores_co2 = dict(FACTORES_CO2_BASE)
 
 if "num_anexos" not in st.session_state:
     st.session_state.num_anexos = 1
@@ -1678,6 +1683,43 @@ else:
         # --- SECCIÓN 2: MATERIAL ---
         with st.container(border=True):
             st.subheader("2. Ingreso de Material")
+            
+            with st.expander("⚙️ Administrar Catálogo de Materiales y Calcular CO₂e"):
+                tab_mat_add, tab_mat_del = st.tabs(["➕ Agregar / Calcular Material", "🗑️ Eliminar Material"])
+
+                with tab_mat_add:
+                    st.caption("Ingresa los porcentajes de composición. La aplicación calculará automáticamente el factor de CO₂e según tu tabla oficial.")
+                    col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
+                    nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_v{fv}")
+
+                    # Calculadora basada en tu tabla
+                    p1, p2, p3, p4 = st.columns(4)
+                    p_alg = p1.number_input("% Algodón", min_value=0, max_value=100, value=65, key=f"mat_alg_v{fv}")
+                    p_pol = p2.number_input("% Poliéster", min_value=0, max_value=100, value=35, key=f"mat_pol_v{fv}")
+                    p_dra = p3.number_input("% Acríl/Dralon", min_value=0, max_value=100, value=0, key=f"mat_dra_v{fv}")
+                    p_cin = p4.number_input("% Cinta Ref.", min_value=0, max_value=100, value=0, key=f"mat_cin_v{fv}")
+
+                    factor_calculado = (p_alg * 5.0 + p_pol * 9.5 + p_dra * 6.0 + p_cin * 12.0) / 100
+
+                    col_m2.text_input("Factor Calculado", value=f"{factor_calculado:.3f} kg", disabled=True, key=f"mat_calc_v{fv}")
+
+                    if col_m3.button("💾 Guardar Material", use_container_width=True, key=f"btn_save_mat_v{fv}"):
+                        if nuevo_mat.strip():
+                            nombre_formateado = nuevo_mat.strip().capitalize()
+                            st.session_state.factores_co2[nombre_formateado] = factor_calculado
+                            st.toast(f"✅ Material '{nombre_formateado}' guardado con factor {factor_calculado:.3f}")
+                            st.rerun()
+
+                with tab_mat_del:
+                    col_d1, col_d2 = st.columns([3, 1])
+                    materiales_borrables = [m for m in st.session_state.factores_co2.keys() if m != "Banner"]
+                    mat_a_borrar = col_d1.selectbox("Material a eliminar:", materiales_borrables, key=f"mat_sel_del_v{fv}")
+                    if col_d2.button("Eliminar", use_container_width=True, key=f"btn_del_mat_v{fv}"):
+                        if mat_a_borrar in st.session_state.factores_co2:
+                            del st.session_state.factores_co2[mat_a_borrar]
+                            st.toast(f"🗑️ Material eliminado: {mat_a_borrar}")
+                            st.rerun()
+
             if "num_items" not in st.session_state:
                 st.session_state.num_items = 2
 
@@ -1693,7 +1735,7 @@ else:
             peso_total_recibido = 0.0
             co2_evitado_total = 0.0
             total_piezas_ingresadas = 0
-            opciones_prendas = sorted(list(FACTORES_CO2.keys()))
+            opciones_prendas = sorted(list(st.session_state.factores_co2.keys()))
 
             saved_items = dc.get("items", [])
 
@@ -1724,7 +1766,7 @@ else:
                 elif foto_url_prev:
                     col_foto.image(foto_url_prev, width=80)
 
-                factor = FACTORES_CO2.get(desc, 6.575)
+                factor = st.session_state.factores_co2.get(desc, 6.575)
                 co2_item = p_total * factor
                 co2_evitado_total += co2_item
                 peso_total_recibido += p_total
