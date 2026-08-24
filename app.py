@@ -2271,19 +2271,19 @@ else:
                     # --- LÓGICA DE TIEMPOS SELLADOS SEGÚN ROL ---
                     if rol_sel == "Confección":
                         tiempo_unitario = float(tiempo_base_ia)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
                     elif rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acab. 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acab. 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
                     elif rol_sel == "Entretela":
                         tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
                     elif rol_sel == "Estampado automático":
-                        tiempo_unitario = round(5.0 / 60.0, 3) # 5 minutos convertidos a horas (0.083)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                        tiempo_unitario = round(5.0 / 60.0, 3) # 5 minutos
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
                     else:
                         tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
-                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs)", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
+                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
 
                     horas_persona = cant_asig * tiempo_unitario
 
