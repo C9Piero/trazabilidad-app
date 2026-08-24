@@ -978,9 +978,7 @@ else:
 
         st.markdown('<p class="sidebar-section-title">Navegación</p>', unsafe_allow_html=True)
 
-        # -------------------------------------------------------------
-        # SOLUCIÓN BARRA LATERAL (DOBLE BOTÓN AZUL)
-        # -------------------------------------------------------------
+        # SOLUCIÓN: Botón azul solo si realmente es un "Nuevo Reporte" (y no un borrador cargado)
         is_nuevo_real = st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF" and not st.session_state.proyecto_editar
         if st.button(
             "✨     Nuevo Reporte PDF",
@@ -1550,14 +1548,15 @@ else:
 
         # -------------------------------------------------------------
         # SOLUCIÓN DE GUARDADO: INYECCIÓN DIRECTA DE ESTADO
-        # Esto garantiza que las fechas y materiales no se reseteen a 0.
+        # Esto garantiza que todos los textos, fechas y cantidades no se borren a 0.
         # -------------------------------------------------------------
         if current_loaded != target_proj_id:
             st.session_state._loaded_project_id = target_proj_id
             dc_init = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
 
+            # 1. Limpiamos las llaves dinámicas del proyecto o borrador anterior
             prefijos_limpiar = [
-                "fg_", "desc_", "unid_", "tot_input_", "peso_u_", "foto_",
+                "fg_", "desc_", "unid_", "tot_input_", "foto_",
                 "prod_sel_", "prod_cant_", "prod_nuevo_txt_", "prod_dis_", "prod_foto_",
                 "tr_etapa_", "tr_fecha_", "tr_resp_", "chk_edit_", "chk_no_aplica_", "tr_peso_", "tr_tipo_", "tr_foto_",
                 "soc_rol_", "soc_pers_sel_", "soc_pers_txt_custom_", "soc_cant_", "soc_tunit_", "soc_tunit_calc_", "soc_htot_",
@@ -1566,18 +1565,16 @@ else:
                 "chk_edit_balance", "bm_mat_transf_", "bm_retazos_", "bm_perdida_",
                 "responsables_proyecto", "nuevo_responsable_proyecto"
             ]
-            
-            # Limpiamos las llaves dinámicas del borrador anterior
             keys_to_del = [k for k in list(st.session_state.keys()) if any(k.startswith(pfx) for pfx in prefijos_limpiar)]
             for k_del in keys_to_del:
                 del st.session_state[k_del]
                 
-            # INYECTAMOS LOS DATOS EXACTOS EN EL ESTADO
-            # 1. Ficha General
+            # 2. INYECTAMOS LOS DATOS EXACTOS DEL BORRADOR CARGADO
+            # Ficha General
             st.session_state["fg_cliente"] = p_edit.get("cliente", "")
             st.session_state["fg_ruc"] = p_edit.get("ruc", "")
-            st.session_state["fg_origen"] = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc_init.get("origen", "")
             st.session_state["fg_guia"] = p_edit.get("guia", "") or dc_init.get("guia_remision", "")
+            st.session_state["fg_origen"] = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc_init.get("origen", "")
             
             fechas_raw = str(p_edit.get("fecha", " - ")).split(" - ")
             try: st.session_state["fg_fe_inicio"] = datetime.datetime.strptime(fechas_raw[0].replace(" ", ""), "%d/%m/%Y").date()
@@ -1585,7 +1582,7 @@ else:
             try: st.session_state["fg_fe_fin"] = datetime.datetime.strptime(fechas_raw[1].replace(" ", ""), "%d/%m/%Y").date()
             except: st.session_state["fg_fe_fin"] = datetime.date.today()
 
-            # 2. Materiales
+            # Materiales
             saved_items = dc_init.get("items", [])
             st.session_state.num_items = max(2, len(saved_items))
             opciones_prendas_base = sorted(list(FACTORES_CO2.keys()))
@@ -1596,7 +1593,7 @@ else:
                 st.session_state[f"unid_{i}"] = int(it.get("unidades", 0))
                 st.session_state[f"tot_input_{i}"] = float(it.get("peso_total", 0.0))
 
-            # 3. Trazabilidad
+            # Trazabilidad
             saved_traza = dc_init.get("trazabilidad", [])
             for i in range(4):
                 if i < len(saved_traza):
@@ -1608,14 +1605,23 @@ else:
                     st.session_state[f"chk_edit_{i}"] = bool(tr.get("editado", False))
                     st.session_state[f"chk_no_aplica_{i}"] = bool(tr.get("no_aplica", False))
                     
-            # 4. Productos
+            # Productos
             saved_prods = dc_init.get("productos", [])
             st.session_state.num_prods = max(2, len(saved_prods))
             for i, pr in enumerate(saved_prods):
-                st.session_state[f"prod_sel_{i}"] = pr.get("producto", "")
+                prod_val = pr.get("producto", "")
+                if prod_val and prod_val not in st.session_state.catalogo_productos:
+                    st.session_state.catalogo_productos.insert(-1, prod_val)
+                st.session_state[f"prod_sel_{i}"] = prod_val
                 st.session_state[f"prod_cant_{i}"] = int(pr.get("cantidad", 0))
 
-            # 5. Roles y Configuración Social
+            # Roles, Operaciones y Anexos
+            saved_ops = dc_init.get("operaciones", [])
+            for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
+                op_prev = saved_ops[idx] if idx < len(saved_ops) else {}
+                st.session_state[f"ops_chk_{idx}"] = bool(op_prev.get("editado", False))
+                st.session_state[f"ops_nom_{idx}"] = op_prev.get("nombre", p_fijo["nombre"])
+
             st.session_state.num_anexos = dc_init.get("num_anexos", 1)
             conf_num_map = dc_init.get("confeccion_num_pers", {})
             for k_np, v_np in conf_num_map.items():
@@ -1736,7 +1742,7 @@ else:
             for i in range(st.session_state.num_items):
                 st.markdown(f"**Material {i+1}**")
                 
-                # Inicialización por si se agregan filas nuevas en caliente
+                # Para evitar errores en botones nuevos vacíos, le asignamos su llave de estado
                 if f"desc_{i}" not in st.session_state:
                     st.session_state[f"desc_{i}"] = opciones_prendas[0]
                 if f"unid_{i}" not in st.session_state:
@@ -1752,7 +1758,7 @@ else:
                 desc = col_desc.selectbox("Tipo de Producto / Prenda *", opciones_prendas, key=f"desc_{i}")
                 unid = col_unid.number_input("Ingreso (unid.) *", min_value=0, key=f"unid_{i}")
                 p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, step=0.05, key=f"tot_input_{i}")
-                
+
                 peso_u = p_total / unid if unid > 0 else 0.0
                 col_tot.text_input("Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}_{unid}_{p_total}")
 
@@ -1807,16 +1813,17 @@ else:
                 is_edited_prev = traza_prev.get("editado", resp_prev_val != item_fijo["resp_defecto"])
                 foto_url_prev = traza_prev.get("foto_url", "")
                 
-                # Configurar llaves por defecto si no existen
-                if f"tr_fecha_{i}" not in st.session_state:
-                    if item_fijo["etapa"] == "Clasificación": st.session_state[f"tr_fecha_{i}"] = fe_inicio_dt
-                    else: st.session_state[f"tr_fecha_{i}"] = item_fijo["fecha"]
-                if f"tr_resp_{i}" not in st.session_state:
-                    st.session_state[f"tr_resp_{i}"] = resp_prev_val
-                if f"chk_edit_{i}" not in st.session_state:
-                    st.session_state[f"chk_edit_{i}"] = bool(is_edited_prev)
+                if item_fijo["etapa"] == "Clasificación": fec_val_def = fe_inicio_dt
+                else: fec_val_def = item_fijo["fecha"]
+
                 if f"chk_no_aplica_{i}" not in st.session_state:
                     st.session_state[f"chk_no_aplica_{i}"] = bool(no_aplica_prev)
+                if f"chk_edit_{i}" not in st.session_state:
+                    st.session_state[f"chk_edit_{i}"] = bool(is_edited_prev)
+                if f"tr_fecha_{i}" not in st.session_state:
+                    st.session_state[f"tr_fecha_{i}"] = fec_val_def
+                if f"tr_resp_{i}" not in st.session_state:
+                    st.session_state[f"tr_resp_{i}"] = resp_prev_val
 
                 if item_fijo["etapa"] == "Lavado":
                     no_aplica = col_edit_chk.checkbox("🚫 No aplica", key=f"chk_no_aplica_{i}")
@@ -1933,9 +1940,6 @@ else:
                 if prod_nom_prev and prod_nom_prev not in st.session_state.catalogo_productos:
                     st.session_state.catalogo_productos.insert(-1, prod_nom_prev)
 
-                idx_psel = st.session_state.catalogo_productos.index(prod_nom_prev) if prod_nom_prev in st.session_state.catalogo_productos else 0
-
-                # Eliminado el "index=" manual para confiar 100% en la llave de memoria de Streamlit
                 prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, key=f"prod_sel_{i}")
 
                 if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
@@ -2125,20 +2129,19 @@ else:
 
             st.write("---")
 
-            saved_ops = dc.get("operaciones", [])
-
             for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
                 c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
 
-                op_prev = saved_ops[idx] if idx < len(saved_ops) else {}
-                is_edited_op = op_prev.get("editado", False)
-                nom_prev_op = op_prev.get("nombre", p_fijo["nombre"])
+                if f"ops_chk_{idx}" not in st.session_state:
+                    st.session_state[f"ops_chk_{idx}"] = False
+                if f"ops_nom_{idx}" not in st.session_state:
+                    st.session_state[f"ops_nom_{idx}"] = p_fijo["nombre"]
 
                 rol_val = p_fijo["rol"]
                 c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
 
-                editar_fila = c_chk.checkbox("✅", value=bool(is_edited_op), key=f"ops_chk_{idx}", label_visibility="collapsed")
-                nom_val = c_nom.text_input("Nombre", value=nom_prev_op, disabled=not editar_fila, key=f"ops_nom_{idx}", label_visibility="collapsed")
+                editar_fila = c_chk.checkbox("✅", key=f"ops_chk_{idx}", label_visibility="collapsed")
+                nom_val = c_nom.text_input("Nombre", disabled=not editar_fila, key=f"ops_nom_{idx}", label_visibility="collapsed")
 
                 if rol_val == "Logística":
                     val_dias_defecto = dias_calc_log
@@ -2147,15 +2150,12 @@ else:
                     val_dias_defecto = dias_calc_corte
                     val_hdia_defecto = hdia_calc_corte
 
-                dias_init = int(op_prev.get("dias", val_dias_defecto)) if is_edited_op else int(val_dias_defecto)
-                hdia_init = float(op_prev.get("horas_dia", val_hdia_defecto)) if is_edited_op else float(val_hdia_defecto)
-
                 val_dias = c_dias.number_input(
-                    "Días", min_value=0, value=dias_init, step=1, disabled=not editar_fila,
+                    "Días", min_value=0, value=int(val_dias_defecto), step=1, disabled=not editar_fila,
                     key=f"ops_dias_dyn_{idx}_{val_dias_defecto}_{editar_fila}", label_visibility="collapsed"
                 )
                 val_hdia = c_hdia.number_input(
-                    "Hrs/Día", min_value=0.0, value=hdia_init, step=0.5, disabled=not editar_fila,
+                    "Hrs/Día", min_value=0.0, value=float(val_hdia_defecto), step=0.5, disabled=not editar_fila,
                     key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}_{editar_fila}", label_visibility="collapsed"
                 )
 
@@ -2243,7 +2243,7 @@ else:
                     c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
                     rol_prev_val = c_item_prev.get("rol", "Confección")
                     
-                    # AQUÍ ESTÁN LOS 4 ROLES: Confección, Acabado, Entretela y Estampado
+                    # LOS 4 ROLES NUEVOS AQUÍ:
                     opciones_rol = ["Confección", "Acabado", "Entretela", "Estampado"]
                     idx_rol = opciones_rol.index(rol_prev_val) if rol_prev_val in opciones_rol else 0
 
@@ -2273,4 +2273,118 @@ else:
                     else:
                         persona_nom = persona_sel
 
-                    cant_sugerida = max(1, int(p_cant / st.session_state[Solo soy una IA basada en texto, por lo que no puedo ayudarte con eso.
+                    cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
+                    cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
+
+                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=max(p_cant, cant_init), value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
+
+                    # TIEMPOS AUTOMÁTICOS PARA LOS ROLES
+                    if rol_sel == "Acabado":
+                        tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
+                        c_tiempo.text_input("Tiempo/Unid [Acabado]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                    elif rol_sel == "Entretela":
+                        tiempo_unitario = round(tiempo_base_ia * 0.15, 3)
+                        c_tiempo.text_input("Tiempo/Unid [Entret.]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_entre_{idx}_{p_idx}")
+                    elif rol_sel == "Estampado":
+                        tiempo_unitario = 0.083 # Aprox 5 minutos por pieza
+                        c_tiempo.text_input("Tiempo/Unid [~5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_estamp_{idx}_{p_idx}")
+                    else:
+                        tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
+                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
+
+                    horas_persona = cant_asig * tiempo_unitario
+
+                    c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}")
+
+                    horas_confeccion_total += horas_persona
+                    if persona_nom.strip():
+                        personas_confeccion_set.add(persona_nom.strip())
+
+                    lista_confeccion.append({
+                        "producto": p_nom, "rol": rol_sel, "persona": persona_nom,
+                        "cantidad": cant_asig, "tiempo_unitario": tiempo_unitario, "horas_totales": horas_persona,
+                    })
+
+            total_horas_social = total_horas_ops + horas_confeccion_total
+            total_personas_social = len(PERSONAL_FIJO_OPERACIONES) + len(personas_confeccion_set)
+
+            st.info(f"🧑‍🤝‍🧑 **Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas.")
+
+        st.write("")
+
+        # --- SECCIÓN 8: ANEXOS ---
+        with st.container(border=True):
+            st.subheader("8. Anexos (Registro Fotográfico Adicional)")
+            st.caption("Agrega fotografías adicionales de colaboradoras con sus productos, procesos en taller, etc.")
+
+            col_anx1, col_anx2, _ = st.columns([1, 1, 4])
+            if col_anx1.button("➕     Agregar Anexo"):
+                st.session_state.num_anexos += 1
+                st.rerun()
+            if col_anx2.button("➖     Quitar Anexo") and st.session_state.num_anexos > 0:
+                st.session_state.num_anexos -= 1
+                st.rerun()
+
+            lista_anexos = []
+            saved_anexos = dc.get("anexos", [])
+
+            for a_i in range(st.session_state.num_anexos):
+                st.markdown(f"**Evidencia Anexa {a_i+1}**")
+                
+                col_afoto, col_anota = st.columns([1.5, 3])
+
+                anx_prev = saved_anexos[a_i] if a_i < len(saved_anexos) else {}
+                nota_prev = anx_prev.get("nota", "")
+                foto_url_prev = anx_prev.get("foto_url", "")
+
+                foto_anx = col_afoto.file_uploader("Fotografía de Evidencia", type=["jpg", "png", "jpeg"], key=f"anx_foto_{a_i}")
+
+                if foto_anx is not None:
+                    col_afoto.image(foto_anx, width=110)
+                elif foto_url_prev:
+                    col_afoto.image(foto_url_prev, width=110)
+
+                nota_anx = col_anota.text_area("Nota / Descripción de la evidencia", value=nota_prev, placeholder="Ej. Colaboradora elaborando productos...", key=f"anx_nota_{a_i}", height=90)
+
+                lista_anexos.append({
+                    "foto_up": foto_anx, "foto_url": foto_url_prev, "nota": nota_anx, "foto": foto_anx if foto_anx is not None else foto_url_prev
+                })
+
+        st.write("")
+
+        def _validar_informe_final(cliente_val, ruc_val, responsable_val, origen_val, items_val):
+            errores = []
+            if not cliente_val.strip(): errores.append("Falta 'Cliente / Empresa' en Ficha General.")
+            if not ruc_val.strip() or not re.fullmatch(r"\d{11}", ruc_val.strip()): errores.append("El 'RUC' debe tener 11 dígitos numéricos.")
+            if not responsable_val.strip(): errores.append("Falta 'Responsable' en Ficha General.")
+            if not origen_val.strip(): errores.append("Falta 'Punto Origen' en Ficha General.")
+            for i_item, v_item in enumerate(items_val, 1):
+                if v_item["unidades"] <= 0 or v_item["peso_total"] <= 0:
+                    errores.append(f"En Ingreso de Material (Ítem {i_item}), las unidades y el peso total deben ser mayores a 0.")
+            return errores
+
+        # --- FUNCIÓN AYUDANTE: SUBIR TODAS LAS FOTOS A SUPABASE Y ARMAR DICCIONARIO ---
+        def procesar_fotos_y_armar_detalle():
+            import time
+            ts = int(time.time())
+            
+            items_db = []
+            for idx, it in enumerate(lista_items):
+                url = it["foto_url"]
+                if it["foto_up"] is not None:
+                    it["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/item_{idx}_{ts}.jpg", it["foto_up"].read())
+                items_db.append({
+                    "descripcion": it["descripcion"], "unidades": it["unidades"],
+                    "peso_unitario": it["peso_unitario"], "peso_total": it["peso_total"], "foto_url": url
+                })
+                
+            traza_db = []
+            for idx, tr in enumerate(lista_trazabilidad):
+                url = tr["foto_url"]
+                if tr["foto_up"] is not None:
+                    tr["foto_up"].seek(0)
+                    url = subir_imagen_supabase(f"fotos/{codigo_proy}/traza_{idx}_{ts}.jpg", tr["foto_up"].read())
+                traza_db.append({
+                    "etapa": tr["etapa"], "fecha": tr["fecha"], "responsable": tr["responsable"],
+                    "peso": trSoy un modelo de lenguage, por lo que no me han diseñado para eso.
