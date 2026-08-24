@@ -2467,8 +2467,9 @@ else:
                             "horas_totales": total_horas_social,
                             "productos_unids": total_prod_unid,
                             "punto_origen": origen,
-                            "guia": guia_remision, # Añadido el respaldo general de la Guía
+                            "guia": guia_remision,
                             "datos_completos": datos_detalle,
+                            "datos_formulario": datos_detalle, # <- Doble respaldo para evitar pérdidas
                         }
 
                         # --- GUARDADO INTELIGENTE BORRADOR ---
@@ -2488,8 +2489,11 @@ else:
 
                     st.success("✅ Borrador y fotos guardados exitosamente en la nube.")
                     
-                    # ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL (Para no expulsar al usuario del modo edición)
+                    # ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL
                     st.session_state.proyecto_editar = datos_borrador
+                    
+                    # FIX: Le avisamos al sistema que seguimos en el mismo proyecto para que no borre la pantalla
+                    st.session_state._loaded_project_id = datos_borrador.get("id") or datos_borrador.get("codigo")
                     
                     # LIMPIEZA DE FILE UPLOADERS: Forzamos la actualización visual de las fotos ya subidas a Supabase.
                     keys_to_delete = [k for k in st.session_state.keys() if k.startswith("foto_") or k.startswith("tr_foto_") or k.startswith("prod_foto_") or k.startswith("anx_foto_")]
