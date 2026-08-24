@@ -365,6 +365,7 @@ def modal_confirmar_eliminacion(proyecto):
     if col_confirm.button("🚨 Sí, Eliminar Definitivamente", use_container_width=True, type="primary"):
         if eliminar_proyecto_bd(proyecto.get("id"), proyecto.get("codigo")):
             st.session_state.proyecto_editar = {}
+            st.session_state.form_version += 1
             st.toast("🗑️ Proyecto eliminado con éxito.")
             st.rerun()
     if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
@@ -376,6 +377,7 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
     if col_confirm.button("🚨 Sí, Eliminar Todos", use_container_width=True, type="primary"):
         for p in proyectos_a_borrar: eliminar_proyecto_bd(p.get("id"), p.get("codigo"))
         st.session_state.proyecto_editar = {}
+        st.session_state.form_version += 1
         st.toast(f"🗑️ {len(proyectos_a_borrar)} proyectos eliminados con éxito.")
         for p in proyectos_a_borrar:
             k = f"bulk_del_{p.get('id', p.get('codigo'))}"
@@ -473,8 +475,6 @@ def generar_pdf_oficial(
     cell_bold = ParagraphStyle("CellB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8.5, textColor=colors.HexColor("#0F172A"), leading=12)
     
     card_val = ParagraphStyle("CardV", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1)
-    
-    # LA SOLUCIÓN: Reducimos la fuente a 6.8 y el padding para que encaje 100% en 1 sola línea
     card_lbl = ParagraphStyle("CardL", parent=styles["Normal"], fontName="Helvetica", fontSize=6.8, textColor=colors.HexColor("#64748B"), alignment=1, spaceBefore=2)
 
     modern_table_style = TableStyle([
@@ -533,15 +533,15 @@ def generar_pdf_oficial(
         [Paragraph(f"{kg_recibidos:.2f} kg", card_val), Paragraph(f"{pct_aprovechamiento_total:.2f}%", card_val), Paragraph(f"{co2_neto:.2f} kg", card_val), Paragraph(f"{total_horas_social:.1f} hrs", card_val)],
         [Paragraph("MATERIAL RECUPERADO", card_lbl), Paragraph("TASA APROVECHAMIENTO", card_lbl), Paragraph("CO2e NETO EVITADO", card_lbl), Paragraph(f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_lbl)],
     ]
-    t_cards = Table(cards_data, colWidths=[130.5, 130.5, 130.5, 130.5]) # Ajuste perfecto 522px
+    t_cards = Table(cards_data, colWidths=[130.5, 130.5, 130.5, 130.5]) 
     t_cards.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3),   # Padding reducido para evitar quiebre de línea
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3),  # Padding reducido para evitar quiebre de línea
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),   
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),  
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     elements.append(t_cards)
@@ -736,7 +736,6 @@ def generar_pdf_oficial(
             
             elements.append(KeepTogether([t_card]))
             
-            # Solo agregamos espacios o saltos de página SI NO es la última imagen
             if idx_a < len(anexos_validos):
                 if idx_a % 2 == 0:
                     elements.append(PageBreak())
@@ -906,6 +905,9 @@ if "pestaña_activa" not in st.session_state:
 if "proyecto_editar" not in st.session_state:
     st.session_state.proyecto_editar = {}
 
+if "form_version" not in st.session_state:
+    st.session_state.form_version = 0
+
 if "catalogo_productos" not in st.session_state:
     st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
 
@@ -937,7 +939,6 @@ except KeyError:
     st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`. Asegúrate de tener ADMIN_USER y OPERARIO_USER.")
     st.stop()
 
-# --- PANTALLA DE INICIO DE SESIÓN CON ROLES ---
 if not st.session_state.autenticado:
     st.markdown(
         """
@@ -992,6 +993,7 @@ else:
             st.session_state.documentos_descarga = None
             st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
             st.session_state.uid_proyecto = str(random.randint(1000, 9999))
+            st.session_state.form_version += 1 
             st.rerun()
 
         if st.button(
@@ -1021,6 +1023,7 @@ else:
                     st.session_state.proyecto_editar = p
                     st.session_state.documentos_descarga = None
                     st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+                    st.session_state.form_version += 1 
                     st.rerun()
 
             st.write("")
@@ -1254,6 +1257,7 @@ else:
                         st.session_state.proyecto_editar = b
                         st.session_state.documentos_descarga = None
                         st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+                        st.session_state.form_version += 1 
                         st.rerun()
         else:
             st.info("📭 No hay borradores en proceso actualmente.")
@@ -1533,6 +1537,7 @@ else:
 
     # --- VISTA: NUEVO REPORTE PDF ---
     elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
+        fv = st.session_state.form_version
         p_edit = st.session_state.proyecto_editar
 
         target_proj_id = p_edit.get("id") or p_edit.get("codigo") or "__nuevo__"
@@ -1540,6 +1545,9 @@ else:
 
         if current_loaded != target_proj_id:
             st.session_state._loaded_project_id = target_proj_id
+            st.session_state.form_version += 1 
+            fv = st.session_state.form_version 
+
             dc_init = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
 
             if dc_init.get("num_items"):
@@ -1567,20 +1575,6 @@ else:
             for k_np, v_np in conf_num_map.items():
                 st.session_state[k_np] = v_np
 
-            prefijos_limpiar = [
-                "desc_", "unid_", "tot_input_", "peso_u_", "foto_",
-                "prod_sel_", "prod_cant_", "prod_nuevo_txt_", "prod_dis_", "prod_foto_",
-                "tr_etapa_", "tr_fecha_", "tr_resp_", "chk_edit_", "chk_no_aplica_", "tr_peso_", "tr_tipo_", "tr_foto_",
-                "soc_rol_", "soc_pers_sel_", "soc_pers_txt_custom_", "soc_cant_", "soc_tunit_", "soc_tunit_calc_", "soc_htot_",
-                "anx_foto_", "anx_nota_", "ops_chk_", "ops_nom_", "ops_dias_", "ops_hdia_", "ops_tot_",
-                "transporte_distrito_origen", "dist_km_manual", "dist_km_auto_",
-                "chk_edit_balance", "bm_mat_transf_", "bm_retazos_", "bm_perdida_",
-                "responsables_proyecto", "nuevo_responsable_proyecto"
-            ]
-            keys_to_del = [k for k in list(st.session_state.keys()) if any(k.startswith(pfx) for pfx in prefijos_limpiar)]
-            for k_del in keys_to_del:
-                del st.session_state[k_del]
-
         dc = p_edit.get("datos_completos") or p_edit.get("datos_formulario") or {}
 
         if p_edit:
@@ -1591,6 +1585,7 @@ else:
             if col_desc.button("❌ Descartar selección y limpiar formulario", use_container_width=True):
                 st.session_state.proyecto_editar = {}
                 st.session_state.documentos_descarga = None
+                st.session_state.form_version += 1
                 st.rerun()
 
             if st.session_state.rol == "admin":
@@ -1657,11 +1652,11 @@ else:
                 options=opciones_responsables,
                 default=[r for r in responsables_guardados if r in opciones_responsables],
                 placeholder="Selecciona uno o más",
-                key="responsables_proyecto",
+                key=f"responsables_proyecto_v{fv}",
                 help="Responsable(s) internos a cargo del proyecto."
             )
 
-            nuevo_responsable = c7.text_input("➕ Agregar otro responsable", placeholder="Nombre completo", key="nuevo_responsable_proyecto")
+            nuevo_responsable = c7.text_input("➕ Agregar otro responsable", placeholder="Nombre completo", key=f"nuevo_responsable_proyecto_v{fv}")
 
             if nuevo_responsable.strip():
                 if nuevo_responsable.strip() not in responsables_seleccionados:
@@ -1714,15 +1709,15 @@ else:
                 peso_prev = float(item_prev.get("peso_total", 0.0))
                 foto_url_prev = item_prev.get("foto_url", "")
 
-                desc = col_desc.selectbox("Tipo de Producto / Prenda *", opciones_prendas, index=idx_desc, key=f"desc_{i}")
-                unid = col_unid.number_input("Ingreso (unid.) *", min_value=0, value=unid_prev, key=f"unid_{i}")
+                desc = col_desc.selectbox("Tipo de Producto / Prenda *", opciones_prendas, index=idx_desc, key=f"desc_{i}_v{fv}")
+                unid = col_unid.number_input("Ingreso (unid.) *", min_value=0, value=unid_prev, key=f"unid_{i}_v{fv}")
 
-                p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=peso_prev, step=0.05, key=f"tot_input_{i}")
+                p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=peso_prev, step=0.05, key=f"tot_input_{i}_v{fv}")
                 peso_u = p_total / unid if unid > 0 else 0.0
 
-                col_tot.text_input("Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}_{unid}_{p_total}")
+                col_tot.text_input("Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}_v{fv}")
 
-                foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}")
+                foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}_v{fv}")
 
                 if foto is not None:
                     col_foto.image(foto, width=80)
@@ -1788,12 +1783,12 @@ else:
                 foto_url_prev = traza_prev.get("foto_url", "")
 
                 if item_fijo["etapa"] == "Lavado":
-                    no_aplica = col_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}")
+                    no_aplica = col_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}_v{fv}")
                     permitir_editar = not no_aplica
                     deshabilitar_peso = no_aplica
                 else:
                     no_aplica = False
-                    permitir_editar = col_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}")
+                    permitir_editar = col_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}_v{fv}")
                     deshabilitar_peso = not permitir_editar
 
                 if no_aplica:
@@ -1805,14 +1800,14 @@ else:
                     peso_val_ui = peso_prev_val
                     tipo_val_ui = tipo_prev_val
 
-                e_nom = col_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}")
+                e_nom = col_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}_v{fv}")
                 
                 deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
-                e_fec_val = col_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}")
+                e_fec_val = col_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}_v{fv}")
 
-                e_res = col_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}")
+                e_res = col_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}_v{fv}")
 
-                e_pes_str = col_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_{peso_val_ui:.2f}_{deshabilitar_peso}")
+                e_pes_str = col_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_v{fv}")
 
                 try: e_pes_num = float(e_pes_str)
                 except ValueError: e_pes_num = 0.0
@@ -1822,13 +1817,13 @@ else:
                 elif item_fijo["etapa"] == "Corte": 
                     peso_corte_auto = e_pes_num
 
-                e_tip = col_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}")
+                e_tip = col_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}_v{fv}")
                 
                 if no_aplica:
                     e_fot = None
                     col_foto.info("No aplica")
                 else:
-                    e_fot = col_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}")
+                    e_fot = col_foto.file_uploader("Evidencia", type=["jpg", "png", "jpeg"], key=f"tr_foto_{i}_v{fv}")
                     if e_fot is not None:
                         col_foto.image(e_fot, width=70)
                     elif foto_url_prev:
@@ -1852,8 +1847,8 @@ else:
 
                 with tab_p_add:
                     col_pa1, col_pa2 = st.columns([3, 1])
-                    nuevo_producto_cat = col_pa1.text_input("Nombre del nuevo producto:", placeholder="Ej. Mochila ejecutiva", key="adm_prod_input_add")
-                    if col_pa2.button("Guardar en Catálogo", use_container_width=True, key="btn_add_prod_cat"):
+                    nuevo_producto_cat = col_pa1.text_input("Nombre del nuevo producto:", placeholder="Ej. Mochila ejecutiva", key=f"adm_prod_input_add_v{fv}")
+                    if col_pa2.button("Guardar en Catálogo", use_container_width=True, key=f"btn_add_prod_cat_v{fv}"):
                         np_limpio = nuevo_producto_cat.strip()
                         if np_limpio and np_limpio not in st.session_state.catalogo_productos:
                             if "➕ Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
@@ -1866,9 +1861,9 @@ else:
                 with tab_p_edit:
                     col_pe1, col_pe2, col_pe3 = st.columns([2, 2, 1])
                     prods_editables = [p for p in st.session_state.catalogo_productos if "Otro" not in p]
-                    prod_a_mod = col_pe1.selectbox("Producto a modificar:", prods_editables, key="adm_prod_sel_mod")
-                    prod_modificado = col_pe2.text_input("Nombre corregido:", value=prod_a_mod if prod_a_mod else "", key=f"adm_prod_txt_mod_{prod_a_mod}")
-                    if col_pe3.button("Actualizar", use_container_width=True, key="btn_edit_prod_cat"):
+                    prod_a_mod = col_pe1.selectbox("Producto a modificar:", prods_editables, key=f"adm_prod_sel_mod_v{fv}")
+                    prod_modificado = col_pe2.text_input("Nombre corregido:", value=prod_a_mod if prod_a_mod else "", key=f"adm_prod_txt_mod_v{fv}")
+                    if col_pe3.button("Actualizar", use_container_width=True, key=f"btn_edit_prod_cat_v{fv}"):
                         if prod_modificado.strip() and prod_a_mod in st.session_state.catalogo_productos:
                             idx_mod = st.session_state.catalogo_productos.index(prod_a_mod)
                             st.session_state.catalogo_productos[idx_mod] = prod_modificado.strip()
@@ -1878,8 +1873,8 @@ else:
                 with tab_p_del:
                     col_pd1, col_pd2 = st.columns([3, 1])
                     prods_borrables = [p for p in st.session_state.catalogo_productos if "Otro" not in p]
-                    prod_a_borrar = col_pd1.selectbox("Producto a eliminar del catálogo:", prods_borrables, key="adm_prod_sel_del")
-                    if col_pd2.button("Eliminar", use_container_width=True, key="btn_del_prod_cat"):
+                    prod_a_borrar = col_pd1.selectbox("Producto a eliminar del catálogo:", prods_borrables, key=f"adm_prod_sel_del_v{fv}")
+                    if col_pd2.button("Eliminar", use_container_width=True, key=f"btn_del_prod_cat_v{fv}"):
                         if prod_a_borrar in st.session_state.catalogo_productos:
                             st.session_state.catalogo_productos.remove(prod_a_borrar)
                             st.toast(f"🗑️ Producto eliminado: {prod_a_borrar}")
@@ -1915,19 +1910,19 @@ else:
 
                 idx_psel = st.session_state.catalogo_productos.index(prod_nom_prev) if prod_nom_prev in st.session_state.catalogo_productos else 0
 
-                prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, index=idx_psel, key=f"prod_sel_{i}")
+                prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, index=idx_psel, key=f"prod_sel_{i}_v{fv}")
 
                 if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
-                    nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}")
+                    nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}_v{fv}")
                     nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
                     if nuevo_nombre.strip() and nuevo_nombre.strip() not in st.session_state.catalogo_productos:
                         st.session_state.catalogo_productos.insert(-1, nuevo_nombre.strip())
                 else:
-                    col_pnom_nuevo.text_input("Producto", value=prod_seleccionado, disabled=True, key=f"prod_dis_{i}_{prod_seleccionado}")
+                    col_pnom_nuevo.text_input("Producto", value=prod_seleccionado, disabled=True, key=f"prod_dis_{i}_v{fv}")
                     nombre_final = prod_seleccionado
 
-                p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=cant_prev, key=f"prod_cant_{i}")
-                p_foto = col_pfoto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}")
+                p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=cant_prev, key=f"prod_cant_{i}_v{fv}")
+                p_foto = col_pfoto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"prod_foto_{i}_v{fv}")
 
                 if p_foto is not None:
                     col_pfoto.image(p_foto, width=80)
@@ -1965,25 +1960,25 @@ else:
                 retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
                 perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
 
-            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=editar_balance_prev, key="chk_edit_balance")
+            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=editar_balance_prev, key=f"chk_edit_balance_v{fv}")
 
             col_bm1, col_bm2 = st.columns(2)
             mat_transformado = col_bm1.number_input(
                 "Material transformado en productos (kg)",
                 min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance,
-                key=f"bm_mat_transf_{peso_total_recibido:.2f}_{editar_balance}",
+                key=f"bm_mat_transf_v{fv}",
             )
             retazos_aprovechables = col_bm2.number_input(
                 "Retazos aprovechables (kg)",
                 min_value=0.0, value=float(retazos_def), step=0.1, disabled=not editar_balance,
-                key=f"bm_retazos_{peso_total_recibido:.2f}_{editar_balance}",
+                key=f"bm_retazos_v{fv}",
             )
 
             col_bm3, _ = st.columns([1, 1])
             perdida_no_aprovechable = col_bm3.number_input(
                 "Pérdida no aprovechable (kg)",
                 min_value=0.0, value=float(perdida_def), step=0.1, disabled=not editar_balance,
-                key=f"bm_perdida_{peso_total_recibido:.2f}_{editar_balance}",
+                key=f"bm_perdida_v{fv}",
             )
 
             total_procesado = mat_transformado + retazos_aprovechables + perdida_no_aprovechable
@@ -2015,25 +2010,25 @@ else:
 
             col_t1, col_t2, col_t3, col_t4 = st.columns([2.5, 1.2, 1.8, 1.5])
             distrito_sel = col_t1.selectbox(
-                "Distrito de Origen (Recojo de Material) *", list(DISTANCIAS_LIMA_SJL.keys()), index=idx_dist, key="transporte_distrito_origen"
+                "Distrito de Origen (Recojo de Material) *", list(DISTANCIAS_LIMA_SJL.keys()), index=idx_dist, key=f"transporte_distrito_origen_v{fv}"
             )
 
             dist_defecto = float(DISTANCIAS_LIMA_SJL.get(distrito_sel, 0.0))
             saved_dist_km = float(saved_trans.get("distancia", dist_defecto)) if dist_sel_prev == distrito_sel else dist_defecto
 
             if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)":
-                distancia_km = col_t2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key="dist_km_manual")
+                distancia_km = col_t2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key=f"dist_km_manual_v{fv}")
             else:
-                distancia_km = col_t2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_{distrito_sel}")
+                distancia_km = col_t2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_v{fv}")
 
             vehiculo_prev = saved_trans.get("vehiculo", list(FACTORES_TRANSPORTE.keys())[0])
             idx_veh = list(FACTORES_TRANSPORTE.keys()).index(vehiculo_prev) if vehiculo_prev in FACTORES_TRANSPORTE else 0
 
-            vehiculo_sel = col_t3.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh)
+            vehiculo_sel = col_t3.selectbox("Tipo de Vehículo Utilizado", list(FACTORES_TRANSPORTE.keys()), index=idx_veh, key=f"transporte_vehiculo_v{fv}")
 
             rec_prev = saved_trans.get("recorrido", "Ida y Vuelta (2)")
             idx_rec = 0 if "2" in rec_prev else 1
-            recorrido_tipo = col_t4.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec)
+            recorrido_tipo = col_t4.selectbox("Tipo de Recorrido", ["Ida y Vuelta (2)", "Ida sola (1)"], index=idx_rec, key=f"transporte_recorrido_v{fv}")
 
             factor_veh = FACTORES_TRANSPORTE[vehiculo_sel]
             mult_recorrido = 2.0 if "2" in recorrido_tipo else 1.0
@@ -2056,8 +2051,8 @@ else:
             idx_tbord = list(FACTORES_BORDADO.keys()).index(tipo_bord_prev) if tipo_bord_prev in FACTORES_BORDADO else 0
 
             cb1, cb2 = st.columns(2)
-            cant_prendas_bordado = cb1.number_input("Cantidad de prendas que requieren bordado o estampado", min_value=0, value=cant_bord_prev, step=1)
-            tipo_diseno_bordado = cb2.selectbox("Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()), index=idx_tbord)
+            cant_prendas_bordado = cb1.number_input("Cantidad de prendas que requieren bordado o estampado", min_value=0, value=cant_bord_prev, step=1, key=f"bord_cant_v{fv}")
+            tipo_diseno_bordado = cb2.selectbox("Tipo de Diseño / Complejidad", list(FACTORES_BORDADO.keys()), index=idx_tbord, key=f"bord_tipo_v{fv}")
 
             factor_bordado = FACTORES_BORDADO[tipo_diseno_bordado]
             emisiones_bordado = cant_prendas_bordado * factor_bordado
@@ -2114,10 +2109,10 @@ else:
                 nom_prev_op = op_prev.get("nombre", p_fijo["nombre"])
 
                 rol_val = p_fijo["rol"]
-                c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}", label_visibility="collapsed")
+                c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}_v{fv}", label_visibility="collapsed")
 
-                editar_fila = c_chk.checkbox("✅", value=bool(is_edited_op), key=f"ops_chk_{idx}", label_visibility="collapsed")
-                nom_val = c_nom.text_input("Nombre", value=nom_prev_op, disabled=not editar_fila, key=f"ops_nom_{idx}", label_visibility="collapsed")
+                editar_fila = c_chk.checkbox("✅", value=bool(is_edited_op), key=f"ops_chk_{idx}_v{fv}", label_visibility="collapsed")
+                nom_val = c_nom.text_input("Nombre", value=nom_prev_op, disabled=not editar_fila, key=f"ops_nom_{idx}_v{fv}", label_visibility="collapsed")
 
                 if rol_val == "Logística":
                     val_dias_defecto = dias_calc_log
@@ -2131,16 +2126,16 @@ else:
 
                 val_dias = c_dias.number_input(
                     "Días", min_value=0, value=dias_init, step=1, disabled=not editar_fila,
-                    key=f"ops_dias_dyn_{idx}_{val_dias_defecto}_{editar_fila}", label_visibility="collapsed"
+                    key=f"ops_dias_dyn_{idx}_v{fv}", label_visibility="collapsed"
                 )
                 val_hdia = c_hdia.number_input(
                     "Hrs/Día", min_value=0.0, value=hdia_init, step=0.5, disabled=not editar_fila,
-                    key=f"ops_hdia_dyn_{idx}_{val_hdia_defecto}_{editar_fila}", label_visibility="collapsed"
+                    key=f"ops_hdia_dyn_{idx}_v{fv}", label_visibility="collapsed"
                 )
 
                 tot_hrs_pers = float(val_dias) * float(val_hdia)
 
-                c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_{idx}_{val_dias}_{val_hdia}", label_visibility="collapsed")
+                c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_{idx}_v{fv}", label_visibility="collapsed")
 
                 total_horas_ops += tot_hrs_pers
                 lista_operaciones.append({
@@ -2156,8 +2151,8 @@ else:
 
                 with tab_add:
                     col_a1, col_a2 = st.columns([3, 1])
-                    nuevo_integrante = col_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key="adm_input_add")
-                    if col_a2.button("Guardar en Lista", use_container_width=True):
+                    nuevo_integrante = col_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key=f"adm_input_add_v{fv}")
+                    if col_a2.button("Guardar en Lista", use_container_width=True, key=f"btn_add_pers_v{fv}"):
                         n_limpio = nuevo_integrante.strip()
                         if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
                             st.session_state.lista_personal_confeccion.append(n_limpio)
@@ -2167,9 +2162,9 @@ else:
 
                 with tab_edit:
                     col_e1, col_e2, col_e3 = st.columns([2, 2, 1])
-                    pers_a_mod = col_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key="adm_sel_mod")
-                    nombre_modificado = col_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_{pers_a_mod}")
-                    if col_e3.button("Actualizar", use_container_width=True):
+                    pers_a_mod = col_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key=f"adm_sel_mod_v{fv}")
+                    nombre_modificado = col_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_v{fv}")
+                    if col_e3.button("Actualizar", use_container_width=True, key=f"btn_edit_pers_v{fv}"):
                         if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
                             idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
                             st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
@@ -2179,8 +2174,8 @@ else:
 
                 with tab_del:
                     col_d1, col_d2 = st.columns([3, 1])
-                    pers_a_borrar = col_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key="adm_sel_del")
-                    if col_d2.button("Eliminar", use_container_width=True):
+                    pers_a_borrar = col_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key=f"adm_sel_del_v{fv}")
+                    if col_d2.button("Eliminar", use_container_width=True, key=f"btn_del_pers_v{fv}"):
                         if pers_a_borrar in st.session_state.lista_personal_confeccion:
                             st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
                             st.toast(f"🗑️ Eliminado/a: {pers_a_borrar}")
@@ -2223,7 +2218,7 @@ else:
                     opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado"]
                     idx_rol = opciones_roles.index(rol_prev_val) if rol_prev_val in opciones_roles else 0
 
-                    rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
+                    rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}_v{fv}")
 
                     opciones_personas = list(st.session_state.lista_personal_confeccion)
                     opcion_otro = "➕ Otro (Escribir nuevo nombre)"
@@ -2238,10 +2233,10 @@ else:
 
                     idx_pers = opciones_personas.index(pers_guardada) if pers_guardada in opciones_personas else 0
 
-                    persona_sel = c_persona.selectbox("Persona Encargada *", opciones_personas, index=idx_pers, key=f"soc_pers_sel_{idx}_{p_idx}")
+                    persona_sel = c_persona.selectbox("Persona Encargada *", opciones_personas, index=idx_pers, key=f"soc_pers_sel_{idx}_{p_idx}_v{fv}")
 
                     if persona_sel == opcion_otro:
-                        nuevo_nombre_escrito = c_persona.text_input("Escribe el nombre *", placeholder="Nombre y Apellido", key=f"soc_pers_txt_custom_{idx}_{p_idx}")
+                        nuevo_nombre_escrito = c_persona.text_input("Escribe el nombre *", placeholder="Nombre y Apellido", key=f"soc_pers_txt_custom_{idx}_{p_idx}_v{fv}")
                         persona_nom = nuevo_nombre_escrito.strip() if nuevo_nombre_escrito.strip() else f"Persona {p_idx+1}"
                         if nuevo_nombre_escrito.strip() and nuevo_nombre_escrito.strip() not in st.session_state.lista_personal_confeccion:
                             st.session_state.lista_personal_confeccion.append(nuevo_nombre_escrito.strip())
@@ -2253,26 +2248,26 @@ else:
                     cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
 
                     limite_maximo = max(p_cant * 3, cant_init, 9999)
-                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=limite_maximo, value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
+                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=limite_maximo, value=cant_init, key=f"soc_cant_{idx}_{p_idx}_v{fv}")
 
                     if rol_sel == "Confección":
                         tiempo_unitario = float(tiempo_base_ia)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     elif rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acab. 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acab. 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     elif rol_sel == "Entretela":
                         tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     elif rol_sel == "Estampado":
                         tiempo_unitario = round(5.0 / 60.0, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     else:
                         tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
-                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
+                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}_v{fv}")
 
                     horas_persona = cant_asig * tiempo_unitario
-                    c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}")
+                    c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}_v{fv}")
 
                     horas_confeccion_total += horas_persona
                     
@@ -2322,14 +2317,14 @@ else:
                 nota_prev = anx_prev.get("nota", "")
                 foto_url_prev = anx_prev.get("foto_url", "")
 
-                foto_anx = col_afoto.file_uploader("Fotografía de Evidencia", type=["jpg", "png", "jpeg"], key=f"anx_foto_{a_i}")
+                foto_anx = col_afoto.file_uploader("Fotografía de Evidencia", type=["jpg", "png", "jpeg"], key=f"anx_foto_{a_i}_v{fv}")
 
                 if foto_anx is not None:
                     col_afoto.image(foto_anx, width=110)
                 elif foto_url_prev:
                     col_afoto.image(foto_url_prev, width=110)
 
-                nota_anx = col_anota.text_area("Nota / Descripción de la evidencia", value=nota_prev, placeholder="Ej. Colaboradora elaborando productos...", key=f"anx_nota_{a_i}", height=90)
+                nota_anx = col_anota.text_area("Nota / Descripción de la evidencia", value=nota_prev, placeholder="Ej. Colaboradora elaborando productos...", key=f"anx_nota_{a_i}_v{fv}", height=90)
 
                 lista_anexos.append({
                     "foto_up": foto_anx, "foto_url": foto_url_prev, "nota": nota_anx, "foto": foto_anx if foto_anx is not None else foto_url_prev
@@ -2465,13 +2460,9 @@ else:
 
                     st.success("✅ Borrador y fotos guardados exitosamente.")
                     
+                    st.session_state.form_version += 1 
                     datos_borrador["datos_formulario"] = datos_detalle
                     st.session_state.proyecto_editar = datos_borrador
-                    st.session_state._loaded_project_id = datos_borrador.get("id") or datos_borrador.get("codigo")
-                    
-                    keys_to_delete = [k for k in st.session_state.keys() if "foto" in k]
-                    for k in keys_to_delete:
-                        del st.session_state[k]
 
                     st.session_state.documentos_descarga = None
                     st.rerun()
@@ -2568,6 +2559,7 @@ else:
                                     
                                 st.session_state.proyecto_editar = {}
                                 st.session_state.uid_proyecto = str(random.randint(1000, 9999))
+                                st.session_state.form_version += 1
                                 st.rerun()
 
                             except Exception as e_bd:
