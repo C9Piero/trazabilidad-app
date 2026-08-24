@@ -981,10 +981,13 @@ else:
 
         st.markdown('<p class="sidebar-section-title">Navegación</p>', unsafe_allow_html=True)
 
+        # Modificación para que "Nuevo Reporte PDF" solo sea azul si NO hay ningún proyecto en edición
+        es_nuevo_activo = (st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF") and (not st.session_state.proyecto_editar)
+        
         if st.button(
             "✨     Nuevo Reporte PDF",
             use_container_width=True,
-            type="primary" if st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF" else "secondary",
+            type="primary" if es_nuevo_activo else "secondary",
         ):
             st.session_state.proyecto_editar = {}
             st.session_state.documentos_descarga = None
@@ -2229,9 +2232,12 @@ else:
 
                     c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
                     rol_prev_val = c_item_prev.get("rol", "Confección")
-                    idx_rol = 0 if rol_prev_val == "Confección" else 1
+                    
+                    # --- ACTUALIZACIÓN DE ROLES CON LOS NUEVOS SOLICITADOS ---
+                    opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado automático"]
+                    idx_rol = opciones_roles.index(rol_prev_val) if rol_prev_val in opciones_roles else 0
 
-                    rol_sel = c_rol.selectbox("Rol *", ["Confección", "Acabado"], index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
+                    rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
 
                     opciones_personas = list(st.session_state.lista_personal_confeccion)
                     opcion_otro = "➕ Otro (Escribir nuevo nombre)"
@@ -2262,10 +2268,12 @@ else:
 
                     cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=max(p_cant, cant_init), value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
 
+                    # --- LÓGICA DE TIEMPO FLEXIBLE ---
                     if rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
                         c_tiempo.text_input("Tiempo/Unid (hrs) [Acabado 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
                     else:
+                        # Si es Confección, Entretela o Estampado automático usa ingreso manual
                         tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
                         tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
 
@@ -2389,6 +2397,7 @@ else:
                 })
 
             return {
+                "guia_remision": guia_remision, # Se asegura que se guarde la guía en el JSON interior
                 "responsables_seleccionados": responsables_seleccionados,
                 "origen": origen, "num_items": st.session_state.num_items,
                 "items": items_db, "trazabilidad": traza_db, "num_prods": st.session_state.num_prods,
@@ -2437,6 +2446,7 @@ else:
                             "horas_totales": total_horas_social,
                             "productos_unids": total_prod_unid,
                             "punto_origen": origen,
+                            "guia": guia_remision, # Añadido el respaldo general de la Guía
                             "datos_completos": datos_detalle,
                         }
 
@@ -2449,11 +2459,22 @@ else:
                         
                         if proyecto_id:
                             supabase.table("proyectos").update(datos_borrador).eq("id", proyecto_id).execute()
+                            datos_borrador["id"] = proyecto_id
                         else:
-                            supabase.table("proyectos").insert(datos_borrador).execute()
+                            res = supabase.table("proyectos").insert(datos_borrador).execute()
+                            if res.data:
+                                datos_borrador["id"] = res.data[0]["id"]
 
                     st.success("✅ Borrador y fotos guardados exitosamente en la nube.")
-                    st.session_state.proyecto_editar = {}
+                    
+                    # ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL (Para no expulsar al usuario del modo edición)
+                    st.session_state.proyecto_editar = datos_borrador
+                    
+                    # LIMPIEZA DE FILE UPLOADERS: Forzamos la actualización visual de las fotos ya subidas a Supabase.
+                    keys_to_delete = [k for k in st.session_state.keys() if k.startswith("foto_") or k.startswith("tr_foto_") or k.startswith("prod_foto_") or k.startswith("anx_foto_")]
+                    for k in keys_to_delete:
+                        del st.session_state[k]
+
                     st.session_state.documentos_descarga = None
                     st.rerun()
 
