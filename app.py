@@ -716,7 +716,7 @@ def generar_pdf_oficial(
     bloque_6.append(t_soc)
     elements.append(KeepTogether(bloque_6))
 
-anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
+    anexos_validos = [a for a in (lista_anexos or []) if a.get("foto") or a.get("nota", "").strip()]
     if anexos_validos:
         elements.append(PageBreak())
         elements.append(Paragraph("7. REGISTRO FOTOGRÁFICO ADICIONAL", h2_style))
