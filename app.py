@@ -14,6 +14,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Image,
     PageBreak,
@@ -222,13 +223,12 @@ st.markdown(
         --surface: #F8FAFC;
         --radius: 14px;
     }
-
-    /* --- ESTAS SON LAS LÍNEAS NUEVAS PARA OCULTAR ELEMENTOS --- */
+    
+    /* Ocultar menú de Streamlit, botón de GitHub, y foto del creador */
     [data-testid="stHeader"] {visibility: hidden; height: 0px;}
     footer {visibility: hidden;}
     .stAppDeployButton {display: none !important;}
     [data-testid="stAppViewCreator"] {display: none !important;}
-    /* ---------------------------------------------------------- */
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
@@ -476,7 +476,6 @@ def generar_pdf_oficial(
     
     card_val = ParagraphStyle("CardV", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=14, textColor=colors.HexColor("#0F172A"), alignment=1)
     
-    # LA SOLUCIÓN: Reducimos la fuente a 6.8 y el padding para que encaje 100% en 1 sola línea
     card_lbl = ParagraphStyle("CardL", parent=styles["Normal"], fontName="Helvetica", fontSize=6.8, textColor=colors.HexColor("#64748B"), alignment=1, spaceBefore=2)
 
     modern_table_style = TableStyle([
@@ -535,15 +534,15 @@ def generar_pdf_oficial(
         [Paragraph(f"{kg_recibidos:.2f} kg", card_val), Paragraph(f"{pct_aprovechamiento_total:.2f}%", card_val), Paragraph(f"{co2_neto:.2f} kg", card_val), Paragraph(f"{total_horas_social:.1f} hrs", card_val)],
         [Paragraph("MATERIAL RECUPERADO", card_lbl), Paragraph("TASA APROVECHAMIENTO", card_lbl), Paragraph("CO2e NETO EVITADO", card_lbl), Paragraph(f"TRABAJO GENERADO ({total_personas_social} PERS.)", card_lbl)],
     ]
-    t_cards = Table(cards_data, colWidths=[130.5, 130.5, 130.5, 130.5]) # Ajuste perfecto 522px
+    t_cards = Table(cards_data, colWidths=[130.5, 130.5, 130.5, 130.5]) 
     t_cards.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3),   # Padding reducido para evitar quiebre de línea
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3),  # Padding reducido para evitar quiebre de línea
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     elements.append(t_cards)
@@ -2229,9 +2228,11 @@ else:
 
                     c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
                     rol_prev_val = c_item_prev.get("rol", "Confección")
-                    idx_rol = 0 if rol_prev_val == "Confección" else 1
+                    
+                    opciones_rol = ["Confección", "Acabado", "Entretela", "Estampado"]
+                    idx_rol = opciones_rol.index(rol_prev_val) if rol_prev_val in opciones_rol else 0
 
-                    rol_sel = c_rol.selectbox("Rol *", ["Confección", "Acabado"], index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
+                    rol_sel = c_rol.selectbox("Rol *", opciones_rol, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
 
                     opciones_personas = list(st.session_state.lista_personal_confeccion)
                     opcion_otro = "➕ Otro (Escribir nuevo nombre)"
@@ -2264,7 +2265,13 @@ else:
 
                     if rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acabado 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                        c_tiempo.text_input("Tiempo/Unid [Acabado]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_{idx}_{p_idx}")
+                    elif rol_sel == "Entretela":
+                        tiempo_unitario = round(tiempo_base_ia * 0.15, 3)
+                        c_tiempo.text_input("Tiempo/Unid [Entret.]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_entre_{idx}_{p_idx}")
+                    elif rol_sel == "Estampado":
+                        tiempo_unitario = 0.083
+                        c_tiempo.text_input("Tiempo/Unid [~5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"soc_tunit_calc_estamp_{idx}_{p_idx}")
                     else:
                         tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
                         tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
