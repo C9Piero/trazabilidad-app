@@ -2234,7 +2234,7 @@ else:
                     rol_prev_val = c_item_prev.get("rol", "Confección")
                     
                     # --- ACTUALIZACIÓN DE ROLES CON LOS NUEVOS SOLICITADOS ---
-                    opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado automático"]
+                    opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado"]
                     idx_rol = opciones_roles.index(rol_prev_val) if rol_prev_val in opciones_roles else 0
 
                     rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}")
@@ -2278,7 +2278,7 @@ else:
                     elif rol_sel == "Entretela":
                         tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
                         c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
-                    elif rol_sel == "Estampado automático":
+                    elif rol_sel == "Estampado":
                         tiempo_unitario = round(5.0 / 60.0, 3) # 5 minutos
                         c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
                     else:
