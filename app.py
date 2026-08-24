@@ -223,12 +223,10 @@ st.markdown(
         --radius: 14px;
     }
 
-    /* --- ESTAS SON LAS LÍNEAS NUEVAS PARA OCULTAR ELEMENTOS --- */
     [data-testid="stHeader"] {visibility: hidden; height: 0px;}
     footer {visibility: hidden;}
     .stAppDeployButton {display: none !important;}
     [data-testid="stAppViewCreator"] {display: none !important;}
-    /* ---------------------------------------------------------- */
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
@@ -983,7 +981,6 @@ else:
 
         st.markdown('<p class="sidebar-section-title">Navegación</p>', unsafe_allow_html=True)
 
-        # Modificación para que "Nuevo Reporte PDF" solo sea azul si NO hay ningún proyecto en edición
         es_nuevo_activo = (st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF") and (not st.session_state.proyecto_editar)
         
         if st.button(
@@ -1270,7 +1267,6 @@ else:
         if not completados:
             st.info("Aún no hay proyectos completados para mostrar en las métricas.")
         else:
-            # 1. CONSTRUIR DATAFRAME BASE CON NOMBRES COMPLETOS
             tabla_data = []
             for p in completados:
                 dc = p.get("datos_completos") or {}
@@ -1295,12 +1291,11 @@ else:
                     "Productos Creados": int(p.get("productos_unids") or 0),
                     "Participantes": partic,
                     "Tipo de Servicio": p.get("tipo_proyecto", "UPCYCLING"),
-                    "DatosCompletos": dc # Guardamos para extraer productos luego
+                    "DatosCompletos": dc
                 })
 
             df = pd.DataFrame(tabla_data)
 
-            # 2. FILTROS DINÁMICOS
             st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Filtros de Análisis</h5>", unsafe_allow_html=True)
             f0, f1, f2, f3 = st.columns(4)
 
@@ -1315,7 +1310,6 @@ else:
             if sel_cli != "Todos": df_fil = df_fil[df_fil["Cliente"] == sel_cli]
             if sel_tipo != "Todos": df_fil = df_fil[df_fil["Tipo de Servicio"] == sel_tipo]
 
-            # 3. TARJETAS DE IMPACTO & BOTÓN DE DESCARGA
             st.write("")
             c_tit1, c_tit2 = st.columns([3, 1])
             c_tit1.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Impacto Acumulado</h5>", unsafe_allow_html=True)
@@ -1348,7 +1342,6 @@ else:
 
             st.write("---")
 
-            # --- NUEVA SECCIÓN: ANÁLISIS DE PRODUCCIÓN E INNOVACIÓN ---
             st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>🛍️ Análisis de Producción e Innovación</h5>", unsafe_allow_html=True)
             
             prod_list_dash = []
@@ -1384,7 +1377,6 @@ else:
 
             st.write("---")
 
-            # GRÁFICOS Y TOP 5 EN UNA SOLA FILA
             cg1, cg2, cg3 = st.columns([2.5, 1.2, 1.2])
             with cg1:
                 st.markdown("<span style='font-weight: 600; color: #475569;'>Evolución Mensual (CO₂e)</span>", unsafe_allow_html=True)
@@ -1415,13 +1407,12 @@ else:
 
             st.write("---")
 
-            # 5. DETALLE DE PROYECTOS (FULL WIDTH)
             st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Detalle de Proyectos (Filtrado)</h5>", unsafe_allow_html=True)
             if not df_fil.empty:
                 max_k = float(df_fil["Kg Procesados"].max()) if not df_fil.empty else 100.0
                 max_c = float(df_fil["CO₂ Evitado"].max()) if not df_fil.empty else 100.0
                 
-                df_vista = df_fil.drop(columns=["DatosCompletos"]) # Quitamos la columna técnica
+                df_vista = df_fil.drop(columns=["DatosCompletos"])
                 
                 st.dataframe(
                     df_vista,
@@ -1442,7 +1433,6 @@ else:
                     }
                 )
 
-    # --- VISTA: HISTORIAL COMPLETO ---
     elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
         st.subheader("🗂️ Historial Completo de Proyectos")
         st.caption("Listado general de todos los proyectos registrados. Usa el buscador para encontrar reportes rápidos.")
@@ -1468,7 +1458,6 @@ else:
             st.write("---")
             col_top1, col_top2 = st.columns([4, 2])
             
-            # --- CONTROL DE SEGURIDAD POR ROLES PARA BORRADO MASIVO ---
             if st.session_state.rol == "admin":
                 modo_edicion = col_top1.toggle("🛠️ Habilitar selección múltiple para borrar")
                 
@@ -1505,7 +1494,6 @@ else:
                         elif st.session_state.rol == "admin":
                             hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.9, 1.6, 1.6, 1.8, 1.8, 0.7])
                         else:
-                            # Si es operario, ocultamos el botón de borrar (columna 6)
                             hc1, hc2, hc3, hc4, hc5 = st.columns([2.9, 1.6, 1.6, 1.8, 1.8])
                         
                         nombre_cli_ui = p.get('cliente', 'Sin Nombre')
@@ -1528,12 +1516,10 @@ else:
                             if st.session_state.rol == "admin":
                                 hc5.link_button("📜 Constancia PDF", const_link, use_container_width=True)
                             else:
-                                # Si no hay columna 6, usamos la 5 de forma normal
                                 hc5.link_button("📜 Constancia", const_link, use_container_width=True)
                         else:
                             hc5.caption("📜 Sin Constancia")
 
-                        # --- SEGURIDAD: SOLO ADMIN PUEDE BORRAR ---
                         if st.session_state.rol == "admin":
                             if hc6.button(
                                 "🗑️",
@@ -1607,7 +1593,6 @@ else:
                 st.session_state.documentos_descarga = None
                 st.rerun()
 
-            # --- SEGURIDAD EN EDICIÓN ---
             if st.session_state.rol == "admin":
                 if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
                     modal_confirmar_eliminacion(p_edit)
@@ -2203,7 +2188,7 @@ else:
 
             lista_confeccion = []
             horas_confeccion_total = 0.0
-            personas_confeccion_set = set()
+            
             saved_conf_list = dc.get("confeccion", [])
 
             for idx, prod in enumerate(lista_productos):
@@ -2235,7 +2220,6 @@ else:
                     c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
                     rol_prev_val = c_item_prev.get("rol", "Confección")
                     
-                    # --- ACTUALIZACIÓN DE ROLES CON LOS NUEVOS SOLICITADOS ---
                     opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado"]
                     idx_rol = opciones_roles.index(rol_prev_val) if rol_prev_val in opciones_roles else 0
 
@@ -2268,11 +2252,9 @@ else:
                     cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
                     cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
 
-                    # Límite ampliado para permitir el triple o más (hasta 9999)
                     limite_maximo = max(p_cant * 3, cant_init, 9999)
                     cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=limite_maximo, value=cant_init, key=f"soc_cant_{idx}_{p_idx}")
 
-                    # --- LÓGICA DE TIEMPOS SELLADOS SEGÚN ROL ---
                     if rol_sel == "Confección":
                         tiempo_unitario = float(tiempo_base_ia)
                         c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
@@ -2283,20 +2265,17 @@ else:
                         tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
                         c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
                     elif rol_sel == "Estampado":
-                        tiempo_unitario = round(5.0 / 60.0, 3) # 5 minutos
+                        tiempo_unitario = round(5.0 / 60.0, 3)
                         c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}")
                     else:
                         tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
                         tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}")
 
                     horas_persona = cant_asig * tiempo_unitario
-
                     c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}")
 
                     horas_confeccion_total += horas_persona
-                    if persona_nom.strip():
-                        personas_confeccion_set.add(persona_nom.strip())
-
+                    
                     lista_confeccion.append({
                         "producto": p_nom, "rol": rol_sel, "persona": persona_nom,
                         "cantidad": cant_asig, "tiempo_unitario": tiempo_unitario, "horas_totales": horas_persona,
@@ -2304,17 +2283,15 @@ else:
 
             total_horas_social = total_horas_ops + horas_confeccion_total
             
-            # Unificación estricta de nombres para evitar duplicados (Corte + Logística + Confección)
-            nombres_unicos_set = set()
+            nombres_unicos = set()
             for op in lista_operaciones:
                 if op.get("nombre", "").strip():
-                    nombres_unicos_set.add(op["nombre"].strip().title())
-            
+                    nombres_unicos.add(op["nombre"].strip().title())
             for conf in lista_confeccion:
                 if conf.get("persona", "").strip():
-                    nombres_unicos_set.add(conf["persona"].strip().title())
+                    nombres_unicos.add(conf["persona"].strip().title())
                     
-            total_personas_social = len(nombres_unicos_set)
+            total_personas_social = len(nombres_unicos)
 
             st.info(f"🧑‍🤝‍🧑 **Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas (conteo único).")
 
@@ -2371,7 +2348,6 @@ else:
                     errores.append(f"En Ingreso de Material (Ítem {i_item}), las unidades y el peso total deben ser mayores a 0.")
             return errores
 
-        # --- FUNCIÓN AYUDANTE: SUBIR TODAS LAS FOTOS A SUPABASE Y ARMAR DICCIONARIO ---
         def procesar_fotos_y_armar_detalle():
             import time
             ts = int(time.time())
@@ -2420,7 +2396,7 @@ else:
                 })
 
             return {
-                "guia_remision": guia_remision, # Se asegura que se guarde la guía en el JSON interior
+                "guia_remision": guia_remision,
                 "responsables_seleccionados": responsables_seleccionados,
                 "origen": origen, "num_items": st.session_state.num_items,
                 "items": items_db, "trazabilidad": traza_db, "num_prods": st.session_state.num_prods,
@@ -2446,15 +2422,15 @@ else:
                 "anexos": anexos_db,
             }
 
-            with st.container(border=True):
-                col_gen1, col_gen2 = st.columns([2, 1])
+        with st.container(border=True):
+            col_gen1, col_gen2 = st.columns([2, 1])
 
-                if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
-                    try:
-                        with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
-                            datos_detalle = procesar_fotos_y_armar_detalle()
+            if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
+                try:
+                    with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
+                        datos_detalle = procesar_fotos_y_armar_detalle()
 
-                            datos_borrador = {
+                        datos_borrador = {
                             "codigo": codigo_proy,
                             "cliente": cliente,
                             "ruc": ruc,
@@ -2471,10 +2447,8 @@ else:
                             "punto_origen": origen,
                             "guia": guia_remision,
                             "datos_completos": datos_detalle,
-                            "datos_formulario": datos_detalle,
                         }
 
-                        # --- GUARDADO INTELIGENTE BORRADOR ---
                         proyecto_id = p_edit.get("id")
                         if not proyecto_id:
                             busca_existente = supabase.table("proyectos").select("id").eq("codigo", codigo_proy).execute()
@@ -2491,11 +2465,10 @@ else:
 
                     st.success("✅ Borrador y fotos guardados exitosamente.")
                     
-                    # ALMACENAMOS EN MEMORIA EL PROYECTO ACTUAL
+                    datos_borrador["datos_formulario"] = datos_detalle
                     st.session_state.proyecto_editar = datos_borrador
                     st.session_state._loaded_project_id = datos_borrador.get("id") or datos_borrador.get("codigo")
                     
-                    # LIMPIEZA EXCLUSIVA DE FOTOS (Dejamos intactos los textos y cantidades)
                     keys_to_delete = [k for k in st.session_state.keys() if "foto" in k]
                     for k in keys_to_delete:
                         del st.session_state[k]
@@ -2506,7 +2479,6 @@ else:
                 except Exception as e:
                     st.error(f"⚠️ Error al guardar el borrador: {e}")
 
-            # --- BOTÓN PRINCIPAL: GENERA INFORME + CONSTANCIA ---
             if col_gen1.button("🚀 Generar Reportes Oficiales (Informe + Constancia)", type="primary", use_container_width=True):
                 errores_final = _validar_informe_final(cliente, ruc, responsable, origen, lista_items)
                 if errores_final:
@@ -2515,7 +2487,6 @@ else:
                 else:
                     with st.spinner("Generando documentos, subiendo fotos y respaldando en la nube..."):
                         try:
-                            # 1. Generar Informe Técnico PDF
                             pdf_informe_buffer = generar_pdf_oficial(
                                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
                                 "Textiles en desuso", "Upcycling", "Kilogramos (kg)", guia_remision, origen, destino,
@@ -2527,7 +2498,6 @@ else:
                             )
                             bytes_informe = pdf_informe_buffer.getvalue()
 
-                            # 2. Generar Constancia Oficial PDF
                             mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                             contexto_word = {
                                 "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
@@ -2539,13 +2509,11 @@ else:
                             }
                             bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word)
 
-                            # --- NOMBRES LIMPIOS PARA DRIVE Y DESCARGAS ---
                             cliente_limpio = cliente.strip().replace("/", "-")
                             nombre_informe_limpio = f"Informe_Tecnico_{cliente_limpio}.pdf"
                             nombre_constancia_limpia = f"Constancia_{cliente_limpio}.pdf"
                             nombre_zip_limpio = f"Documentos_{cliente_limpio}.zip"
 
-                            # 3. Empaquetar en ZIP
                             zip_buffer = io.BytesIO()
                             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                                 zip_file.writestr(nombre_informe_limpio, bytes_informe)
@@ -2553,11 +2521,9 @@ else:
                             zip_buffer.seek(0)
                             bytes_zip = zip_buffer.getvalue()
 
-                            # 4. Subir a Supabase Storage (PDFs)
                             url_informe = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_informe)
                             url_constancia = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_constancia)
                             
-                            # 5. Subir a GOOGLE DRIVE
                             try:
                                 nombre_subcarpeta = f"Pedido {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})"
                                 carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt, nombre_subcarpeta)
@@ -2576,7 +2542,6 @@ else:
                                 "bytes_zip": bytes_zip,
                             }
 
-                            # 6. Procesar Fotos y Actualizar DB
                             try:
                                 datos_detalle = procesar_fotos_y_armar_detalle()
 
@@ -2602,7 +2567,7 @@ else:
                                     supabase.table("proyectos").insert(datos_completado).execute()
                                     
                                 st.session_state.proyecto_editar = {}
-                                st.session_state.uid_proyecto = str(random.randint(1000, 9999)) # Generar uno nuevo para el próximo reporte
+                                st.session_state.uid_proyecto = str(random.randint(1000, 9999))
                                 st.rerun()
 
                             except Exception as e_bd:
