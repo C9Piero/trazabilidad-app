@@ -2446,10 +2446,10 @@ else:
                 "anexos": anexos_db,
             }
 
-        with st.container(border=True):
+            with st.container(border=True):
             col_gen1, col_gen2 = st.columns([2, 1])
 
-           if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
+            if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
                 try:
                     with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
                         datos_detalle = procesar_fotos_y_armar_detalle()
