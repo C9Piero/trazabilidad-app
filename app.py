@@ -169,7 +169,7 @@ FACTORES_CO2_BASE = {
     "Chaleco reversible": 9.5, "Chompa": 7.1, "Chompa con cinta reflectiva": 7.45, "Chompa Jorge Chavez": 6.0, 
     "Chompa Jorge Chavez con cinta reflectiva": 6.3, "Chompa polar": 6.0, "Enterizo": 6.575, "Gorro": 7.925, "Impermeable": 9.425, 
     "Mameluco": 6.575, "Mameluco acolchado": 5.825, "Mameluco drill": 5.9, "Mameluco jean reflectivo": 5.35, 
-    "Merma": 6.575, "Merma de Alfombra / Tapiz": 8.5, "Merma de Algodón": 5.0, "Merma de Cuerina": 7.5, "Merma de Drill": 5.9, "Merma de Lino": 6.5, "Merma de Poliéster": 9.5, "Merma de Polar": 6.0,
+    "Merma de Alfombra / Tapiz": 8.5, "Merma de Algodón": 5.0, "Merma de Cuerina": 7.5, "Merma de Drill": 5.9, "Merma de Lino": 6.5, "Merma de Poliéster": 9.5, "Merma de Polar": 6.0,
     "Overol": 6.575, "Pantalón": 6.575, "Pantalón algodón": 5.0, "Pantalón drill": 5.9, "Pantalón drill con cinta": 6.25, 
     "Pantalón ignífugo": 5.35, "Pantalón jean": 5.0, "Pantalón jean / drill": 5.675, "Pantalón jean con cinta reflectiva": 5.35, 
     "Pantalón polar": 6.0, "Pantalón térmico": 6.0, "Polera": 5.0, "Polera polar": 6.0, "Polo": 6.8, "Polo algodón": 5.0, 
