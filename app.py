@@ -1206,7 +1206,7 @@ if not st.session_state.autenticado:
         """
         <div style="text-align: center; padding: 40px 10px;">
             <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">♻️ Pequeños Detalles</h1>
-            <p style="color: #64748B; font-size: 1.1rem;">Handmade Perú S.A.C. — Gestión de Sostenibilidad</p>
+            <p style="color: #64748B; font-size: 1.1rem;">PEQUEÑOS DETALLES HANDMADE PERU S.A.C. — Gestión de Sostenibilidad</p>
         </div>
     """,
         unsafe_allow_html=True,
@@ -1358,8 +1358,8 @@ else:
         with st.container(border=True):
             st.markdown("##### 1. Ficha General (Datos Fijos)")
             c1, c2, c5, c6 = st.columns(4)
-            cliente_int = c1.text_input("Cliente / Empresa", value="Handmade Perú S.A.C.", disabled=True)
-            ruc_int = c2.text_input("RUC", value="20608560000", disabled=True)
+            cliente_int = c1.text_input("Cliente / Empresa", value="PEQUEÑOS DETALLES HANDMADE PERU S.A.C.", disabled=True)
+            ruc_int = c2.text_input("RUC", value="20602573771", disabled=True)
             fe_inicio_dt = c5.date_input("Fecha Inicio", format="DD/MM/YYYY", key=f"f_ini_int_v{fv_int}")
             fe_fin_dt = c6.date_input("Fecha Término", format="DD/MM/YYYY", key=f"f_fin_int_v{fv_int}")
 
@@ -1583,7 +1583,7 @@ else:
             retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
             perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
 
-            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=False, key=f"chk_edit_balance_int_v{fv_int}")
+            editar_balance = st.checkbox("✏️ Editar balance manually", value=False, key=f"chk_edit_balance_int_v{fv_int}")
 
             col_bm1, col_bm2, col_bm3 = st.columns(3)
             mat_transformado = col_bm1.number_input("Transformado en productos (kg)", min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance, key=f"bm_mat_transf_int_v{fv_int}")
@@ -2308,6 +2308,7 @@ else:
                 with tab_mat_add:
                     st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
                     
+                    # EL BOTÓN MÁGICO PARA INGRESAR EL FACTOR MANUALMENTE
                     modo_manual = st.checkbox("✍️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
                     
                     col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
