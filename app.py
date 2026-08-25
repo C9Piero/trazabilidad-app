@@ -168,7 +168,8 @@ FACTORES_CO2_BASE = {
     "Chaleco": 6.575, "Chaleco con cinta": 6.925, "Chaleco de seguridad": 9.75, "Chaleco Fluorescente": 9.625, "Chaleco polar": 6.0, 
     "Chaleco reversible": 9.5, "Chompa": 7.1, "Chompa con cinta reflectiva": 7.45, "Chompa Jorge Chavez": 6.0, 
     "Chompa Jorge Chavez con cinta reflectiva": 6.3, "Chompa polar": 6.0, "Enterizo": 6.575, "Gorro": 7.925, "Impermeable": 9.425, 
-    "Mameluco": 6.575, "Mameluco acolchado": 5.825, "Mameluco drill": 5.9, "Mameluco jean reflectivo": 5.35, "Merma": 6.575, 
+    "Mameluco": 6.575, "Mameluco acolchado": 5.825, "Mameluco drill": 5.9, "Mameluco jean reflectivo": 5.35, 
+    "Merma": 6.575, "Merma de Alfombra / Tapiz": 8.5, "Merma de Algodón": 5.0, "Merma de Cuerina": 7.5, "Merma de Drill": 5.9, "Merma de Lino": 6.5, "Merma de Poliéster": 9.5, "Merma de Polar": 6.0,
     "Overol": 6.575, "Pantalón": 6.575, "Pantalón algodón": 5.0, "Pantalón drill": 5.9, "Pantalón drill con cinta": 6.25, 
     "Pantalón ignífugo": 5.35, "Pantalón jean": 5.0, "Pantalón jean / drill": 5.675, "Pantalón jean con cinta reflectiva": 5.35, 
     "Pantalón polar": 6.0, "Pantalón térmico": 6.0, "Polera": 5.0, "Polera polar": 6.0, "Polo": 6.8, "Polo algodón": 5.0, 
@@ -476,6 +477,21 @@ def inicializar_y_cargar_catalogos():
             if fila["tipo"] == "material_co2": materiales[fila["nombre"]] = float(fila["valor_num"])
             elif fila["tipo"] == "producto": productos.append(fila["nombre"])
             elif fila["tipo"] == "personal": personal.append(fila["nombre"])
+            
+        # INYECCIÓN AUTOMÁTICA DE NUEVAS MERMAS (Si no existían en Supabase, se agregan solas)
+        nuevas_mermas = {
+            "Merma de Alfombra / Tapiz": 8.5, "Merma de Algodón": 5.0, "Merma de Cuerina": 7.5, 
+            "Merma de Drill": 5.9, "Merma de Lino": 6.5, "Merma de Poliéster": 9.5, "Merma de Polar": 6.0
+        }
+        mermas_a_insertar = []
+        for k, v in nuevas_mermas.items():
+            if k not in materiales:
+                materiales[k] = v
+                mermas_a_insertar.append({"tipo": "material_co2", "nombre": k, "valor_num": v})
+        
+        if mermas_a_insertar:
+            try: supabase.table("catalogos").insert(mermas_a_insertar).execute()
+            except: pass
         
         # Ordenamos alfabéticamente
         productos.sort()
@@ -488,7 +504,6 @@ def inicializar_y_cargar_catalogos():
         return materiales, productos, personal
         
     except Exception as e:
-        # MOSTRAR EL ERROR REAL DE SUPABASE
         st.error(f"⚠️ Error de Supabase al cargar catálogos: {e}")
         return dict(FACTORES_CO2_BASE), list(PRODUCTOS_CATALOGO_BASE), list(PERSONAL_CONFECCION_BASE)
 
@@ -1135,7 +1150,7 @@ else:
                 fast_cliente = rq1.text_input("Cliente / Razón Social *")
                 fast_mes = rq2.selectbox("Mes del pedido *", MESES_ORDEN, index=datetime.date.today().month - 1)
                 fast_anio = rq3.selectbox("Año", [2024, 2025, 2026, 2027], index=2)
-                fast_tipo = rq4.selectbox("Tipo de Proyecto", ["UPCYCLING", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
+                fast_tipo = rq4.selectbox("Tipo de Proyecto", ["UPCYCLING", "Residuos / Mermas", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
                 
                 mes_num = MESES_ORDEN.index(fast_mes) + 1
                 cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
@@ -1495,7 +1510,7 @@ else:
                 f1, f2, f3 = st.columns([2, 1, 1])
                 busqueda = f1.text_input("Buscar por Cliente o Código", placeholder="Ej. Antamina o HIST_...")
                 filtro_estado = f2.selectbox("Estado del Proyecto", ["Todos", "COMPLETADO", "EN_PROCESO"])
-                filtro_tipo = f3.selectbox("Tipo de Servicio", ["Todos", "UPCYCLING", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
+                filtro_tipo = f3.selectbox("Tipo de Servicio", ["Todos", "UPCYCLING", "Residuos / Mermas", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
             
             proyectos_filtrados = []
             for p in proyectos_lista:
@@ -1674,7 +1689,7 @@ else:
             st.info(f"🆔 **Código del Proyecto:** `{codigo_proy}`")
 
             c4, c7, c8, c9 = st.columns(4)
-            opciones_tipo_proyecto = ["Upcycling", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
+            opciones_tipo_proyecto = ["Upcycling", "Residuos / Mermas", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
             tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
             idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
 
@@ -1784,7 +1799,20 @@ else:
             peso_total_recibido = 0.0
             co2_evitado_total = 0.0
             total_piezas_ingresadas = 0
-            opciones_prendas = sorted(list(st.session_state.factores_co2.keys()))
+
+            # FILTRO DINÁMICO EN CASCADA
+            todas_prendas = sorted(list(st.session_state.factores_co2.keys()))
+            if proyecto_nom == "Residuos / Mermas":
+                opciones_prendas = [p for p in todas_prendas if "merma" in p.lower()]
+            elif proyecto_nom in ["Mixto", "Banner"]:
+                opciones_prendas = todas_prendas
+            else:
+                opciones_prendas = [p for p in todas_prendas if "merma" not in p.lower()]
+                
+            if not opciones_prendas:
+                opciones_prendas = todas_prendas
+
+            opciones_prendas = sorted(opciones_prendas)
 
             saved_items = dc.get("items", [])
 
