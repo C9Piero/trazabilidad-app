@@ -161,7 +161,6 @@ def estimar_tiempo_unidad(nombre_producto: str) -> float:
         
     return round(max(0.10, tiempo_costura), 2)
 
-# Ahora esto es la BASE inicial. Se convertirá en dinámico en st.session_state
 FACTORES_CO2_BASE = {
     "Banner": 9.5, "Bata de laboratorio": 6.575, "Bolsas": 8.0, "Camisa": 6.575, "Camisa algodón": 5.0, "Camisa drill": 5.9, 
     "Camisa ignífuga": 5.35, "Camisa jean / denim": 5.0, "Camisaco": 5.0, "Camisaco drill": 5.9, "Camisaco drill con cinta": 6.25, 
@@ -446,6 +445,52 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
             with open(pdf_temp, "rb") as f: return f.read()
         else: raise RuntimeError("Error al convertir DOCX a PDF con LibreOffice.")
 
+# --- CARGA INTELIGENTE DE CATÁLOGOS DESDE SUPABASE ---
+def inicializar_y_cargar_catalogos():
+    try:
+        res = supabase.table("catalogos").select("*").execute()
+        datos = res.data
+        
+        # Si la tabla está totalmente vacía, la poblamos por primera vez con los datos base
+        if not datos:
+            seed_data = []
+            for k, v in FACTORES_CO2_BASE.items():
+                seed_data.append({"tipo": "material_co2", "nombre": k, "valor_num": v})
+            for p in PRODUCTOS_CATALOGO_BASE:
+                if "Otro" not in p: seed_data.append({"tipo": "producto", "nombre": p, "valor_num": 0})
+            for pers in PERSONAL_CONFECCION_BASE:
+                if "Otro" not in pers: seed_data.append({"tipo": "personal", "nombre": pers, "valor_num": 0})
+            
+            # Subir en bloques para no saturar
+            for i in range(0, len(seed_data), 50):
+                supabase.table("catalogos").insert(seed_data[i:i+50]).execute()
+            
+            res = supabase.table("catalogos").select("*").execute()
+            datos = res.data
+
+        materiales = {}
+        productos = []
+        personal = []
+        
+        for fila in datos:
+            if fila["tipo"] == "material_co2": materiales[fila["nombre"]] = float(fila["valor_num"])
+            elif fila["tipo"] == "producto": productos.append(fila["nombre"])
+            elif fila["tipo"] == "personal": personal.append(fila["nombre"])
+        
+        # Ordenamos alfabéticamente
+        productos.sort()
+        personal.sort()
+
+        # Añadimos siempre la opción de 'Otro' al final
+        if "➕ Otro (Escribir nuevo producto)" in productos: productos.remove("➕ Otro (Escribir nuevo producto)")
+        productos.append("➕ Otro (Escribir nuevo producto)")
+
+        return materiales, productos, personal
+        
+    except Exception as e:
+        # En caso de que no hayan creado la tabla aún o falle el internet
+        st.error(f"⚠️ Aviso interno: Aún no has creado la tabla 'catalogos' en Supabase. Trabajando con listas base temporales.")
+        return dict(FACTORES_CO2_BASE), list(PRODUCTOS_CATALOGO_BASE), list(PERSONAL_CONFECCION_BASE)
 
 # --- GENERADOR DEL INFORME TÉCNICO COMPLETO ---
 def generar_pdf_oficial(
@@ -746,8 +791,7 @@ def generar_pdf_oficial(
                     elements.append(Spacer(1, 25))
 
     doc.build(elements, canvasmaker=ReporteCanvas)
-    buffer.seek(0)
-    return buffer
+    return buffer.getvalue()
 
 def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     buffer = io.BytesIO()
@@ -909,15 +953,13 @@ if "proyecto_editar" not in st.session_state:
 if "form_version" not in st.session_state:
     st.session_state.form_version = 0
 
-if "catalogo_productos" not in st.session_state:
-    st.session_state.catalogo_productos = list(PRODUCTOS_CATALOGO_BASE)
-
-if "lista_personal_confeccion" not in st.session_state:
-    st.session_state.lista_personal_confeccion = list(PERSONAL_CONFECCION_BASE)
-
-# --- INICIALIZACIÓN CATÁLOGO MATERIALES ---
-if "factores_co2" not in st.session_state:
-    st.session_state.factores_co2 = dict(FACTORES_CO2_BASE)
+# --- INICIALIZACIÓN CATÁLOGOS CON CONEXIÓN A SUPABASE ---
+if "catalogos_cargados" not in st.session_state:
+    mats, prods, pers = inicializar_y_cargar_catalogos()
+    st.session_state.factores_co2 = mats
+    st.session_state.catalogo_productos = prods
+    st.session_state.lista_personal_confeccion = pers
+    st.session_state.catalogos_cargados = True
 
 if "num_anexos" not in st.session_state:
     st.session_state.num_anexos = 1
@@ -1688,11 +1730,10 @@ else:
                 tab_mat_add, tab_mat_del = st.tabs(["➕ Agregar / Calcular Material", "🗑️ Eliminar Material"])
 
                 with tab_mat_add:
-                    st.caption("Ingresa los porcentajes de composición. La aplicación calculará automáticamente el factor de CO₂e según tu tabla oficial.")
+                    st.caption("Ingresa los porcentajes de composición. La aplicación calculará automáticamente el factor de CO₂e según tu tabla oficial y lo guardará en la nube.")
                     col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
                     nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_v{fv}")
 
-                    # Calculadora basada en tu tabla
                     p1, p2, p3, p4 = st.columns(4)
                     p_alg = p1.number_input("% Algodón", min_value=0, max_value=100, value=65, key=f"mat_alg_v{fv}")
                     p_pol = p2.number_input("% Poliéster", min_value=0, max_value=100, value=35, key=f"mat_pol_v{fv}")
@@ -1706,18 +1747,26 @@ else:
                     if col_m3.button("💾 Guardar Material", use_container_width=True, key=f"btn_save_mat_v{fv}"):
                         if nuevo_mat.strip():
                             nombre_formateado = nuevo_mat.strip().capitalize()
+                            try:
+                                supabase.table("catalogos").delete().eq("tipo", "material_co2").eq("nombre", nombre_formateado).execute()
+                                supabase.table("catalogos").insert({"tipo": "material_co2", "nombre": nombre_formateado, "valor_num": factor_calculado}).execute()
+                            except Exception: pass
+                            
                             st.session_state.factores_co2[nombre_formateado] = factor_calculado
-                            st.toast(f"✅ Material '{nombre_formateado}' guardado con factor {factor_calculado:.3f}")
+                            st.toast(f"✅ Material '{nombre_formateado}' guardado en la nube.")
                             st.rerun()
 
                 with tab_mat_del:
                     col_d1, col_d2 = st.columns([3, 1])
                     materiales_borrables = [m for m in st.session_state.factores_co2.keys() if m != "Banner"]
                     mat_a_borrar = col_d1.selectbox("Material a eliminar:", materiales_borrables, key=f"mat_sel_del_v{fv}")
-                    if col_d2.button("Eliminar", use_container_width=True, key=f"btn_del_mat_v{fv}"):
+                    if col_d2.button("Eliminar de la nube", use_container_width=True, key=f"btn_del_mat_v{fv}"):
                         if mat_a_borrar in st.session_state.factores_co2:
+                            try: supabase.table("catalogos").delete().eq("tipo", "material_co2").eq("nombre", mat_a_borrar).execute()
+                            except Exception: pass
+                            
                             del st.session_state.factores_co2[mat_a_borrar]
-                            st.toast(f"🗑️ Material eliminado: {mat_a_borrar}")
+                            st.toast(f"🗑️ Material eliminado de la nube: {mat_a_borrar}")
                             st.rerun()
 
             if "num_items" not in st.session_state:
@@ -1884,20 +1933,23 @@ else:
         with st.container(border=True):
             st.subheader("4. Salida de Productos")
             
-            with st.expander("⚙️ Administrar Catálogo de Productos (Agregar, Modificar o Eliminar)"):
+            with st.expander("⚙️ Administrar Catálogo de Productos (Conectado a la Nube)"):
                 tab_p_add, tab_p_edit, tab_p_del = st.tabs(["➕ Agregar Producto", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
 
                 with tab_p_add:
                     col_pa1, col_pa2 = st.columns([3, 1])
                     nuevo_producto_cat = col_pa1.text_input("Nombre del nuevo producto:", placeholder="Ej. Mochila ejecutiva", key=f"adm_prod_input_add_v{fv}")
-                    if col_pa2.button("Guardar en Catálogo", use_container_width=True, key=f"btn_add_prod_cat_v{fv}"):
+                    if col_pa2.button("Guardar en Nube", use_container_width=True, key=f"btn_add_prod_cat_v{fv}"):
                         np_limpio = nuevo_producto_cat.strip()
                         if np_limpio and np_limpio not in st.session_state.catalogo_productos:
+                            try: supabase.table("catalogos").insert({"tipo": "producto", "nombre": np_limpio, "valor_num": 0}).execute()
+                            except Exception: pass
+                            
                             if "➕ Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
                                 st.session_state.catalogo_productos.insert(-1, np_limpio)
                             else:
                                 st.session_state.catalogo_productos.append(np_limpio)
-                            st.toast(f"✅ Producto agregado: {np_limpio}")
+                            st.toast(f"✅ Producto guardado en la nube: {np_limpio}")
                             st.rerun()
 
                 with tab_p_edit:
@@ -1907,9 +1959,12 @@ else:
                     prod_modificado = col_pe2.text_input("Nombre corregido:", value=prod_a_mod if prod_a_mod else "", key=f"adm_prod_txt_mod_v{fv}")
                     if col_pe3.button("Actualizar", use_container_width=True, key=f"btn_edit_prod_cat_v{fv}"):
                         if prod_modificado.strip() and prod_a_mod in st.session_state.catalogo_productos:
+                            try: supabase.table("catalogos").update({"nombre": prod_modificado.strip()}).eq("tipo", "producto").eq("nombre", prod_a_mod).execute()
+                            except Exception: pass
+                            
                             idx_mod = st.session_state.catalogo_productos.index(prod_a_mod)
                             st.session_state.catalogo_productos[idx_mod] = prod_modificado.strip()
-                            st.toast(f"✅ Producto actualizado: {prod_modificado.strip()}")
+                            st.toast(f"✅ Producto actualizado en la nube: {prod_modificado.strip()}")
                             st.rerun()
 
                 with tab_p_del:
@@ -1918,8 +1973,11 @@ else:
                     prod_a_borrar = col_pd1.selectbox("Producto a eliminar del catálogo:", prods_borrables, key=f"adm_prod_sel_del_v{fv}")
                     if col_pd2.button("Eliminar", use_container_width=True, key=f"btn_del_prod_cat_v{fv}"):
                         if prod_a_borrar in st.session_state.catalogo_productos:
+                            try: supabase.table("catalogos").delete().eq("tipo", "producto").eq("nombre", prod_a_borrar).execute()
+                            except Exception: pass
+                            
                             st.session_state.catalogo_productos.remove(prod_a_borrar)
-                            st.toast(f"🗑️ Producto eliminado: {prod_a_borrar}")
+                            st.toast(f"🗑️ Producto eliminado de la nube: {prod_a_borrar}")
                             st.rerun()
 
             if "num_prods" not in st.session_state:
@@ -1958,6 +2016,8 @@ else:
                     nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}_v{fv}")
                     nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
                     if nuevo_nombre.strip() and nuevo_nombre.strip() not in st.session_state.catalogo_productos:
+                        try: supabase.table("catalogos").insert({"tipo": "producto", "nombre": nuevo_nombre.strip(), "valor_num": 0}).execute()
+                        except Exception: pass
                         st.session_state.catalogo_productos.insert(-1, nuevo_nombre.strip())
                 else:
                     col_pnom_nuevo.text_input("Producto", value=prod_seleccionado, disabled=True, key=f"prod_dis_{i}_v{fv}")
@@ -2188,18 +2248,21 @@ else:
             st.write("---")
 
             st.markdown("#### Confección y Acabado – Asignación de Personal")
-            with st.expander("⚙️ Administrar Catálogo de Personal (Agregar, Modificar o Eliminar)"):
+            with st.expander("⚙️ Administrar Catálogo de Personal (Conectado a la Nube)"):
                 tab_add, tab_edit, tab_del = st.tabs(["➕ Agregar Personal", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
 
                 with tab_add:
                     col_a1, col_a2 = st.columns([3, 1])
                     nuevo_integrante = col_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key=f"adm_input_add_v{fv}")
-                    if col_a2.button("Guardar en Lista", use_container_width=True, key=f"btn_add_pers_v{fv}"):
+                    if col_a2.button("Guardar en Nube", use_container_width=True, key=f"btn_add_pers_v{fv}"):
                         n_limpio = nuevo_integrante.strip()
                         if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").insert({"tipo": "personal", "nombre": n_limpio, "valor_num": 0}).execute()
+                            except Exception: pass
+                            
                             st.session_state.lista_personal_confeccion.append(n_limpio)
                             st.session_state.lista_personal_confeccion.sort()
-                            st.toast(f"✅ Agregado/a: {n_limpio}")
+                            st.toast(f"✅ Guardado en la nube: {n_limpio}")
                             st.rerun()
 
                 with tab_edit:
@@ -2208,10 +2271,13 @@ else:
                     nombre_modificado = col_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_v{fv}")
                     if col_e3.button("Actualizar", use_container_width=True, key=f"btn_edit_pers_v{fv}"):
                         if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").update({"nombre": nombre_modificado.strip()}).eq("tipo", "personal").eq("nombre", pers_a_mod).execute()
+                            except Exception: pass
+                            
                             idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
                             st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
                             st.session_state.lista_personal_confeccion.sort()
-                            st.toast(f"✅ Actualizado: {nombre_modificado.strip()}")
+                            st.toast(f"✅ Actualizado en la nube: {nombre_modificado.strip()}")
                             st.rerun()
 
                 with tab_del:
@@ -2219,8 +2285,11 @@ else:
                     pers_a_borrar = col_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key=f"adm_sel_del_v{fv}")
                     if col_d2.button("Eliminar", use_container_width=True, key=f"btn_del_pers_v{fv}"):
                         if pers_a_borrar in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").delete().eq("tipo", "personal").eq("nombre", pers_a_borrar).execute()
+                            except Exception: pass
+                            
                             st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
-                            st.toast(f"🗑️ Eliminado/a: {pers_a_borrar}")
+                            st.toast(f"🗑️ Eliminado de la nube: {pers_a_borrar}")
                             st.rerun()
 
             lista_confeccion = []
@@ -2281,6 +2350,9 @@ else:
                         nuevo_nombre_escrito = c_persona.text_input("Escribe el nombre *", placeholder="Nombre y Apellido", key=f"soc_pers_txt_custom_{idx}_{p_idx}_v{fv}")
                         persona_nom = nuevo_nombre_escrito.strip() if nuevo_nombre_escrito.strip() else f"Persona {p_idx+1}"
                         if nuevo_nombre_escrito.strip() and nuevo_nombre_escrito.strip() not in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").insert({"tipo": "personal", "nombre": nuevo_nombre_escrito.strip(), "valor_num": 0}).execute()
+                            except Exception: pass
+                            
                             st.session_state.lista_personal_confeccion.append(nuevo_nombre_escrito.strip())
                             st.session_state.lista_personal_confeccion.sort()
                     else:
