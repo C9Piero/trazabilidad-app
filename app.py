@@ -169,7 +169,10 @@ FACTORES_CO2_BASE = {
     "Chaleco reversible": 9.5, "Chompa": 7.1, "Chompa con cinta reflectiva": 7.45, "Chompa Jorge Chavez": 6.0, 
     "Chompa Jorge Chavez con cinta reflectiva": 6.3, "Chompa polar": 6.0, "Enterizo": 6.575, "Gorro": 7.925, "Impermeable": 9.425, 
     "Mameluco": 6.575, "Mameluco acolchado": 5.825, "Mameluco drill": 5.9, "Mameluco jean reflectivo": 5.35, 
-    "Merma de Alfombra / Tapiz": 8.5, "Merma de Algodón": 5.0, "Merma de Cuerina": 7.5, "Merma de Drill": 5.9, "Merma de Lino": 6.5, "Merma de Poliéster": 9.5, "Merma de Polar": 6.0,
+    "Merma de Acrílico / Dralon": 6.0, "Merma de Alfombra / Tapiz": 8.5, "Merma de Algodón": 5.0, "Merma de Cuerina (PU/PVC)": 7.5, 
+    "Merma de Denim / Jean": 5.0, "Merma de Drill": 5.9, "Merma de Elastano / Spandex": 9.0, "Merma de Lana": 13.0, 
+    "Merma de Lino": 6.5, "Merma de Nylon / Poliamida": 8.0, "Merma de Polar": 6.0, "Merma de Poliéster": 9.5, 
+    "Merma de Seda": 14.0, "Merma de Viscosa / Rayón": 4.0,
     "Overol": 6.575, "Pantalón": 6.575, "Pantalón algodón": 5.0, "Pantalón drill": 5.9, "Pantalón drill con cinta": 6.25, 
     "Pantalón ignífugo": 5.35, "Pantalón jean": 5.0, "Pantalón jean / drill": 5.675, "Pantalón jean con cinta reflectiva": 5.35, 
     "Pantalón polar": 6.0, "Pantalón térmico": 6.0, "Polera": 5.0, "Polera polar": 6.0, "Polo": 6.8, "Polo algodón": 5.0, 
@@ -478,10 +481,22 @@ def inicializar_y_cargar_catalogos():
             elif fila["tipo"] == "producto": productos.append(fila["nombre"])
             elif fila["tipo"] == "personal": personal.append(fila["nombre"])
             
-        # INYECCIÓN AUTOMÁTICA DE NUEVAS MERMAS (Si no existían en Supabase, se agregan solas)
+        # INYECCIÓN AUTOMÁTICA DE LA LISTA MAESTRA DE MERMAS
         nuevas_mermas = {
-            "Merma de Alfombra / Tapiz": 8.5, "Merma de Algodón": 5.0, "Merma de Cuerina": 7.5, 
-            "Merma de Drill": 5.9, "Merma de Lino": 6.5, "Merma de Poliéster": 9.5, "Merma de Polar": 6.0
+            "Merma de Acrílico / Dralon": 6.0, 
+            "Merma de Alfombra / Tapiz": 8.5, 
+            "Merma de Algodón": 5.0, 
+            "Merma de Cuerina (PU/PVC)": 7.5, 
+            "Merma de Denim / Jean": 5.0, 
+            "Merma de Drill": 5.9, 
+            "Merma de Elastano / Spandex": 9.0, 
+            "Merma de Lana": 13.0, 
+            "Merma de Lino": 6.5, 
+            "Merma de Nylon / Poliamida": 8.0, 
+            "Merma de Polar": 6.0,
+            "Merma de Poliéster": 9.5, 
+            "Merma de Seda": 14.0, 
+            "Merma de Viscosa / Rayón": 4.0
         }
         mermas_a_insertar = []
         for k, v in nuevas_mermas.items():
@@ -1757,7 +1772,6 @@ else:
 
                     factor_calculado = (p_alg * 5.0 + p_pol * 9.5 + p_dra * 6.0 + p_cin * 12.0) / 100
 
-                    # FORZADO DE ESTADO VISUAL
                     st.session_state[f"mat_calc_v{fv}"] = f"{factor_calculado:.3f} kg"
                     col_m2.text_input("Factor Calculado", disabled=True, key=f"mat_calc_v{fv}")
 
