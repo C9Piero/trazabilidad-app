@@ -1760,30 +1760,37 @@ else:
                 tab_mat_add, tab_mat_del = st.tabs(["➕ Agregar / Calcular Material", "🗑️ Eliminar Material"])
 
                 with tab_mat_add:
-                    st.caption("Ingresa los porcentajes de composición. La aplicación calculará automáticamente el factor de CO₂e según tu tabla oficial y lo guardará en la nube.")
+                    st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
+                    
+                    # EL BOTÓN MÁGICO PARA INGRESAR EL FACTOR MANUALMENTE
+                    modo_manual = st.checkbox("✍️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
+                    
                     col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
                     nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_v{fv}")
 
-                    p1, p2, p3, p4 = st.columns(4)
-                    p_alg = p1.number_input("% Algodón", min_value=0, max_value=100, value=65, key=f"mat_alg_v{fv}")
-                    p_pol = p2.number_input("% Poliéster", min_value=0, max_value=100, value=35, key=f"mat_pol_v{fv}")
-                    p_dra = p3.number_input("% Acríl/Dralon", min_value=0, max_value=100, value=0, key=f"mat_dra_v{fv}")
-                    p_cin = p4.number_input("% Cinta Ref.", min_value=0, max_value=100, value=0, key=f"mat_cin_v{fv}")
+                    if modo_manual:
+                        factor_final = col_m2.number_input("Factor CO₂e (kg) *", min_value=0.0, value=5.0, step=0.1, key=f"mat_manual_input_v{fv}")
+                    else:
+                        p1, p2, p3, p4 = st.columns(4)
+                        p_alg = p1.number_input("% Algodón", min_value=0, max_value=100, value=65, key=f"mat_alg_v{fv}")
+                        p_pol = p2.number_input("% Poliéster", min_value=0, max_value=100, value=35, key=f"mat_pol_v{fv}")
+                        p_dra = p3.number_input("% Acríl/Dralon", min_value=0, max_value=100, value=0, key=f"mat_dra_v{fv}")
+                        p_cin = p4.number_input("% Cinta Ref.", min_value=0, max_value=100, value=0, key=f"mat_cin_v{fv}")
 
-                    factor_calculado = (p_alg * 5.0 + p_pol * 9.5 + p_dra * 6.0 + p_cin * 12.0) / 100
+                        factor_final = (p_alg * 5.0 + p_pol * 9.5 + p_dra * 6.0 + p_cin * 12.0) / 100
 
-                    st.session_state[f"mat_calc_v{fv}"] = f"{factor_calculado:.3f} kg"
-                    col_m2.text_input("Factor Calculado", disabled=True, key=f"mat_calc_v{fv}")
+                        st.session_state[f"mat_calc_v{fv}"] = f"{factor_final:.3f} kg"
+                        col_m2.text_input("Factor Calculado", disabled=True, key=f"mat_calc_v{fv}")
 
                     if col_m3.button("💾 Guardar Material", use_container_width=True, key=f"btn_save_mat_v{fv}"):
                         if nuevo_mat.strip():
                             nombre_formateado = nuevo_mat.strip().capitalize()
                             try:
                                 supabase.table("catalogos").delete().eq("tipo", "material_co2").eq("nombre", nombre_formateado).execute()
-                                supabase.table("catalogos").insert({"tipo": "material_co2", "nombre": nombre_formateado, "valor_num": factor_calculado}).execute()
+                                supabase.table("catalogos").insert({"tipo": "material_co2", "nombre": nombre_formateado, "valor_num": factor_final}).execute()
                             except Exception: pass
                             
-                            st.session_state.factores_co2[nombre_formateado] = factor_calculado
+                            st.session_state.factores_co2[nombre_formateado] = factor_final
                             st.toast(f"✅ Material '{nombre_formateado}' guardado en la nube.")
                             st.rerun()
 
