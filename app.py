@@ -488,8 +488,8 @@ def inicializar_y_cargar_catalogos():
         return materiales, productos, personal
         
     except Exception as e:
-        # En caso de que no hayan creado la tabla aún o falle el internet
-        st.error(f"⚠️ Aviso interno: Aún no has creado la tabla 'catalogos' en Supabase. Trabajando con listas base temporales.")
+        # MOSTRAR EL ERROR REAL DE SUPABASE
+        st.error(f"⚠️ Error de Supabase al cargar catálogos: {e}")
         return dict(FACTORES_CO2_BASE), list(PRODUCTOS_CATALOGO_BASE), list(PERSONAL_CONFECCION_BASE)
 
 # --- GENERADOR DEL INFORME TÉCNICO COMPLETO ---
