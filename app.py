@@ -1757,7 +1757,9 @@ else:
 
                     factor_calculado = (p_alg * 5.0 + p_pol * 9.5 + p_dra * 6.0 + p_cin * 12.0) / 100
 
-                    col_m2.text_input("Factor Calculado", value=f"{factor_calculado:.3f} kg", disabled=True, key=f"mat_calc_v{fv}")
+                    # FORZADO DE ESTADO VISUAL
+                    st.session_state[f"mat_calc_v{fv}"] = f"{factor_calculado:.3f} kg"
+                    col_m2.text_input("Factor Calculado", disabled=True, key=f"mat_calc_v{fv}")
 
                     if col_m3.button("💾 Guardar Material", use_container_width=True, key=f"btn_save_mat_v{fv}"):
                         if nuevo_mat.strip():
@@ -1832,9 +1834,11 @@ else:
                 unid = col_unid.number_input("Ingreso (unid.) *", min_value=0, value=unid_prev, key=f"unid_{i}_v{fv}")
 
                 p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=peso_prev, step=0.05, key=f"tot_input_{i}_v{fv}")
+                
+                # CÁLCULO Y FORZADO VISUAL DEL PESO UNITARIO
                 peso_u = p_total / unid if unid > 0 else 0.0
-
-                col_tot.text_input("Peso Unitario", value=f"{peso_u:.2f} kg", disabled=True, key=f"peso_u_{i}_v{fv}")
+                st.session_state[f"peso_u_{i}_v{fv}"] = f"{peso_u:.2f} kg"
+                col_tot.text_input("Peso Unitario", disabled=True, key=f"peso_u_{i}_v{fv}")
 
                 foto = col_foto.file_uploader("Evidencia Foto", type=["jpg", "png", "jpeg"], key=f"foto_{i}_v{fv}")
 
@@ -1919,7 +1923,8 @@ else:
                     peso_val_ui = peso_prev_val
                     tipo_val_ui = tipo_prev_val
 
-                e_nom = col_etapa.text_input("Etapa", value=item_fijo["etapa"], disabled=True, key=f"tr_etapa_{i}_v{fv}")
+                st.session_state[f"tr_etapa_{i}_v{fv}"] = item_fijo["etapa"]
+                e_nom = col_etapa.text_input("Etapa", disabled=True, key=f"tr_etapa_{i}_v{fv}")
                 
                 deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
                 e_fec_val = col_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}_v{fv}")
@@ -1936,7 +1941,8 @@ else:
                 elif item_fijo["etapa"] == "Corte": 
                     peso_corte_auto = e_pes_num
 
-                e_tip = col_tipo.text_input("Tipo Registro", value=tipo_val_ui, disabled=True, key=f"tr_tipo_{i}_v{fv}")
+                st.session_state[f"tr_tipo_{i}_v{fv}"] = tipo_val_ui
+                e_tip = col_tipo.text_input("Tipo Registro", disabled=True, key=f"tr_tipo_{i}_v{fv}")
                 
                 if no_aplica:
                     e_fot = None
@@ -2048,7 +2054,8 @@ else:
                         except Exception: pass
                         st.session_state.catalogo_productos.insert(-1, nuevo_nombre.strip())
                 else:
-                    col_pnom_nuevo.text_input("Producto", value=prod_seleccionado, disabled=True, key=f"prod_dis_{i}_v{fv}")
+                    st.session_state[f"prod_dis_{i}_v{fv}"] = prod_seleccionado
+                    col_pnom_nuevo.text_input("Producto", disabled=True, key=f"prod_dis_{i}_v{fv}")
                     nombre_final = prod_seleccionado
 
                 p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=cant_prev, key=f"prod_cant_{i}_v{fv}")
@@ -2239,7 +2246,8 @@ else:
                 nom_prev_op = op_prev.get("nombre", p_fijo["nombre"])
 
                 rol_val = p_fijo["rol"]
-                c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_{idx}_v{fv}", label_visibility="collapsed")
+                st.session_state[f"ops_rol_{idx}_v{fv}"] = rol_val
+                c_rol.text_input("Rol", disabled=True, key=f"ops_rol_{idx}_v{fv}", label_visibility="collapsed")
 
                 editar_fila = c_chk.checkbox("✅", value=bool(is_edited_op), key=f"ops_chk_{idx}_v{fv}", label_visibility="collapsed")
                 nom_val = c_nom.text_input("Nombre", value=nom_prev_op, disabled=not editar_fila, key=f"ops_nom_{idx}_v{fv}", label_visibility="collapsed")
@@ -2264,8 +2272,8 @@ else:
                 )
 
                 tot_hrs_pers = float(val_dias) * float(val_hdia)
-
-                c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_{idx}_v{fv}", label_visibility="collapsed")
+                st.session_state[f"ops_tot_{idx}_v{fv}"] = f"{tot_hrs_pers:.2f}"
+                c_tot.text_input("Total", disabled=True, key=f"ops_tot_{idx}_v{fv}", label_visibility="collapsed")
 
                 total_horas_ops += tot_hrs_pers
                 lista_operaciones.append({
@@ -2394,22 +2402,27 @@ else:
 
                     if rol_sel == "Confección":
                         tiempo_unitario = float(tiempo_base_ia)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
+                        st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     elif rol_sel == "Acabado":
                         tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acab. 20%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
+                        st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Acab. 20%]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     elif rol_sel == "Entretela":
                         tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
+                        st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     elif rol_sel == "Estampado":
                         tiempo_unitario = round(5.0 / 60.0, 3)
-                        c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", value=f"{tiempo_unitario:.3f} hrs", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
+                        st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
                     else:
                         tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
                         tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}_v{fv}")
 
                     horas_persona = cant_asig * tiempo_unitario
-                    c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_{idx}_{p_idx}_v{fv}")
+                    st.session_state[f"soc_htot_{idx}_{p_idx}_v{fv}"] = f"{horas_persona:.2f} hrs"
+                    c_tot.text_input("Horas Totales", disabled=True, key=f"soc_htot_{idx}_{p_idx}_v{fv}")
 
                     horas_confeccion_total += horas_persona
                     
