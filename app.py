@@ -382,7 +382,7 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
         for p in proyectos_a_borrar: eliminar_proyecto_bd(p.get("id"), p.get("codigo"))
         st.session_state.proyecto_editar = {}
         st.session_state.form_version += 1
-        st.toast(f"🗑️ {len(proyectos_a_borrar)} projects eliminados con éxito.")
+        st.toast(f"🗑️ {len(proyectos_a_borrar)} proyectos eliminados con éxito.")
         for p in proyectos_a_borrar:
             k = f"bulk_del_{p.get('id', p.get('codigo'))}"
             if k in st.session_state: del st.session_state[k]
@@ -1071,14 +1071,16 @@ def generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo):
     hrs_tot = df_fil['Horas de Trabajo'].sum()
     prods_tot = df_fil['Productos Creados'].sum()
     unid_tot = df_fil['Unidades Recibidas'].sum()
+    num_proyectos = len(df_fil)
+    num_clientes = df_fil['Cliente'].nunique()
     
     bloque_1 = []
     bloque_1.append(Paragraph("1. RESUMEN DE IMPACTO GLOBAL", h2_style))
     data_metrics = [
-        [Paragraph("<b>Unidades Recibidas</b>", cell_bold), Paragraph("<b>Peso Procesado</b>", cell_bold), Paragraph("<b>Productos Creados</b>", cell_bold)],
-        [Paragraph(f"{int(unid_tot)} unid", cell_style), Paragraph(f"{kg_tot:.2f} kg", cell_style), Paragraph(f"{int(prods_tot)} unid", cell_style)],
-        [Paragraph("<b>CO2e Neto Evitado</b>", cell_bold), Paragraph("<b>Horas Generadas</b>", cell_bold), ""],
-        [Paragraph(f"{co2_tot:.2f} kg", cell_style), Paragraph(f"{hrs_tot:.2f} hrs", cell_style), ""]
+        [Paragraph("<b>Total Proyectos</b>", cell_bold), Paragraph("<b>Clientes Únicos</b>", cell_bold), Paragraph("<b>Peso Procesado</b>", cell_bold)],
+        [Paragraph(f"{num_proyectos}", cell_style), Paragraph(f"{num_clientes}", cell_style), Paragraph(f"{kg_tot:.2f} kg", cell_style)],
+        [Paragraph("<b>CO2e Neto Evitado</b>", cell_bold), Paragraph("<b>Productos Creados</b>", cell_bold), Paragraph("<b>Horas Generadas</b>", cell_bold)],
+        [Paragraph(f"{co2_tot:.2f} kg", cell_style), Paragraph(f"{int(prods_tot)} unid", cell_style), Paragraph(f"{hrs_tot:.2f} hrs", cell_style)]
     ]
     t_metrics = Table(data_metrics, colWidths=[174, 174, 174])
     t_metrics.setStyle(TableStyle([
@@ -1256,7 +1258,6 @@ else:
             st.session_state.form_version += 1 
             st.rerun()
 
-        # NUEVO BOTÓN: PRODUCCIÓN INTERNA (Fast track modificado)
         if st.button(
             "🏭     Producción Interna",
             use_container_width=True,
@@ -1347,9 +1348,6 @@ else:
         unsafe_allow_html=True,
     )
 
-    # =========================================================================
-    # VISTA: PRODUCCIÓN INTERNA (CON MINI REPORTE)
-    # =========================================================================
     if st.session_state.pestaña_activa == "🏭     Producción Interna":
         fv_int = st.session_state.form_version
         
@@ -1444,7 +1442,6 @@ else:
             co2_evitado_total = 0.0
             total_piezas_ingresadas = 0
 
-            # Mostrar TODOS los materiales (ropa y mermas combinadas)
             opciones_prendas = sorted(list(st.session_state.factores_co2.keys()))
 
             for i in range(st.session_state.num_items_int):
@@ -1616,7 +1613,6 @@ else:
                             import time
                             ts = int(time.time())
                             
-                            # Subir fotos de productos si existen
                             prods_db = []
                             for idx, pr in enumerate(lista_productos_int):
                                 url = ""
@@ -1626,9 +1622,8 @@ else:
                                 prods_db.append({
                                     "producto": pr["producto"], "cantidad": pr["cantidad"], "foto_url": url, "foto": pr["foto_up"]
                                 })
-                                pr["foto"] = pr["foto_up"] # Para el PDF
+                                pr["foto"] = pr["foto_up"] 
                                 
-                            # Generar PDF
                             pdf_bytes = generar_pdf_produccion_interna(
                                 cliente_int, codigo_proy, fe_inicio_dt.strftime('%d/%m/%Y'), fe_fin_dt.strftime('%d/%m/%Y'), 
                                 responsable_int, lista_items_int, lista_productos_int, 
@@ -1638,7 +1633,6 @@ else:
                             
                             url_pdf = subir_pdf_supabase(f"Produccion_Interna_{codigo_proy}.pdf", pdf_bytes)
                             
-                            # Intentar subir a drive
                             try:
                                 nombre_subcarpeta = f"Prod_Interna {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})"
                                 carpeta_id = obtener_carpeta_destino_drive(cliente_int, fe_fin_dt, nombre_subcarpeta)
@@ -1959,12 +1953,18 @@ else:
                     type="primary"
                 )
             
-            dm1, dm2, dm3, dm4, dm5 = st.columns(5)
-            dm1.metric("Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum())} unid")
-            dm2.metric("Peso Procesado", f"{df_fil['Kg Procesados'].sum():.2f} kg")
-            dm3.metric("CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():.2f} kg")
-            dm4.metric("Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():.2f} hrs")
-            dm5.metric("Productos Creados", f"{int(df_fil['Productos Creados'].sum())} unid")
+            # NUEVAS MÉTRICAS DEL DASHBOARD
+            dm1, dm2, dm3, dm4 = st.columns(4)
+            dm1.metric("📦 Total Proyectos", f"{len(df_fil)}")
+            dm2.metric("🏢 Clientes Únicos", f"{df_fil['Cliente'].nunique()}")
+            dm3.metric("⚖️ Peso Procesado", f"{df_fil['Kg Procesados'].sum():.2f} kg")
+            dm4.metric("🌍 CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():.2f} kg")
+
+            st.write("")
+            dm5, dm6, dm7 = st.columns(3)
+            dm5.metric("📥 Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum())} unid")
+            dm6.metric("🛍️ Productos Creados", f"{int(df_fil['Productos Creados'].sum())} unid")
+            dm7.metric("🧑‍🤝‍🧑 Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():.2f} hrs")
 
             st.write("---")
 
@@ -2250,7 +2250,6 @@ else:
 
             c4, c7, c8, c9 = st.columns(4)
             
-            # ELIMINADO: Producción Interna ya no sale en el reporte PDF normal
             opciones_tipo_proyecto = ["Upcycling", "Residuos / Mermas", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
             tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
             idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
@@ -2309,7 +2308,6 @@ else:
                 with tab_mat_add:
                     st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
                     
-                    # EL BOTÓN MÁGICO PARA INGRESAR EL FACTOR MANUALMENTE
                     modo_manual = st.checkbox("✍️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
                     
                     col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
@@ -2370,7 +2368,6 @@ else:
             co2_evitado_total = 0.0
             total_piezas_ingresadas = 0
 
-            # FILTRO DINÁMICO EN CASCADA
             todas_prendas = sorted(list(st.session_state.factores_co2.keys()))
             if proyecto_nom == "Residuos / Mermas":
                 opciones_prendas = [p for p in todas_prendas if "merma" in p.lower()]
@@ -2403,7 +2400,6 @@ else:
 
                 p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=peso_prev, step=0.05, key=f"tot_input_{i}_v{fv}")
                 
-                # CÁLCULO Y FORZADO VISUAL DEL PESO UNITARIO
                 peso_u = p_total / unid if unid > 0 else 0.0
                 st.session_state[f"peso_u_{i}_v{fv}"] = f"{peso_u:.2f} kg"
                 col_tot.text_input("Peso Unitario", disabled=True, key=f"peso_u_{i}_v{fv}")
