@@ -455,7 +455,6 @@ def inicializar_y_cargar_catalogos():
         res = supabase.table("catalogos").select("*").execute()
         datos = res.data
         
-        # Si la tabla está totalmente vacía, la poblamos por primera vez con los datos base
         if not datos:
             seed_data = []
             for k, v in FACTORES_CO2_BASE.items():
@@ -465,7 +464,6 @@ def inicializar_y_cargar_catalogos():
             for pers in PERSONAL_CONFECCION_BASE:
                 if "Otro" not in pers: seed_data.append({"tipo": "personal", "nombre": pers, "valor_num": 0})
             
-            # Subir en bloques para no saturar
             for i in range(0, len(seed_data), 50):
                 supabase.table("catalogos").insert(seed_data[i:i+50]).execute()
             
@@ -481,7 +479,6 @@ def inicializar_y_cargar_catalogos():
             elif fila["tipo"] == "producto": productos.append(fila["nombre"])
             elif fila["tipo"] == "personal": personal.append(fila["nombre"])
             
-        # INYECCIÓN AUTOMÁTICA DE LA LISTA MAESTRA DE MERMAS
         nuevas_mermas = {
             "Merma de Acrílico / Dralon": 6.0, 
             "Merma de Alfombra / Tapiz": 8.5, 
@@ -508,11 +505,9 @@ def inicializar_y_cargar_catalogos():
             try: supabase.table("catalogos").insert(mermas_a_insertar).execute()
             except: pass
         
-        # Ordenamos alfabéticamente
         productos.sort()
         personal.sort()
 
-        # Añadimos siempre la opción de 'Otro' al final
         if "➕ Otro (Escribir nuevo producto)" in productos: productos.remove("➕ Otro (Escribir nuevo producto)")
         productos.append("➕ Otro (Escribir nuevo producto)")
 
@@ -1073,6 +1068,16 @@ else:
             st.session_state.form_version += 1 
             st.rerun()
 
+        # NUEVO BOTÓN: PRODUCCIÓN INTERNA
+        if st.button(
+            "🎪     Producción Interna (Ferias)",
+            use_container_width=True,
+            type="primary" if st.session_state.pestaña_activa == "🎪     Producción Interna (Ferias)" else "secondary",
+        ):
+            st.session_state.documentos_descarga = None
+            st.session_state.pestaña_activa = "🎪     Producción Interna (Ferias)"
+            st.rerun()
+
         if st.button(
             "⚡     Carga Rápida Histórica",
             use_container_width=True,
@@ -1152,7 +1157,216 @@ else:
         unsafe_allow_html=True,
     )
 
-    if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
+    # =========================================================================
+    # VISTA: PRODUCCIÓN INTERNA (FERIAS) - FAST TRACK
+    # =========================================================================
+    if st.session_state.pestaña_activa == "🎪     Producción Interna (Ferias)":
+        fv = st.session_state.form_version
+        
+        st.subheader("🎪 Registro Rápido: Producción Interna (Ferias)")
+        st.caption("Formulario simplificado para registrar materiales usados en ferias y que se sumen directamente a tu Dashboard Ambiental.")
+
+        # --- SECCIÓN 1: DATOS GENERALES FIJOS ---
+        with st.container(border=True):
+            st.markdown("##### 1. Ficha General del Proyecto")
+            c1, c2, c5, c6 = st.columns(4)
+            cliente_feria = c1.text_input("Cliente / Empresa", value="Handmade Perú S.A.C.", disabled=True)
+            ruc_feria = c2.text_input("RUC", value="20608560000", disabled=True)
+            fe_inicio_dt = c5.date_input("Fecha Inicio", format="DD/MM/YYYY", key=f"f_ini_feria_v{fv}")
+            fe_fin_dt = c6.date_input("Fecha Término", format="DD/MM/YYYY", key=f"f_fin_feria_v{fv}")
+
+            c4, c7 = st.columns(2)
+            tipo_feria = c4.text_input("Tipo de Proyecto", value="Producción Interna (Ferias)", disabled=True)
+            
+            RESPONSABLES_BASE = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado"]
+            opciones_responsables = list(dict.fromkeys(RESPONSABLES_BASE))
+            responsables_seleccionados = c7.multiselect("Responsable *", options=opciones_responsables, placeholder="Selecciona uno o más", key=f"resp_feria_v{fv}")
+            responsable_feria = ", ".join(responsables_seleccionados) if responsables_seleccionados else "Equipo Interno"
+
+        st.write("")
+
+        # --- SECCIÓN 2: INGRESO DE MATERIAL (IGUAL QUE EL ORIGINAL) ---
+        with st.container(border=True):
+            st.markdown("##### 2. Ingreso de Material")
+            
+            with st.expander("⚙️ Administrar Catálogo de Materiales y Calcular CO₂e"):
+                tab_mat_add, tab_mat_del = st.tabs(["➕ Agregar / Calcular Material", "🗑️ Eliminar Material"])
+
+                with tab_mat_add:
+                    st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
+                    modo_manual = st.checkbox("✍️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_feria_v{fv}")
+                    
+                    col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
+                    nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_feria_v{fv}")
+
+                    if modo_manual:
+                        factor_final = col_m2.number_input("Factor CO₂e (kg) *", min_value=0.0, value=5.0, step=0.1, key=f"mat_manual_input_feria_v{fv}")
+                    else:
+                        p1, p2, p3, p4 = st.columns(4)
+                        p_alg = p1.number_input("% Algodón", min_value=0, max_value=100, value=65, key=f"mat_alg_feria_v{fv}")
+                        p_pol = p2.number_input("% Poliéster", min_value=0, max_value=100, value=35, key=f"mat_pol_feria_v{fv}")
+                        p_dra = p3.number_input("% Acríl/Dralon", min_value=0, max_value=100, value=0, key=f"mat_dra_feria_v{fv}")
+                        p_cin = p4.number_input("% Cinta Ref.", min_value=0, max_value=100, value=0, key=f"mat_cin_feria_v{fv}")
+
+                        factor_final = (p_alg * 5.0 + p_pol * 9.5 + p_dra * 6.0 + p_cin * 12.0) / 100
+                        st.session_state[f"mat_calc_feria_v{fv}"] = f"{factor_final:.3f} kg"
+                        col_m2.text_input("Factor Calculado", disabled=True, key=f"mat_calc_feria_v{fv}")
+
+                    if col_m3.button("💾 Guardar Material", use_container_width=True, key=f"btn_save_mat_feria_v{fv}"):
+                        if nuevo_mat.strip():
+                            nombre_formateado = nuevo_mat.strip().capitalize()
+                            try:
+                                supabase.table("catalogos").delete().eq("tipo", "material_co2").eq("nombre", nombre_formateado).execute()
+                                supabase.table("catalogos").insert({"tipo": "material_co2", "nombre": nombre_formateado, "valor_num": factor_final}).execute()
+                            except Exception: pass
+                            st.session_state.factores_co2[nombre_formateado] = factor_final
+                            st.toast(f"✅ Material '{nombre_formateado}' guardado en la nube.")
+                            st.rerun()
+
+                with tab_mat_del:
+                    col_d1, col_d2 = st.columns([3, 1])
+                    materiales_borrables = [m for m in st.session_state.factores_co2.keys() if m != "Banner"]
+                    mat_a_borrar = col_d1.selectbox("Material a eliminar:", materiales_borrables, key=f"mat_sel_del_feria_v{fv}")
+                    if col_d2.button("Eliminar de la nube", use_container_width=True, key=f"btn_del_mat_feria_v{fv}"):
+                        if mat_a_borrar in st.session_state.factores_co2:
+                            try: supabase.table("catalogos").delete().eq("tipo", "material_co2").eq("nombre", mat_a_borrar).execute()
+                            except Exception: pass
+                            del st.session_state.factores_co2[mat_a_borrar]
+                            st.toast(f"🗑️ Material eliminado de la nube: {mat_a_borrar}")
+                            st.rerun()
+
+            if "num_items_feria" not in st.session_state:
+                st.session_state.num_items_feria = 1
+
+            col_btn1, col_btn2, _ = st.columns([1, 1, 4])
+            if col_btn1.button("➕     Agregar Ítem", key=f"add_it_feria_v{fv}"):
+                st.session_state.num_items_feria += 1
+                st.rerun()
+            if col_btn2.button("➖     Quitar Ítem", key=f"del_it_feria_v{fv}") and st.session_state.num_items_feria > 1:
+                st.session_state.num_items_feria -= 1
+                st.rerun()
+
+            lista_items_feria = []
+            peso_total_recibido = 0.0
+            co2_evitado_total = 0.0
+            total_piezas_ingresadas = 0
+
+            # Mostrar TODOS los materiales (ropa y mermas combinadas)
+            opciones_prendas = sorted(list(st.session_state.factores_co2.keys()))
+
+            for i in range(st.session_state.num_items_feria):
+                st.markdown(f"**Material {i+1}**")
+                
+                col_desc, col_unid, col_peso, col_tot = st.columns([3, 1.5, 1.5, 1.5]) # Sin foto para hacerlo más rápido
+
+                desc = col_desc.selectbox("Tipo de Material / Merma *", opciones_prendas, key=f"desc_feria_{i}_v{fv}")
+                unid = col_unid.number_input("Ingreso (unid. aprox) *", min_value=0, value=1, key=f"unid_feria_{i}_v{fv}")
+
+                p_total = col_peso.number_input("Peso Total (kg) *", min_value=0.0, value=0.0, step=0.05, key=f"tot_input_feria_{i}_v{fv}")
+                
+                peso_u = p_total / unid if unid > 0 else 0.0
+                st.session_state[f"peso_u_feria_{i}_v{fv}"] = f"{peso_u:.2f} kg"
+                col_tot.text_input("Peso Unitario", disabled=True, key=f"peso_u_feria_{i}_v{fv}")
+
+                factor = st.session_state.factores_co2.get(desc, 6.575)
+                co2_item = p_total * factor
+                co2_evitado_total += co2_item
+                peso_total_recibido += p_total
+                total_piezas_ingresadas += unid
+
+                lista_items_feria.append({
+                    "descripcion": desc, "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total, "co2_evitado": co2_item
+                })
+
+            st.info(f"⚖️ **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
+
+        st.write("")
+
+        # --- SECCIÓN 3: BALANCE DE MATERIAL (IGUAL QUE EL ORIGINAL) ---
+        with st.container(border=True):
+            st.markdown("##### 3. Balance de Material")
+            
+            pct_aprov_auto = st.session_state.pct_aprovechamiento_random
+            pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
+            pct_retazos_auto = pct_aprov_auto - pct_transf_auto
+
+            mat_transf_def = round(peso_total_recibido * pct_transf_auto, 2)
+            retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
+            perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
+
+            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=False, key=f"chk_edit_balance_feria_v{fv}")
+
+            col_bm1, col_bm2, col_bm3 = st.columns(3)
+            mat_transformado = col_bm1.number_input("Transformado en productos (kg)", min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance, key=f"bm_mat_transf_feria_v{fv}")
+            retazos_aprovechables = col_bm2.number_input("Retazos aprovechables (kg)", min_value=0.0, value=float(retazos_def), step=0.1, disabled=not editar_balance, key=f"bm_retazos_feria_v{fv}")
+            perdida_no_aprovechable = col_bm3.number_input("Pérdida (Merma final) (kg)", min_value=0.0, value=float(perdida_def), step=0.1, disabled=not editar_balance, key=f"bm_perdida_feria_v{fv}")
+
+            total_procesado = mat_transformado + retazos_aprovechables + perdida_no_aprovechable
+
+            if peso_total_recibido > 0:
+                pct_aprovechamiento_total = ((mat_transformado + retazos_aprovechables) / peso_total_recibido) * 100
+            else:
+                pct_aprovechamiento_total = 0.0
+
+        st.write("")
+        
+        # --- BOTÓN DE GUARDADO RÁPIDO ---
+        with st.container(border=True):
+            st.markdown("##### 🚀 Registrar Producción de Feria")
+            st.caption("Se guardará de forma automática en el Dashboard sin necesidad de generar PDF ni registrar horas sociales.")
+            
+            # Input opcional para saber cuántos productos fabricaron (necesario para el Dashboard)
+            total_productos_feria = st.number_input("Cantidad de artesanías/productos fabricados (Total)", min_value=1, value=1, help="Pon el total aproximado para tus métricas del dashboard.")
+            
+            if st.button("💾 Guardar Producción en Dashboard", type="primary", use_container_width=True):
+                if peso_total_recibido <= 0:
+                    st.error("⚠️ Debes ingresar al menos el peso del material utilizado.")
+                else:
+                    try:
+                        with st.spinner("Guardando en la base de datos..."):
+                            mes_fin_nombre = MESES_ESPANOL.get(datetime.date.today().month, "MES").upper()
+                            codigo_proy = f"FERIA_{mes_fin_nombre}{datetime.date.today().year}-{random.randint(1000, 9999)}"
+                            
+                            datos_completado = {
+                                "codigo": codigo_proy,
+                                "cliente": cliente_feria,
+                                "ruc": ruc_feria,
+                                "tipo_proyecto": tipo_feria,
+                                "responsable": responsable_feria,
+                                "fecha": f"{fe_inicio_dt.strftime('%d/%m/%Y')} - {fe_fin_dt.strftime('%d/%m/%Y')}",
+                                "estado": "COMPLETADO",
+                                "peso_recibido": peso_total_recibido,
+                                "peso_transformado": mat_transformado,
+                                "aprovechamiento": pct_aprovechamiento_total,
+                                "co2_neto": co2_evitado_total,
+                                "horas_totales": 0.0, # Sin métricas sociales
+                                "productos_unids": total_productos_feria,
+                                "punto_origen": "Taller Interno",
+                                "pdf_url": "",
+                                "constancia_url": "",
+                                "datos_completos": {
+                                    "unidades_recibidas": total_piezas_ingresadas,
+                                    "participantes": 0,
+                                    "items": lista_items_feria,
+                                    "balance": {
+                                        "mat_transformado": mat_transformado,
+                                        "retazos_aprovechables": retazos_aprovechables,
+                                        "perdida_no_aprovechable": perdida_no_aprovechable
+                                    }
+                                }
+                            }
+                            
+                            supabase.table("proyectos").insert(datos_completado).execute()
+                            
+                            st.session_state.num_items_feria = 1
+                            st.session_state.form_version += 1
+                            
+                        st.success(f"🎉 ¡Éxito! Tu producción de {peso_total_recibido:.2f} kg ha sido registrada oficialmente en el Dashboard.")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"❌ Error al procesar: {e}")
+
+    elif st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
         st.subheader("⚡ Carga Rápida de Proyectos Históricos")
         st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
 
@@ -1704,7 +1918,9 @@ else:
             st.info(f"🆔 **Código del Proyecto:** `{codigo_proy}`")
 
             c4, c7, c8, c9 = st.columns(4)
-            opciones_tipo_proyecto = ["Upcycling", "Residuos / Mermas", "Producción Interna (Ferias)", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
+            
+            # ELIMINADO: Producción Interna (Ferias) ya no sale en el reporte PDF corporativo
+            opciones_tipo_proyecto = ["Upcycling", "Residuos / Mermas", "Producción desde cero", "Cambio de logo", "Mixto", "Banner"]
             tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
             idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
 
@@ -1827,7 +2043,7 @@ else:
             todas_prendas = sorted(list(st.session_state.factores_co2.keys()))
             if proyecto_nom == "Residuos / Mermas":
                 opciones_prendas = [p for p in todas_prendas if "merma" in p.lower()]
-            elif proyecto_nom in ["Mixto", "Banner", "Producción Interna (Ferias)"]:
+            elif proyecto_nom in ["Mixto", "Banner"]:
                 opciones_prendas = todas_prendas
             else:
                 opciones_prendas = [p for p in todas_prendas if "merma" not in p.lower()]
