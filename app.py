@@ -1957,73 +1957,71 @@ else:
                 # -------------------------------------------------------------
                 # INYECCIÓN DE HTML Y CSS PURO (DISEÑO SICOIN)
                 # -------------------------------------------------------------
-                st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 16px; padding: 35px 30px; box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15); margin-top: 15px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-                    
-                    <div style="display: flex; align-items: center; gap: 25px;">
-                        <div style="position: relative; width: 110px; height: 110px; background: #0F172A; border-radius: 50%; border: 7px solid #10B981; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);">
-                            <div style="text-align: center;">
-                                <span style="color: white; font-size: 1.6rem; font-weight: 800; line-height: 1;">{co2_tot:,.0f}</span><br>
-                                <span style="color: #10B981; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px;">KG CO₂e</span>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 style="color: #94A3B8; margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Impacto Ambiental</h4>
-                            <h2 style="color: white; margin: 4px 0 0 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px;">Emisión Evitada</h2>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
-                        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
-                            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Material Procesado</p>
-                            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{kg_tot:,.1f} <span style="font-size: 1rem; color: #94A3B8; font-weight: 600;">kg</span></p>
-                        </div>
-                        
-                        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
-                            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Total Proyectos</p>
-                            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{num_proyectos}</p>
-                        </div>
-                        
-                        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
-                            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Clientes Únicos</p>
-                            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{num_clientes}</p>
-                        </div>
-                    </div>
-                    
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 35px;">
-                    
-                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #3B82F6;">
-                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.2rem;">📥</span> Unidades Recibidas
-                        </p>
-                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{int(unid_tot):,}</p>
-                    </div>
-                    
-                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #10B981;">
-                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.2rem;">🛍️</span> Productos Creados
-                        </p>
-                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{int(prods_tot):,}</p>
-                    </div>
-                    
-                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #F59E0B;">
-                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.2rem;">🧑‍🤝‍🧑</span> Horas de Trabajo
-                        </p>
-                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{hrs_tot:,.1f} <span style="font-size: 1rem; color: #64748B; font-weight: 600;">hrs</span></p>
-                    </div>
-                    
-                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #8B5CF6;">
-                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.2rem;">🌳</span> Árboles Equivalentes
-                        </p>
-                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{arboles_eq:,}</p>
-                    </div>
-                    
-                </div>
-                """, unsafe_allow_html=True)
+                html_code = f"""
+<div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 16px; padding: 35px 30px; box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15); margin-top: 15px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+    <div style="display: flex; align-items: center; gap: 25px;">
+        <div style="position: relative; width: 110px; height: 110px; background: #0F172A; border-radius: 50%; border: 7px solid #10B981; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);">
+            <div style="text-align: center;">
+                <span style="color: white; font-size: 1.6rem; font-weight: 800; line-height: 1;">{co2_tot:,.0f}</span><br>
+                <span style="color: #10B981; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px;">KG CO₂e</span>
+            </div>
+        </div>
+        <div>
+            <h4 style="color: #94A3B8; margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Impacto Ambiental</h4>
+            <h2 style="color: white; margin: 4px 0 0 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px;">Emisión Evitada</h2>
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Material Procesado</p>
+            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{kg_tot:,.1f} <span style="font-size: 1rem; color: #94A3B8; font-weight: 600;">kg</span></p>
+        </div>
+        
+        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Total Proyectos</p>
+            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{num_proyectos}</p>
+        </div>
+        
+        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Clientes Únicos</p>
+            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{num_clientes}</p>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 35px;">
+    
+    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #3B82F6;">
+        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">📥</span> Unidades Recibidas
+        </p>
+        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{int(unid_tot):,}</p>
+    </div>
+    
+    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #10B981;">
+        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">🛍️</span> Productos Creados
+        </p>
+        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{int(prods_tot):,}</p>
+    </div>
+    
+    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #F59E0B;">
+        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">🧑‍🤝‍🧑</span> Horas de Trabajo
+        </p>
+        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{hrs_tot:,.1f} <span style="font-size: 1rem; color: #64748B; font-weight: 600;">hrs</span></p>
+    </div>
+    
+    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #8B5CF6;">
+        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">🌳</span> Árboles Equivalentes
+        </p>
+        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{arboles_eq:,}</p>
+    </div>
+</div>
+"""
+                st.markdown(html_code, unsafe_allow_html=True)
 
                 c_tit1, c_tit2, c_tit3 = st.columns([1, 1, 1])
                 
