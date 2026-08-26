@@ -209,7 +209,7 @@ PERSONAL_FIJO_OPERACIONES = [
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="♻️", layout="wide")
 
-# --- ESTILOS CSS ---
+# --- ESTILOS CSS GLOBALES ---
 st.markdown(
     """
     <style>
@@ -225,6 +225,11 @@ st.markdown(
         --border: #E2E8F0;
         --surface: #F8FAFC;
         --radius: 14px;
+    }
+
+    /* Fondo general más claro estilo Dashboard moderno */
+    .stApp {
+        background-color: #F3F4F6;
     }
 
     [data-testid="stHeader"] {visibility: hidden; height: 0px;}
@@ -258,12 +263,32 @@ st.markdown(
     }
 
     div[data-testid="stSidebar"] {
-        background-color: var(--surface);
-        border-right: 1px solid var(--border);
+        background-color: #0F172A;
+        border-right: 1px solid #1E293B;
+    }
+    
+    /* Textos del sidebar en blanco/gris claro */
+    div[data-testid="stSidebar"] * {
+        color: #F8FAFC !important;
+    }
+    
+    /* Botones del Sidebar estilo neón */
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"] {
+        background: #10B981 !important;
+        color: #064E3B !important;
+        border: none;
+    }
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="secondary"] {
+        background: #1E293B !important;
+        color: #CBD5E1 !important;
+        border: 1px solid #334155;
+    }
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button:hover {
+        transform: scale(1.02);
     }
 
     .sidebar-section-title {
-        color: var(--ink-muted);
+        color: #94A3B8 !important;
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
@@ -274,12 +299,10 @@ st.markdown(
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: var(--radius) !important;
+        background-color: white !important;
         border: 1px solid var(--border) !important;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 4px 6px rgba(15, 23, 42, 0.05);
         transition: box-shadow 0.2s ease;
-    }
-    div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
     }
 
     div[data-testid="stButton"] button {
@@ -288,10 +311,6 @@ st.markdown(
         transition: transform 0.12s ease, box-shadow 0.12s ease;
         border: 1px solid var(--border);
     }
-    div[data-testid="stButton"] button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
-    }
     div[data-testid="stButton"] button[kind="primary"] {
         background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 100%);
         border: none;
@@ -299,17 +318,10 @@ st.markdown(
     }
 
     div[data-testid="stMetric"] {
-        background-color: var(--surface);
+        background-color: white;
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 14px 16px;
-    }
-    div[data-testid="stMetricLabel"] { color: var(--ink-muted); }
-
-    div[data-testid="stTextInput"] input,
-    div[data-testid="stNumberInput"] input,
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-        border-radius: 8px !important;
     }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1583,7 +1595,7 @@ else:
             retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
             perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
 
-            editar_balance = st.checkbox("✏️ Editar balance manually", value=False, key=f"chk_edit_balance_int_v{fv_int}")
+            editar_balance = st.checkbox("✏️ Editar balance manualmente", value=False, key=f"chk_edit_balance_int_v{fv_int}")
 
             col_bm1, col_bm2, col_bm3 = st.columns(3)
             mat_transformado = col_bm1.number_input("Transformado en productos (kg)", min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance, key=f"bm_mat_transf_int_v{fv_int}")
@@ -1879,9 +1891,7 @@ else:
             st.info("📭 No hay borradores en proceso actualmente.")
 
     elif st.session_state.pestaña_activa == "📊 Dashboard Analítico":
-        st.markdown("<h3 style='color: #1E293B; font-weight: 700; margin-bottom: 5px;'>Panel de Control y Analítica Avanzada</h3>", unsafe_allow_html=True)
-        st.markdown("<p style='color: #64748B; font-size: 0.95rem; margin-bottom: 25px;'>Filtra, analiza y visualiza el impacto histórico generado por los proyectos de sostenibilidad.</p>", unsafe_allow_html=True)
-
+        # ELIMINAMOS EL TÍTULO ABURRIDO POR DEFECTO Y DEJAMOS EL ESPACIO LIMPIO PARA EL DISEÑO CSS
         completados = cargar_proyectos("COMPLETADO")
         
         if not completados:
@@ -1916,7 +1926,8 @@ else:
 
             df = pd.DataFrame(tabla_data)
 
-            st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Filtros de Análisis</h5>", unsafe_allow_html=True)
+            # FILTROS ARRIBA DEL BANNER (Limpios y discretos)
+            st.markdown("<h5 style='color: #64748B; margin-bottom: 5px; font-size: 0.9rem; text-transform: uppercase;'>Filtros de Búsqueda</h5>", unsafe_allow_html=True)
             f0, f1, f2, f3 = st.columns(4)
 
             sel_anio = f0.selectbox("Año", ["Todos"] + sorted(list(df["Año"].unique()), reverse=True))
@@ -1930,134 +1941,152 @@ else:
             if sel_cli != "Todos": df_fil = df_fil[df_fil["Cliente"] == sel_cli]
             if sel_tipo != "Todos": df_fil = df_fil[df_fil["Tipo de Servicio"] == sel_tipo]
 
-            st.write("")
-            c_tit1, c_tit2 = st.columns([3, 1])
-            c_tit1.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Impacto Acumulado</h5>", unsafe_allow_html=True)
-            
-            if not df_fil.empty:
-                pdf_bytes = generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo)
-                
-                if sel_mes == "Todos" and sel_anio != "Todos":
-                    nombre_archivo = f"Memoria_Anual_Sostenibilidad_{sel_anio}.pdf"
-                elif sel_mes != "Todos" and sel_anio != "Todos":
-                    nombre_archivo = f"Reporte_Mensual_{sel_mes}_{sel_anio}.pdf"
-                else:
-                    nombre_archivo = "Reporte_Sostenibilidad_Personalizado.pdf"
-
-                c_tit2.download_button(
-                    label="📥 Descargar Reporte PDF",
-                    data=pdf_bytes,
-                    file_name=nombre_archivo,
-                    mime="application/pdf",
-                    use_container_width=True,
-                    type="primary"
-                )
-            
-            # NUEVAS MÉTRICAS DEL DASHBOARD
-            dm1, dm2, dm3, dm4 = st.columns(4)
-            dm1.metric("📦 Total Proyectos", f"{len(df_fil)}")
-            dm2.metric("🏢 Clientes Únicos", f"{df_fil['Cliente'].nunique()}")
-            dm3.metric("⚖️ Peso Procesado", f"{df_fil['Kg Procesados'].sum():.2f} kg")
-            dm4.metric("🌍 CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():.2f} kg")
-
-            st.write("")
-            dm5, dm6, dm7 = st.columns(3)
-            dm5.metric("📥 Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum())} unid")
-            dm6.metric("🛍️ Productos Creados", f"{int(df_fil['Productos Creados'].sum())} unid")
-            dm7.metric("🧑‍🤝‍🧑 Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():.2f} hrs")
-
-            st.write("---")
-
-            st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>🛍️ Análisis de Producción e Innovación</h5>", unsafe_allow_html=True)
-            
-            prod_list_dash = []
-            for _, row in df_fil.iterrows():
-                dc_row = row["DatosCompletos"]
-                if isinstance(dc_row, dict) and "productos" in dc_row:
-                    for pr in dc_row["productos"]:
-                        prod_list_dash.append({
-                            "Producto": pr.get("producto", "N/D"),
-                            "Cantidad": int(pr.get("cantidad", 0))
-                        })
-            
-            if prod_list_dash:
-                df_p = pd.DataFrame(prod_list_dash)
-                df_p_grp = df_p.groupby("Producto")["Cantidad"].sum().reset_index().sort_values(by="Cantidad", ascending=False)
-                
-                cp1, cp2 = st.columns([1, 2])
-                with cp1:
-                    with st.container(border=True):
-                        st.metric("Total Productos Diferentes", len(df_p_grp), help="Mide la diversificación e innovación de tu catálogo en el periodo seleccionado.")
-                    with st.container(border=True):
-                        st.metric("Producto Estrella 🌟", df_p_grp.iloc[0]["Producto"], f"{df_p_grp.iloc[0]['Cantidad']} unid.")
-                    if len(df_p_grp) > 1:
-                        with st.container(border=True):
-                            st.metric("Menos Fabricado 📉", df_p_grp.iloc[-1]["Producto"], f"{df_p_grp.iloc[-1]['Cantidad']} unid.")
-                
-                with cp2:
-                    fig_p = px.bar(df_p_grp.head(10), x="Cantidad", y="Producto", orientation='h', title="Top 10 Productos Más Fabricados", color_discrete_sequence=["#10B981"])
-                    fig_p.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=30, b=0))
-                    st.plotly_chart(fig_p, use_container_width=True)
+            if df_fil.empty:
+                st.warning("No hay datos para mostrar con esos filtros.")
             else:
-                st.info("No hay datos de productos detallados para los filtros seleccionados.")
+                # CÁLCULO DE MÉTRICAS PARA EL BANNER
+                num_proyectos = len(df_fil)
+                num_clientes = df_fil['Cliente'].nunique()
+                kg_tot = df_fil['Kg Procesados'].sum()
+                co2_tot = df_fil['CO₂ Evitado'].sum()
+                unid_tot = df_fil['Unidades Recibidas'].sum()
+                prods_tot = df_fil['Productos Creados'].sum()
+                hrs_tot = df_fil['Horas de Trabajo'].sum()
+                arboles_eq = max(1, int(co2_tot/22.0)) if co2_tot > 0 else 0
 
-            st.write("---")
-
-            cg1, cg2, cg3 = st.columns([2.5, 1.2, 1.2])
-            with cg1:
-                st.markdown("<span style='font-weight: 600; color: #475569;'>Evolución Mensual (CO₂e)</span>", unsafe_allow_html=True)
-                if not df_fil.empty:
-                    df_mes_graf = df_fil.groupby("Mes")["CO₂ Evitado"].sum().reset_index()
-                    df_mes_graf["Mes_cat"] = pd.Categorical(df_mes_graf["Mes"], categories=MESES_ORDEN, ordered=True)
-                    fig1 = px.bar(df_mes_graf.sort_values("Mes_cat"), x="Mes", y="CO₂ Evitado", text_auto='.0f', color_discrete_sequence=["#3B82F6"])
-                    fig1.update_traces(textfont_size=12, textangle=0, textposition="outside", cliponaxis=False)
-                    fig1.update_layout(margin=dict(l=0, r=0, t=20, b=0), yaxis_title="Kg CO₂e", xaxis_title="")
-                    st.plotly_chart(fig1, use_container_width=True)
-                else: st.caption("No hay datos.")
-
-            with cg2:
-                st.markdown("<span style='font-weight: 600; color: #475569;'>Distribución de Servicios</span>", unsafe_allow_html=True)
-                if not df_fil.empty:
-                    fig2 = px.pie(df_fil.groupby("Tipo de Servicio")["Kg Procesados"].sum().reset_index(), values="Kg Procesados", names="Tipo de Servicio", hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
-                    fig2.update_traces(textposition='inside', textinfo='percent')
-                    fig2.update_layout(margin=dict(l=0, r=0, t=20, b=0), showlegend=True, legend=dict(orientation="h", y=-0.2))
-                    st.plotly_chart(fig2, use_container_width=True)
-                else: st.caption("No hay datos.")
-
-            with cg3:
-                st.markdown("<span style='font-weight: 600; color: #475569;'>Top 5 Clientes (Impacto)</span>", unsafe_allow_html=True)
-                if not df_fil.empty:
-                    top5 = df_fil.groupby("Cliente")["CO₂ Evitado"].sum().reset_index().sort_values(by="CO₂ Evitado", ascending=False).head(5)
-                    top5.insert(0, "Top", [1, 2, 3, 4, 5][:len(top5)])
-                    st.dataframe(top5[["Top", "Cliente", "CO₂ Evitado"]], use_container_width=True, hide_index=True)
-
-            st.write("---")
-
-            st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Detalle de Proyectos (Filtrado)</h5>", unsafe_allow_html=True)
-            if not df_fil.empty:
-                max_k = float(df_fil["Kg Procesados"].max()) if not df_fil.empty else 100.0
-                max_c = float(df_fil["CO₂ Evitado"].max()) if not df_fil.empty else 100.0
+                # -------------------------------------------------------------
+                # INYECCIÓN DE HTML Y CSS PURO (DISEÑO SICOIN)
+                # -------------------------------------------------------------
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 16px; padding: 35px 30px; box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15); margin-top: 15px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                    
+                    <div style="display: flex; align-items: center; gap: 25px;">
+                        <div style="position: relative; width: 110px; height: 110px; background: #0F172A; border-radius: 50%; border: 7px solid #10B981; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);">
+                            <div style="text-align: center;">
+                                <span style="color: white; font-size: 1.6rem; font-weight: 800; line-height: 1;">{co2_tot:,.0f}</span><br>
+                                <span style="color: #10B981; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px;">KG CO₂e</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color: #94A3B8; margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Impacto Ambiental</h4>
+                            <h2 style="color: white; margin: 4px 0 0 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px;">Emisión Evitada</h2>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Material Procesado</p>
+                            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{kg_tot:,.1f} <span style="font-size: 1rem; color: #94A3B8; font-weight: 600;">kg</span></p>
+                        </div>
+                        
+                        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Total Proyectos</p>
+                            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{num_proyectos}</p>
+                        </div>
+                        
+                        <div style="text-align: left; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <p style="color: #94A3B8; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Clientes Únicos</p>
+                            <p style="color: white; margin: 6px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{num_clientes}</p>
+                        </div>
+                    </div>
+                    
+                </div>
                 
-                df_vista = df_fil.drop(columns=["DatosCompletos"])
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 35px;">
+                    
+                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #3B82F6;">
+                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.2rem;">📥</span> Unidades Recibidas
+                        </p>
+                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{int(unid_tot):,}</p>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #10B981;">
+                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.2rem;">🛍️</span> Productos Creados
+                        </p>
+                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{int(prods_tot):,}</p>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #F59E0B;">
+                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.2rem;">🧑‍🤝‍🧑</span> Horas de Trabajo
+                        </p>
+                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{hrs_tot:,.1f} <span style="font-size: 1rem; color: #64748B; font-weight: 600;">hrs</span></p>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0; border-left: 5px solid #8B5CF6;">
+                        <p style="color: #64748B; margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.2rem;">🌳</span> Árboles Equivalentes
+                        </p>
+                        <p style="color: #0F172A; margin: 12px 0 0 0; font-size: 1.8rem; font-weight: 800; line-height: 1;">{arboles_eq:,}</p>
+                    </div>
+                    
+                </div>
+                """, unsafe_allow_html=True)
+
+                c_tit1, c_tit2, c_tit3 = st.columns([1, 1, 1])
                 
-                st.dataframe(
-                    df_vista,
-                    use_container_width=True,
-                    hide_index=True,
-                    height=300,
-                    column_config={
-                        "Cliente": st.column_config.TextColumn("Cliente", width="medium"),
-                        "Año": st.column_config.TextColumn("Año", alignment="center"),
-                        "Mes": st.column_config.TextColumn("Mes", alignment="center"),
-                        "Kg Procesados": st.column_config.ProgressColumn("Kg Procesados", format="%.1f", min_value=0, max_value=max_k),
-                        "CO₂ Evitado": st.column_config.ProgressColumn("CO₂ Evitado", format="%.1f", min_value=0, max_value=max_c),
-                        "Unidades Recibidas": st.column_config.NumberColumn("Unidades Recibidas", format="%d", alignment="center"),
-                        "Horas de Trabajo": st.column_config.NumberColumn("Horas de Trabajo", format="%.1f", alignment="center"),
-                        "Productos Creados": st.column_config.NumberColumn("Productos Creados", format="%d", alignment="center"),
-                        "Participantes": st.column_config.NumberColumn("Participantes", format="%d", alignment="center"),
-                        "Tipo de Servicio": st.column_config.TextColumn("Tipo de Servicio", alignment="center"),
-                    }
-                )
+                pdf_bytes = generar_pdf_dashboard(df_fil, sel_anio, sel_mes, sel_cli, sel_tipo)
+                if sel_mes == "Todos" and sel_anio != "Todos": nombre_archivo = f"Memoria_Anual_{sel_anio}.pdf"
+                elif sel_mes != "Todos" and sel_anio != "Todos": nombre_archivo = f"Reporte_{sel_mes}_{sel_anio}.pdf"
+                else: nombre_archivo = "Dashboard_Sostenibilidad.pdf"
+
+                c_tit3.download_button("📥 Exportar PDF Oficial", data=pdf_bytes, file_name=nombre_archivo, mime="application/pdf", use_container_width=True, type="primary")
+
+                st.write("---")
+
+                # GRÁFICOS Y TABLAS (Dentro de contenedores blancos para mantener el diseño)
+                cg1, cg2 = st.columns([1.5, 1])
+                
+                with cg1:
+                    with st.container(border=True):
+                        st.markdown("<span style='font-weight: 700; color: #0F172A; font-size: 1.1rem;'>📈 Evolución Mensual de Impacto (CO₂e)</span>", unsafe_allow_html=True)
+                        st.write("")
+                        df_mes_graf = df_fil.groupby("Mes")["CO₂ Evitado"].sum().reset_index()
+                        df_mes_graf["Mes_cat"] = pd.Categorical(df_mes_graf["Mes"], categories=MESES_ORDEN, ordered=True)
+                        fig1 = px.bar(df_mes_graf.sort_values("Mes_cat"), x="Mes", y="CO₂ Evitado", text_auto='.0f', color_discrete_sequence=["#3B82F6"])
+                        fig1.update_traces(textfont_size=12, textangle=0, textposition="outside", cliponaxis=False)
+                        fig1.update_layout(margin=dict(l=0, r=0, t=10, b=0), yaxis_title="Kg CO₂e", xaxis_title="", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig1, use_container_width=True)
+                
+                with cg2:
+                    with st.container(border=True):
+                        st.markdown("<span style='font-weight: 700; color: #0F172A; font-size: 1.1rem;'>🏭 Distribución de Servicios</span>", unsafe_allow_html=True)
+                        st.write("")
+                        fig2 = px.pie(df_fil.groupby("Tipo de Servicio")["Kg Procesados"].sum().reset_index(), values="Kg Procesados", names="Tipo de Servicio", hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
+                        fig2.update_traces(textposition='inside', textinfo='percent')
+                        fig2.update_layout(margin=dict(l=0, r=0, t=10, b=0), showlegend=True, legend=dict(orientation="h", y=-0.2), paper_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig2, use_container_width=True)
+
+                st.write("")
+                ct1, ct2 = st.columns([1.2, 2])
+                
+                with ct1:
+                    with st.container(border=True):
+                        st.markdown("<span style='font-weight: 700; color: #0F172A; font-size: 1.1rem;'>🏆 Top 5 Clientes (Por Impacto)</span>", unsafe_allow_html=True)
+                        st.write("")
+                        top5 = df_fil.groupby("Cliente")["CO₂ Evitado"].sum().reset_index().sort_values(by="CO₂ Evitado", ascending=False).head(5)
+                        top5.insert(0, "Rank", ["#1", "#2", "#3", "#4", "#5"][:len(top5)])
+                        st.dataframe(top5[["Rank", "Cliente", "CO₂ Evitado"]], use_container_width=True, hide_index=True)
+
+                with ct2:
+                    with st.container(border=True):
+                        st.markdown("<span style='font-weight: 700; color: #0F172A; font-size: 1.1rem;'>📋 Desglose Detallado de Proyectos</span>", unsafe_allow_html=True)
+                        st.write("")
+                        max_k = float(df_fil["Kg Procesados"].max()) if not df_fil.empty else 100.0
+                        df_vista = df_fil.drop(columns=["DatosCompletos"])
+                        
+                        st.dataframe(
+                            df_vista[["Cliente", "Mes", "Kg Procesados", "CO₂ Evitado", "Productos Creados", "Tipo de Servicio"]],
+                            use_container_width=True,
+                            hide_index=True,
+                            height=250,
+                            column_config={
+                                "Kg Procesados": st.column_config.ProgressColumn("Kg Procesados", format="%.1f", min_value=0, max_value=max_k),
+                                "CO₂ Evitado": st.column_config.NumberColumn("CO₂ Evitado", format="%.1f kg"),
+                            }
+                        )
 
     elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
         st.subheader("🗂️ Historial Completo de Proyectos")
@@ -2308,7 +2337,6 @@ else:
                 with tab_mat_add:
                     st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
                     
-                    # EL BOTÓN MÁGICO PARA INGRESAR EL FACTOR MANUALMENTE
                     modo_manual = st.checkbox("✍️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
                     
                     col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
