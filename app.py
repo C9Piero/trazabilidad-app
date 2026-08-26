@@ -213,18 +213,18 @@ st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", pa
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
     :root {
-        --brand-900: #0F172A;
-        --brand-700: #1E3A8A;
-        --brand-500: #2563EB;
-        --brand-100: #DBEAFE;
-        --ink: #1E293B;
-        --ink-muted: #64748B;
-        --border: #E2E8F0;
-        --surface: #F8FAFC;
-        --radius: 14px;
+        --bg-main: #FAFAFA;
+        --text-main: #2D2D2D;
+        --accent: #D88C9A;
+        --accent-strong: #C2185B;
+        --accent-strong-hover: #A01249;
+        --bg-sidebar: #F5EBEE;
+        --bg-card: #FFFFFF;
+        --border-radius: 8px;
+        --border-soft: #E0E0E0;
     }
 
     [data-testid="stHeader"] {visibility: hidden; height: 0px;}
@@ -232,40 +232,48 @@ st.markdown(
     .stAppDeployButton {display: none !important;}
     [data-testid="stAppViewCreator"] {display: none !important;}
 
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    html, body, [class*="css"] { 
+        font-family: 'Poppins', sans-serif;
+        color: var(--text-main);
+    }
+    
+    .stApp { background-color: var(--bg-main); }
 
     div[data-testid="stNumberInput"] button { display: none !important; }
     div[data-testid="stNumberInput"] input { text-align: left; }
 
     .hero-header {
-        background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-700) 50%, var(--brand-500) 100%);
-        color: white;
+        background-color: var(--bg-card);
+        color: var(--text-main);
         padding: 24px 30px;
-        border-radius: var(--radius);
-        box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.3);
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         margin-bottom: 25px;
+        border-left: 6px solid var(--accent-strong);
     }
     .hero-header h1 {
-        color: #ffffff !important;
-        font-weight: 800;
+        color: var(--accent-strong) !important;
+        font-weight: 700;
         font-size: 1.8rem;
         margin: 0;
     }
     .hero-header p {
-        color: #93C5FD !important;
+        color: var(--text-main) !important;
         margin: 4px 0 0 0;
         font-size: 0.95rem;
+        opacity: 0.8;
     }
 
     div[data-testid="stSidebar"] {
-        background-color: var(--surface);
-        border-right: 1px solid var(--border);
+        background-color: var(--bg-sidebar) !important;
+        border-right: 1px solid var(--border-soft);
+        padding: 20px 10px;
     }
 
     .sidebar-section-title {
-        color: var(--ink-muted);
-        font-size: 0.75rem;
-        font-weight: 700;
+        color: var(--text-main);
+        font-size: 0.85rem;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-top: 15px;
@@ -273,48 +281,82 @@ st.markdown(
     }
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: var(--radius) !important;
-        border: 1px solid var(--border) !important;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-        transition: box-shadow 0.2s ease;
+        background-color: var(--bg-card) !important;
+        border-radius: var(--border-radius) !important;
+        border: 1px solid var(--border-soft) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        padding: 1.5rem !important;
     }
     div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        border-color: var(--accent) !important;
     }
 
     div[data-testid="stButton"] button {
-        border-radius: 10px;
-        font-weight: 600;
-        transition: transform 0.12s ease, box-shadow 0.12s ease;
-        border: 1px solid var(--border);
+        border-radius: var(--border-radius) !important;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border: 1px solid var(--border-soft);
+        color: var(--text-main);
+        background-color: var(--bg-card);
     }
     div[data-testid="stButton"] button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
+        border-color: var(--accent);
+        color: var(--accent-strong);
+        box-shadow: 0 2px 6px rgba(216, 140, 154, 0.2);
     }
     div[data-testid="stButton"] button[kind="primary"] {
-        background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 100%);
+        background-color: var(--accent-strong) !important;
         border: none;
-        color: white;
+        color: #FFFFFF !important;
+    }
+    div[data-testid="stButton"] button[kind="primary"]:hover {
+        background-color: var(--accent-strong-hover) !important;
+        box-shadow: 0 4px 12px rgba(194, 24, 91, 0.3);
+        transform: translateY(-1px);
+        color: #FFFFFF !important;
     }
 
     div[data-testid="stMetric"] {
-        background-color: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        border-radius: var(--border-radius);
         padding: 14px 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
     }
-    div[data-testid="stMetricLabel"] { color: var(--ink-muted); }
+    div[data-testid="stMetricLabel"] { 
+        color: var(--text-main); 
+        opacity: 0.7; 
+    }
+    div[data-testid="stMetricValue"] {
+        color: var(--accent-strong);
+    }
 
-    div[data-testid="stTextInput"] input,
-    div[data-testid="stNumberInput"] input,
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-        border-radius: 8px !important;
+    div[data-baseweb="input"], 
+    div[data-baseweb="select"] > div, 
+    div[data-baseweb="number-input"],
+    div[data-baseweb="textarea"] {
+        border-radius: var(--border-radius) !important;
+        border: 1px solid var(--border-soft) !important;
+        background-color: var(--bg-main) !important;
+        transition: all 0.2s ease;
     }
+    
+    div[data-baseweb="input"]:focus-within, 
+    div[data-baseweb="select"] > div:focus-within, 
+    div[data-baseweb="number-input"]:focus-within,
+    div[data-baseweb="textarea"]:focus-within {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 2px rgba(216, 140, 154, 0.2) !important;
+    }
+    
+    h1, h2, h3, h4, h5, h6 { color: var(--text-main) !important; }
+    h3, h4, h5 { color: var(--accent-strong) !important; }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: var(--border-radius); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-strong); }
     </style>
 """,
     unsafe_allow_html=True,
@@ -3198,7 +3240,7 @@ else:
                 else:
                     with st.spinner("Generando documentos, subiendo fotos y respaldando en la nube..."):
                         try:
-                            bytes_informe = generar_pdf_oficial(
+                            pdf_informe_buffer = generar_pdf_oficial(
                                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
                                 "Textiles en desuso", "Upcycling", "Kilogramos (kg)", guia_remision, origen, destino,
                                 lista_items, lista_trazabilidad, lista_productos, mat_transformado, retazos_aprovechables,
@@ -3207,6 +3249,7 @@ else:
                                 co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado,
                                 lista_anexos=lista_anexos,
                             )
+                            bytes_informe = pdf_informe_buffer.getvalue()
 
                             mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                             contexto_word = {
