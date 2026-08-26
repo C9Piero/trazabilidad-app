@@ -3198,7 +3198,7 @@ else:
                 else:
                     with st.spinner("Generando documentos, subiendo fotos y respaldando en la nube..."):
                         try:
-                              bytes_informe = generar_pdf_oficial(
+                            bytes_informe = generar_pdf_oficial(
                                 cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
                                 "Textiles en desuso", "Upcycling", "Kilogramos (kg)", guia_remision, origen, destino,
                                 lista_items, lista_trazabilidad, lista_productos, mat_transformado, retazos_aprovechables,
