@@ -221,7 +221,7 @@ PERSONAL_FIJO_OPERACIONES = [
 ]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="️", layout="wide")
+st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="", layout="wide")
 
 # --- ESTILOS CSS ---
 st.markdown(
@@ -512,13 +512,13 @@ st.markdown(
         white-space: normal !important;
         text-align: center !important;
     }
-    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button[kind="primary"] {
         background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
         border-color: #5B21B6 !important;
         color: white !important;
         box-shadow: none;
     }
-    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover {
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button[kind="primary"]:hover {
         background: linear-gradient(135deg, #6D28D9, #5B21B6) !important;
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
@@ -578,7 +578,7 @@ def modal_confirmar_eliminacion(proyecto):
         if eliminar_proyecto_bd(proyecto.get("id"), proyecto.get("codigo")):
             st.session_state.proyecto_editar = {}
             st.session_state.form_version += 1
-            st.toast("️ Proyecto eliminado con éxito.")
+            st.toast("Proyecto eliminado con éxito.")
             st.rerun()
     if col_cancel.button("Cancelar", use_container_width=True): st.rerun()
 
@@ -590,7 +590,7 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
         for p in proyectos_a_borrar: eliminar_proyecto_bd(p.get("id"), p.get("codigo"))
         st.session_state.proyecto_editar = {}
         st.session_state.form_version += 1
-        st.toast(f"️ {len(proyectos_a_borrar)} proyectos eliminados con éxito.")
+        st.toast(f"{len(proyectos_a_borrar)} proyectos eliminados con éxito.")
         for p in proyectos_a_borrar:
             k = f"bulk_del_{p.get('id', p.get('codigo'))}"
             if k in st.session_state: del st.session_state[k]
@@ -1422,7 +1422,7 @@ if not st.session_state.autenticado:
     st.markdown(
         """
         <div style="text-align: center; padding: 40px 10px;">
-            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">️ Pequeños Detalles</h1>
+            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">Pequeños Detalles</h1>
             <p style="color: #64748B; font-size: 1.1rem;">PEQUEÑOS DETALLES HANDMADE PERU S.A.C. — Gestión de Sostenibilidad</p>
         </div>
     """,
@@ -1629,12 +1629,12 @@ else:
             with st.container(border=True):
                 st.markdown("##### 2. Ingreso de Material")
                 
-                with st.expander("️ Administrar Catálogo de Materiales y Calcular CO₂e"):
-                    tab_mat_add, tab_mat_del = st.tabs(["Agregar / Calcular Material", "️ Eliminar Material"])
+                with st.expander("Administrar Catálogo de Materiales y Calcular CO₂e"):
+                    tab_mat_add, tab_mat_del = st.tabs(["Agregar / Calcular Material", "Eliminar Material"])
     
                     with tab_mat_add:
                         st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
-                        modo_manual = st.checkbox("️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_int_v{fv_int}")
+                        modo_manual = st.checkbox("Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_int_v{fv_int}")
                         
                         col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
                         nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_int_v{fv_int}")
@@ -1672,7 +1672,7 @@ else:
                                 try: supabase.table("catalogos").delete().eq("tipo", "material_co2").eq("nombre", mat_a_borrar).execute()
                                 except Exception: pass
                                 del st.session_state.factores_co2[mat_a_borrar]
-                                st.toast(f"️ Material eliminado de la nube: {mat_a_borrar}")
+                                st.toast(f"Material eliminado de la nube: {mat_a_borrar}")
                                 st.rerun()
     
                 if "num_items_int" not in st.session_state:
@@ -1717,7 +1717,7 @@ else:
                         "descripcion": desc, "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total, "co2_evitado": co2_item
                     })
     
-                st.info(f"️ **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
+                st.info(f"**Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
     
             st.write("")
     
@@ -1725,8 +1725,8 @@ else:
             with st.container(border=True):
                 st.markdown("##### 3. Salida de Productos")
                 
-                with st.expander("️ Administrar Catálogo de Productos (Conectado a la Nube)"):
-                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["Agregar Producto", "️ Modificar Nombre", "️ Eliminar de la Lista"])
+                with st.expander("Administrar Catálogo de Productos (Conectado a la Nube)"):
+                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["Agregar Producto", "Modificar Nombre", "Eliminar de la Lista"])
     
                     with tab_p_add:
                         col_pa1, col_pa2 = st.columns([3, 1])
@@ -1769,7 +1769,7 @@ else:
                                 except Exception: pass
                                 
                                 st.session_state.catalogo_productos.remove(prod_a_borrar)
-                                st.toast(f"️ Producto eliminado de la nube: {prod_a_borrar}")
+                                st.toast(f"Producto eliminado de la nube: {prod_a_borrar}")
                                 st.rerun()
     
                 if "num_prods_int" not in st.session_state:
@@ -1832,7 +1832,7 @@ else:
                 retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
                 perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
     
-                editar_balance = st.checkbox("️ Editar balance manually", value=False, key=f"chk_edit_balance_int_v{fv_int}")
+                editar_balance = st.checkbox("Editar balance manually", value=False, key=f"chk_edit_balance_int_v{fv_int}")
     
                 col_bm1, col_bm2, col_bm3 = st.columns(3)
                 mat_transformado = col_bm1.number_input("Transformado en productos (kg)", min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance, key=f"bm_mat_transf_int_v{fv_int}")
@@ -1944,7 +1944,7 @@ else:
             st.subheader("Carga Rápida de Proyectos Históricos")
             st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
     
-            tab_manual, tab_masiva = st.tabs(["️ Carga Manual Individual", "Carga Masiva Inteligente (CSV/Excel)"])
+            tab_manual, tab_masiva = st.tabs(["Carga Manual Individual", "Carga Masiva Inteligente (CSV/Excel)"])
     
             with tab_manual:
                 with st.container(border=True):
@@ -2114,7 +2114,7 @@ else:
                         bc2.caption(f"Fecha: {b.get('fecha', '')}")
     
                         if bc3.button(
-                            "️ Retomar Edición",
+                            "Retomar Edición",
                             key=f"retomar_{b.get('id', b.get('codigo'))}",
                             use_container_width=True,
                             type="primary",
@@ -2206,18 +2206,18 @@ else:
                 dm1, dm2, dm3, dm4 = st.columns(4)
                 dm1.metric("Total Proyectos", f"{len(df_fil):,}")
                 dm2.metric("Clientes Únicos", f"{df_fil['Cliente'].nunique():,}")
-                dm3.metric("️ Peso Procesado", f"{df_fil['Kg Procesados'].sum():,.2f} kg")
+                dm3.metric("Peso Procesado", f"{df_fil['Kg Procesados'].sum():,.2f} kg")
                 dm4.metric("CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():,.2f} kg")
     
                 st.write("")
                 dm5, dm6, dm7 = st.columns(3)
                 dm5.metric("Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum()):,} unid")
-                dm6.metric("️ Productos Creados", f"{int(df_fil['Productos Creados'].sum()):,} unid")
+                dm6.metric("Productos Creados", f"{int(df_fil['Productos Creados'].sum()):,} unid")
                 dm7.metric("‍‍Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():,.2f} hrs")
     
                 st.write("---")
     
-                st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>️ Análisis de Producción e Innovación</h5>", unsafe_allow_html=True)
+                st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>Análisis de Producción e Innovación</h5>", unsafe_allow_html=True)
                 
                 prod_list_dash = []
                 for _, row in df_fil.iterrows():
@@ -2334,12 +2334,12 @@ else:
                 col_top1, col_top2 = st.columns([4, 2])
                 
                 if st.session_state.rol == "admin":
-                    modo_edicion = col_top1.toggle("️ Habilitar selección múltiple para borrar")
+                    modo_edicion = col_top1.toggle("Habilitar selección múltiple para borrar")
                     
                     if modo_edicion:
                         proyectos_seleccionados = [p for p in proyectos_filtrados if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
                         if col_top2.button(
-                            f"️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
+                            f"Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
                             disabled=len(proyectos_seleccionados) == 0, 
                             type="secondary",
                             use_container_width=True
@@ -2397,7 +2397,7 @@ else:
     
                             if st.session_state.rol == "admin":
                                 if hc6.button(
-                                    "️",
+                                    "Eliminar",
                                     key=f"hist_del_{p.get('id', p.get('codigo'))}",
                                     use_container_width=True,
                                     help="Eliminar proyecto",
@@ -2449,7 +2449,7 @@ else:
     
             if p_edit:
                 st.warning(
-                    f"️ **Modo Edición Activo:** Modificando borrador de **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
+                    f"**Modo Edición Activo:** Modificando borrador de **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
                 )
                 col_desc, col_elim = st.columns([2, 2])
                 if col_desc.button("❌ Descartar selección y limpiar formulario", use_container_width=True):
@@ -2459,7 +2459,7 @@ else:
                     st.rerun()
     
                 if st.session_state.rol == "admin":
-                    if col_elim.button("️ Eliminar Proyecto Definitivamente", use_container_width=True):
+                    if col_elim.button("Eliminar Proyecto Definitivamente", use_container_width=True):
                         modal_confirmar_eliminacion(p_edit)
                 else:
                     col_elim.info("Solo los Administradores pueden borrar proyectos guardados.")
@@ -2550,13 +2550,13 @@ else:
             with st.container(border=True):
                 st.subheader("2. Ingreso de Material")
                 
-                with st.expander("️ Administrar Catálogo de Materiales y Calcular CO₂e"):
-                    tab_mat_add, tab_mat_del = st.tabs(["Agregar / Calcular Material", "️ Eliminar Material"])
+                with st.expander("Administrar Catálogo de Materiales y Calcular CO₂e"):
+                    tab_mat_add, tab_mat_del = st.tabs(["Agregar / Calcular Material", "Eliminar Material"])
     
                     with tab_mat_add:
                         st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
                         
-                        modo_manual = st.checkbox("️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
+                        modo_manual = st.checkbox("Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
                         
                         col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
                         nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_v{fv}")
@@ -2597,7 +2597,7 @@ else:
                                 except Exception: pass
                                 
                                 del st.session_state.factores_co2[mat_a_borrar]
-                                st.toast(f"️ Material eliminado de la nube: {mat_a_borrar}")
+                                st.toast(f"Material eliminado de la nube: {mat_a_borrar}")
                                 st.rerun()
     
                 if "num_items" not in st.session_state:
@@ -2671,7 +2671,7 @@ else:
                         "co2_evitado": co2_item,
                     })
     
-                st.info(f"️     **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
+                st.info(f"    **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
     
             st.write("")
     
@@ -2723,7 +2723,7 @@ else:
                         deshabilitar_peso = no_aplica
                     else:
                         no_aplica = False
-                        permitir_editar = col_edit_chk.checkbox("️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}_v{fv}")
+                        permitir_editar = col_edit_chk.checkbox("Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}_v{fv}")
                         deshabilitar_peso = not permitir_editar
     
                     if no_aplica:
@@ -2779,8 +2779,8 @@ else:
             with st.container(border=True):
                 st.subheader("4. Salida de Productos")
                 
-                with st.expander("️ Administrar Catálogo de Productos (Conectado a la Nube)"):
-                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["Agregar Producto", "️ Modificar Nombre", "️ Eliminar de la Lista"])
+                with st.expander("Administrar Catálogo de Productos (Conectado a la Nube)"):
+                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["Agregar Producto", "Modificar Nombre", "Eliminar de la Lista"])
     
                     with tab_p_add:
                         col_pa1, col_pa2 = st.columns([3, 1])
@@ -2823,7 +2823,7 @@ else:
                                 except Exception: pass
                                 
                                 st.session_state.catalogo_productos.remove(prod_a_borrar)
-                                st.toast(f"️ Producto eliminado de la nube: {prod_a_borrar}")
+                                st.toast(f"Producto eliminado de la nube: {prod_a_borrar}")
                                 st.rerun()
     
                 if "num_prods" not in st.session_state:
@@ -2891,7 +2891,7 @@ else:
             # --- SECCIÓN 5: BALANCE ---
             with st.container(border=True):
                 st.subheader("5. Balance de Material")
-                st.info(f"️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
+                st.info(f"    **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
     
                 pct_aprov_auto = st.session_state.pct_aprovechamiento_random
                 pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
@@ -2909,7 +2909,7 @@ else:
                     retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
                     perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
     
-                editar_balance = st.checkbox("️ Editar balance manualmente", value=editar_balance_prev, key=f"chk_edit_balance_v{fv}")
+                editar_balance = st.checkbox("Editar balance manualmente", value=editar_balance_prev, key=f"chk_edit_balance_v{fv}")
     
                 col_bm1, col_bm2 = st.columns(2)
                 mat_transformado = col_bm1.number_input(
@@ -2985,7 +2985,7 @@ else:
     
                 st.caption(f"Distancia considerada: **{distancia_km:.1f} km** ({recorrido_tipo}) | Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
     
-                st.markdown("##### ️  B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
+                st.markdown("##### B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
                 emisiones_lavado = peso_lavado_auto * 0.30
                 emisiones_corte = peso_corte_auto * 0.05
     
@@ -3096,8 +3096,8 @@ else:
                 st.write("---")
     
                 st.markdown("#### Confección y Acabado – Asignación de Personal")
-                with st.expander("️ Administrar Catálogo de Personal (Conectado a la Nube)"):
-                    tab_add, tab_edit, tab_del = st.tabs(["Agregar Personal", "️ Modificar Nombre", "️ Eliminar de la Lista"])
+                with st.expander("Administrar Catálogo de Personal (Conectado a la Nube)"):
+                    tab_add, tab_edit, tab_del = st.tabs(["Agregar Personal", "Modificar Nombre", "Eliminar de la Lista"])
     
                     with tab_add:
                         col_a1, col_a2 = st.columns([3, 1])
@@ -3137,7 +3137,7 @@ else:
                                 except Exception: pass
                                 
                                 st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
-                                st.toast(f"️ Eliminado de la nube: {pers_a_borrar}")
+                                st.toast(f"Eliminado de la nube: {pers_a_borrar}")
                                 st.rerun()
     
                 lista_confeccion = []
@@ -3670,7 +3670,7 @@ else:
                         total_co2_ong += co2_calculado
 
                 st.write("")
-                st.success(f"️ **Total Recuperado:** {total_kg_ong:.2f} Kg | **Total CO₂e Evitado:** {total_co2_ong:.2f} Kg")
+                st.success(f"**Total Recuperado:** {total_kg_ong:.2f} Kg | **Total CO₂e Evitado:** {total_co2_ong:.2f} Kg")
 
             st.write("")
 
@@ -3784,7 +3784,7 @@ else:
                 total_campanas = df_ong["evento"].nunique()
 
                 m1, m2, m3, m4 = st.columns(4)
-                m1.metric("️ Total Recuperado", f"{total_kg:,.2f} kg")
+                m1.metric("Total Recuperado", f"{total_kg:,.2f} kg")
                 m2.metric("CO₂e Evitado", f"{total_co2:,.2f} kg")
                 m3.metric("Empresas Aliadas", f"{total_empresas:,}")
                 m4.metric("Campañas/Eventos", f"{total_campanas:,}")
@@ -3823,7 +3823,7 @@ else:
                         st.plotly_chart(fig_bar, use_container_width=True)
 
         elif st.session_state.pestaña_activa_ong == "Historial ONG":
-            st.subheader("️ Historial de Registros - ONG Mujer Power")
+            st.subheader("Historial de Registros - ONG Mujer Power")
             st.caption("Consulta todos los registros de donaciones. Los administradores pueden eliminar registros incorrectos.")
             
             with st.spinner("Cargando historial..."):
@@ -3847,7 +3847,7 @@ else:
                         c2.markdown(f"**Campaña:** {reg.get('evento', '')}")
                         c2.caption(f"Fecha: {reg.get('fecha_recoleccion', '')}")
                         
-                        c3.markdown(f"️ **Total:** {reg.get('total_kg_recuperados', 0):.2f} kg")
+                        c3.markdown(f"**Total:** {reg.get('total_kg_recuperados', 0):.2f} kg")
                         c3.caption(f"CO₂e: {reg.get('total_co2_evitado', 0):.2f} kg")
                         
                         if reg.get("pdf_url"):
@@ -3856,10 +3856,10 @@ else:
                             c4.caption("Sin PDF")
                         
                         if st.session_state.rol == "admin":
-                            if c4.button("️ Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
+                            if c4.button("Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
                                 try:
                                     supabase.table("ong_registros").delete().eq("id", reg["id"]).execute()
-                                    st.toast(f"️ Registro {reg.get('codigo_registro')} eliminado.")
+                                    st.toast(f"Registro {reg.get('codigo_registro')} eliminado.")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Error al eliminar: {e}")
