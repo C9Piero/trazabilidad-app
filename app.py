@@ -558,7 +558,7 @@ def modal_confirmar_eliminacion(proyecto):
             st.session_state.form_version += 1
             st.toast("️ Proyecto eliminado con éxito.")
             st.rerun()
-    if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
+    if col_cancel.button("Cancelar", use_container_width=True): st.rerun()
 
 @st.dialog("⚠️ Confirmar Eliminación Masiva")
 def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
@@ -573,7 +573,7 @@ def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
             k = f"bulk_del_{p.get('id', p.get('codigo'))}"
             if k in st.session_state: del st.session_state[k]
         st.rerun()
-    if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
+    if col_cancel.button("Cancelar", use_container_width=True): st.rerun()
 
 class ReporteCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
@@ -1657,10 +1657,10 @@ else:
                     st.session_state.num_items_int = 1
     
                 col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-                if col_btn1.button("    Agregar Ítem", key=f"add_it_int_v{fv_int}"):
+                if col_btn1.button("Agregar Ítem", key=f"add_it_int_v{fv_int}"):
                     st.session_state.num_items_int += 1
                     st.rerun()
-                if col_btn2.button("    Quitar Ítem", key=f"del_it_int_v{fv_int}") and st.session_state.num_items_int > 1:
+                if col_btn2.button("Quitar Ítem", key=f"del_it_int_v{fv_int}") and st.session_state.num_items_int > 1:
                     st.session_state.num_items_int -= 1
                     st.rerun()
     
@@ -1754,10 +1754,10 @@ else:
                     st.session_state.num_prods_int = 1
     
                 col_btnp1, col_btnp2, _ = st.columns([1, 1, 4])
-                if col_btnp1.button("    Agregar Producto", key=f"add_p_int_v{fv_int}"):
+                if col_btnp1.button("Agregar Producto", key=f"add_p_int_v{fv_int}"):
                     st.session_state.num_prods_int += 1
                     st.rerun()
-                if col_btnp2.button("    Quitar Producto", key=f"del_p_int_v{fv_int}") and st.session_state.num_prods_int > 1:
+                if col_btnp2.button("Quitar Producto", key=f"del_p_int_v{fv_int}") and st.session_state.num_prods_int > 1:
                     st.session_state.num_prods_int -= 1
                     st.rerun()
     
@@ -2582,10 +2582,10 @@ else:
                     st.session_state.num_items = 2
     
                 col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-                if col_btn1.button("    Agregar Ítem"):
+                if col_btn1.button("Agregar Ítem"):
                     st.session_state.num_items += 1
                     st.rerun()
-                if col_btn2.button("    Quitar Ítem") and st.session_state.num_items > 1:
+                if col_btn2.button("Quitar Ítem") and st.session_state.num_items > 1:
                     st.session_state.num_items -= 1
                     st.rerun()
     
@@ -2808,10 +2808,10 @@ else:
                     st.session_state.num_prods = 2
     
                 col_btnp1, col_btnp2, _ = st.columns([1, 1, 4])
-                if col_btnp1.button("    Agregar Producto"):
+                if col_btnp1.button("Agregar Producto"):
                     st.session_state.num_prods += 1
                     st.rerun()
-                if col_btnp2.button("    Quitar Producto") and st.session_state.num_prods > 1:
+                if col_btnp2.button("Quitar Producto") and st.session_state.num_prods > 1:
                     st.session_state.num_prods -= 1
                     st.rerun()
     
@@ -3136,10 +3136,10 @@ else:
                         st.session_state[key_num_pers] = 1
     
                     col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
-                    if col_b1.button(" Persona", key=f"add_pers_{idx}"):
+                    if col_b1.button("Persona", key=f"add_pers_{idx}"):
                         st.session_state[key_num_pers] += 1
                         st.rerun()
-                    if col_b2.button(" Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
+                    if col_b2.button("Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
                         st.session_state[key_num_pers] -= 1
                         st.rerun()
     
@@ -3243,10 +3243,10 @@ else:
                 st.caption("Agrega fotografías adicionales de colaboradoras con sus productos, procesos en taller, etc.")
     
                 col_anx1, col_anx2, _ = st.columns([1, 1, 4])
-                if col_anx1.button("    Agregar Anexo"):
+                if col_anx1.button("Agregar Anexo"):
                     st.session_state.num_anexos += 1
                     st.rerun()
-                if col_anx2.button("    Quitar Anexo") and st.session_state.num_anexos > 0:
+                if col_anx2.button("Quitar Anexo") and st.session_state.num_anexos > 0:
                     st.session_state.num_anexos -= 1
                     st.rerun()
     
