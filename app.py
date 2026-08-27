@@ -3395,13 +3395,11 @@ else:
     # =========================================================================
     elif st.session_state.espacio == "circular":
         
-        # 1. DICCIONARIO DE FACTORES CO2
         FACTORES_CO2_ONG = {
             "PET": 1.5, "Cocalata": 2.0, "Papel Blanco": 0.9, "Cartón": 0.8,
             "Chapita": 1.2, "RAEE": 2.5, "Aluminio": 8.0, "Lata de Leche": 1.5
         }
 
-        # 2. CATÁLOGO DE EMPRESAS OPERADORAS (EO-RS) CON SUS REGISTROS OFICIALES
         CATALOGO_EORS = {
             "FERROCAS E.I.R.L.": "EO-RS-0380-19-150118",
             "GRENE SERVICIOS GENERALES S.A.C.": "EO-RS-00233-2021-MINAM/VMGA/DGRS",
@@ -3421,7 +3419,6 @@ else:
         if st.session_state.pestaña_activa_ong == "📝 Nuevo Registro":
             st.subheader("📝 Ficha de Ingreso de Residuos")
             
-            # --- SECCIÓN A: DATOS GENERALES ---
             with st.container(border=True):
                 st.markdown("##### 1. Datos del Donante / Campaña")
                 c1, c2 = st.columns(2)
@@ -3436,18 +3433,14 @@ else:
 
             st.write("")
 
-            # --- SECCIÓN B: EMPRESAS OPERADORAS (EO-RS) ---
             with st.container(border=True):
                 st.markdown("##### 2. Trazabilidad EO-RS")
-                st.caption("Selecciona las empresas encargadas del manejo de estos residuos.")
-                
                 c_trans, c_val = st.columns(2)
                 eors_transporte = c_trans.selectbox("EO-RS Transportista *", list(CATALOGO_EORS.keys()))
                 eors_valorizacion = c_val.selectbox("EO-RS Valorizadora / Acondicionadora *", list(CATALOGO_EORS.keys()))
 
             st.write("")
 
-            # --- SECCIÓN C: DETALLE DE MATERIALES ---
             with st.container(border=True):
                 st.markdown("##### 3. Detalle de Residuos Valorizables")
                 
@@ -3470,14 +3463,10 @@ else:
                     kg_val = c_cant.number_input(f"Peso {material}", min_value=0.0, step=0.5, key=f"ong_kg_{i}", label_visibility="collapsed")
                     
                     co2_calculado = kg_val * factor_usado
-                    st.session_state[f"ong_co2_calc_{i}"] = f"{co2_calculado:.2f} kg"
-                    c_co2.text_input(f"CO2 {material}", disabled=True, key=f"ong_co2_calc_{i}", label_visibility="collapsed")
+                    c_co2.text_input(f"CO2 {material}", value=f"{co2_calculado:.2f} kg", disabled=True, key=f"ong_co2_calc_{i}", label_visibility="collapsed")
                     
                     if kg_val > 0:
-                        lista_materiales_ong.append({
-                            "material": material, "cantidad_kg": kg_val,
-                            "factor_co2_aplicado": factor_usado, "co2_evitado": co2_calculado
-                        })
+                        lista_materiales_ong.append({"material": material, "cantidad_kg": kg_val, "factor_co2_aplicado": factor_usado, "co2_evitado": co2_calculado})
                         total_kg_ong += kg_val
                         total_co2_ong += co2_calculado
 
@@ -3486,42 +3475,18 @@ else:
 
             st.write("")
 
-            # --- SECCIÓN D: GUARDAR Y GENERAR CONSTANCIA ---
             with st.container(border=True):
                 st.markdown("##### 🚀 Registrar y Generar Documentos")
                 
-                col_btn_guardar, col_btn_doc = st.columns([1, 1])
-                
-                # --- BOTÓN 1: GUARDAR EN SUPABASE ---
-                if col_btn_guardar.button("💾 Guardar Registro en Base de Datos", use_container_width=True):
-                    if not empresa_ong.strip() or not evento_ong.strip():
-                        st.error("⚠️ La 'Empresa' y el 'Evento/Campaña' son obligatorios.")
+                if st.button("💾 Registrar, Subir a Drive y Generar Constancia PDF", type="primary", use_container_width=True):
+                    if not empresa_ong.strip() or not direccion_ong.strip() or not evento_ong.strip():
+                        st.error("⚠️ Falta el Nombre de la Empresa, Dirección o Evento.")
                     elif total_kg_ong <= 0:
                         st.error("⚠️ Ingresa al menos un material con un peso mayor a 0 kg.")
                     else:
-                        with st.spinner("Registrando datos en la nube..."):
-                            codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{random.randint(100,999)}"
-                            datos_ong = {
-                                "codigo_registro": codigo_ong, "empresa": empresa_ong.strip(), "ruc": ruc_ong.strip(),
-                                "fecha_recoleccion": fecha_ong.strftime("%d/%m/%Y"), "evento": evento_ong.strip(),
-                                "total_kg_recuperados": total_kg_ong, "total_co2_evitado": total_co2_ong,      
-                                "detalle_material": lista_materiales_ong 
-                            }
+                        with st.spinner("Registrando en la nube, procesando PDF y subiendo a Drive..."):
                             try:
-                                supabase.table("ong_registros").insert(datos_ong).execute()
-                                st.success(f"🎉 ¡Registro `{codigo_ong}` guardado exitosamente!")
-                                st.balloons()
-                            except Exception as e:
-                                st.error(f"Error al guardar en Supabase: {e}")
-
-                # --- BOTÓN 2: GENERAR CONSTANCIA WORD ---
-                if col_btn_doc.button("📄 Generar Constancia (Word)", type="primary", use_container_width=True):
-                    if not empresa_ong.strip() or not direccion_ong.strip():
-                        st.error("⚠️ Falta el Nombre de la Empresa o su Dirección Fiscal para generar el documento.")
-                    else:
-                        with st.spinner("Generando Constancia de Responsabilidad Social..."):
-                            try:
-                                # 1. Lógica del texto de operadoras
+                                # 1. Preparar el contexto para el documento
                                 reg_transporte = CATALOGO_EORS[eors_transporte]
                                 reg_valorizacion = CATALOGO_EORS[eors_valorizacion]
                                 
@@ -3530,68 +3495,80 @@ else:
                                 else:
                                     texto_op = f"los cuales fueron recolectados y transportados por la empresa operadora de transporte de residuos sólidos {eors_transporte}, con Registro Autoritativo N° {reg_transporte}, y posteriormente entregados a la empresa operadora de valorización {eors_valorizacion}, con Registro Autoritativo N° {reg_valorizacion}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
 
-                                # 2. Mapeo de pesos para la tabla de Word
                                 dict_pesos = { "PET": 0, "Cocalata": 0, "Papel Blanco": 0, "Cartón": 0, "Chapita": 0, "RAEE": 0, "Aluminio": 0, "Lata de Leche": 0 }
-                                for mat in lista_materiales_ong:
-                                    if mat["material"] in dict_pesos:
-                                        dict_pesos[mat["material"]] = mat["cantidad_kg"]
+                                for mat in lista_materiales_ong: dict_pesos[mat["material"]] = mat["cantidad_kg"]
 
                                 meses_str = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
                                 mes_actual = meses_str[fecha_ong.month - 1]
 
-                                # 3. Diccionario de Contexto para Docxtpl
                                 contexto = {
-                                    "anio": str(fecha_ong.year),
-                                    "correlativo": f"{random.randint(100, 999)}",
-                                    "partida": "14886638", # Aquí puedes poner la partida real de la ONG
-                                    "ciudad_sede": "Lima",
-                                    "resolucion_donaciones": "", # O pon el texto si ya tienen resolución
-                                    "empresa_donante": empresa_ong.strip(),
-                                    "ruc_donante": ruc_ong.strip() if ruc_ong.strip() else "S/N",
-                                    "direccion_donante": direccion_ong.strip(),
-                                    "mes": mes_actual,
-                                    "texto_operadoras": texto_op,
-                                    "kg_pet": f"{dict_pesos['PET']:.2f}",
-                                    "kg_cocalata": f"{dict_pesos['Cocalata']:.2f}",
-                                    "kg_papel": f"{dict_pesos['Papel Blanco']:.2f}",
-                                    "kg_carton": f"{dict_pesos['Cartón']:.2f}",
-                                    "kg_chapita": f"{dict_pesos['Chapita']:.2f}",
-                                    "kg_raee": f"{dict_pesos['RAEE']:.2f}",
-                                    "kg_aluminio": f"{dict_pesos['Aluminio']:.2f}",
-                                    "kg_lata": f"{dict_pesos['Lata de Leche']:.2f}",
-                                    "total_kg": f"{total_kg_ong:.2f}",
-                                    "ciudad_emision": "Lima",
-                                    "dia": str(datetime.date.today().day)
+                                    "anio": str(fecha_ong.year), "correlativo": f"{random.randint(100, 999)}",
+                                    "partida": "14886638", "ciudad_sede": "Lima", "resolucion_donaciones": "", 
+                                    "empresa_donante": empresa_ong.strip(), "ruc_donante": ruc_ong.strip() if ruc_ong.strip() else "S/N",
+                                    "direccion_donante": direccion_ong.strip(), "mes": mes_actual, "texto_operadoras": texto_op,
+                                    "kg_pet": f"{dict_pesos['PET']:.2f}", "kg_cocalata": f"{dict_pesos['Cocalata']:.2f}",
+                                    "kg_papel": f"{dict_pesos['Papel Blanco']:.2f}", "kg_carton": f"{dict_pesos['Cartón']:.2f}",
+                                    "kg_chapita": f"{dict_pesos['Chapita']:.2f}", "kg_raee": f"{dict_pesos['RAEE']:.2f}",
+                                    "kg_aluminio": f"{dict_pesos['Aluminio']:.2f}", "kg_lata": f"{dict_pesos['Lata de Leche']:.2f}",
+                                    "total_kg": f"{total_kg_ong:.2f}", "ciudad_emision": "Lima", "dia": str(datetime.date.today().day)
                                 }
 
-                                # 4. Renderizar el Word
-                                doc = DocxTemplate("Plantilla_Constancia_Mujer_Power.docx")
-                                doc.render(contexto)
-                                buffer_word = io.BytesIO()
-                                doc.save(buffer_word)
-                                buffer_word.seek(0)
+                                # 2. Convertir la plantilla Word a PDF inalterable
+                                pdf_bytes = generar_constancia_desde_plantilla_word(contexto, "Plantilla_Constancia_Mujer_Power.docx")
+                                
+                                codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{random.randint(100,999)}"
+                                nombre_pdf = f"Constancia_{codigo_ong}.pdf"
 
-                                st.success("✅ ¡Constancia generada exitosamente!")
-                                st.download_button(
-                                    label="📥 Descargar Constancia (.docx)",
-                                    data=buffer_word.getvalue(),
-                                    file_name=f"Constancia_{empresa_ong.replace(' ', '_')}_{fecha_ong.strftime('%m%y')}.docx",
-                                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    type="primary",
-                                    use_container_width=True
-                                )
+                                # 3. Subir el PDF a Supabase Storage (para tener el link en el historial)
+                                url_pdf = subir_pdf_supabase(nombre_pdf, pdf_bytes)
+
+                                # 4. Subir a Google Drive
+                                try:
+                                    carpeta_ong_drive = obtener_carpeta_destino_drive(empresa_ong.strip(), fecha_ong, f"ONG_Campaña_{fecha_ong.strftime('%d-%m-%Y')}")
+                                    subir_a_drive(nombre_pdf, pdf_bytes, "application/pdf", custom_folder_id=carpeta_ong_drive)
+                                except Exception as e_drive:
+                                    st.caption(f"Aviso: El PDF se generó pero no se pudo subir a Drive: {e_drive}")
+
+                                # 5. Guardar todo en la base de datos
+                                datos_ong = {
+                                    "codigo_registro": codigo_ong, "empresa": empresa_ong.strip(), "ruc": ruc_ong.strip(),
+                                    "fecha_recoleccion": fecha_ong.strftime("%d/%m/%Y"), "evento": evento_ong.strip(),
+                                    "total_kg_recuperados": total_kg_ong, "total_co2_evitado": total_co2_ong,      
+                                    "detalle_material": lista_materiales_ong,
+                                    "pdf_url": url_pdf # Guardamos el enlace del PDF
+                                }
+                                supabase.table("ong_registros").insert(datos_ong).execute()
+                                
+                                # 6. Mantener el PDF listo para descarga en pantalla
+                                st.session_state.doc_ong_descarga = {"nombre": nombre_pdf, "bytes": pdf_bytes}
+                                st.rerun()
 
                             except FileNotFoundError:
-                                st.error("❌ No se encontró el archivo 'Plantilla_Constancia_Mujer_Power.docx'. Asegúrate de que esté en la misma carpeta que el código.")
+                                st.error("❌ No se encontró 'Plantilla_Constancia_Mujer_Power.docx'.")
                             except Exception as e:
-                                st.error(f"❌ Ocurrió un error al generar el documento: {e}")
+                                st.error(f"❌ Ocurrió un error general: {e}")
+
+            # Mostrar botón de descarga si el PDF se acaba de generar
+            if "doc_ong_descarga" in st.session_state and st.session_state.doc_ong_descarga:
+                st.success("✅ ¡Registro exitoso! La constancia PDF ha sido generada y respaldada en la nube.")
+                st.balloons()
+                st.download_button(
+                    label="📥 Descargar Constancia (.pdf)",
+                    data=st.session_state.doc_ong_descarga["bytes"],
+                    file_name=st.session_state.doc_ong_descarga["nombre"],
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
+                if st.button("Limpiar y hacer nuevo registro"):
+                    st.session_state.doc_ong_descarga = None
+                    st.rerun()
 
         elif st.session_state.pestaña_activa_ong == "📊 Dashboard ONG":
             st.subheader("📊 Dashboard de Impacto Circular - ONG Mujer Power")
             
             with st.spinner("Cargando métricas desde la nube..."):
                 try:
-                    # Traemos los datos de tu tabla en Supabase
                     res_ong = supabase.table("ong_registros").select("*").execute()
                     datos_ong = res_ong.data
                 except Exception as e:
@@ -3599,11 +3576,9 @@ else:
                     datos_ong = []
 
             if not datos_ong:
-                st.info("📭 Aún no hay registros en la base de datos. ¡Registra la primera donación para ver las métricas!")
+                st.info("📭 Aún no hay registros en la base de datos.")
             else:
                 df_ong = pd.DataFrame(datos_ong)
-                
-                # --- KPIs PRINCIPALES ---
                 total_kg = df_ong["total_kg_recuperados"].sum()
                 total_co2 = df_ong["total_co2_evitado"].sum()
                 total_empresas = df_ong["empresa"].nunique()
@@ -3614,10 +3589,8 @@ else:
                 m2.metric("🌍 CO₂e Evitado", f"{total_co2:.2f} kg")
                 m3.metric("🏢 Empresas Aliadas", f"{total_empresas}")
                 m4.metric("📢 Campañas/Eventos", f"{total_campanas}")
-
                 st.write("---")
 
-                # --- PROCESAMIENTO DE MATERIALES (Extraer del JSON) ---
                 lista_materiales = []
                 for _, row in df_ong.iterrows():
                     detalles = row.get("detalle_material", [])
@@ -3628,45 +3601,71 @@ else:
                                 "Peso (Kg)": float(item.get("cantidad_kg", 0)),
                                 "CO2 Evitado": float(item.get("co2_evitado", 0))
                             })
-
                 df_mat = pd.DataFrame(lista_materiales)
 
-                # --- GRÁFICOS ---
                 c_graf1, c_graf2 = st.columns(2)
-
                 with c_graf1:
                     with st.container(border=True):
                         st.markdown("<h6 style='text-align: center; color: #475569;'>Distribución por Tipo de Material (Kg)</h6>", unsafe_allow_html=True)
                         if not df_mat.empty:
                             df_mat_grp = df_mat.groupby("Material")["Peso (Kg)"].sum().reset_index()
-                            # Gráfico de dona usando Plotly
                             fig_pie = px.pie(df_mat_grp, values="Peso (Kg)", names="Material", hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
                             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
                             fig_pie.update_layout(margin=dict(l=0, r=0, t=10, b=10), showlegend=False)
                             st.plotly_chart(fig_pie, use_container_width=True)
                         else:
-                            st.caption("No hay detalle de materiales para mostrar.")
+                            st.caption("No hay detalle de materiales.")
 
                 with c_graf2:
                     with st.container(border=True):
                         st.markdown("<h6 style='text-align: center; color: #475569;'>Top 5 Empresas Aliadas (Kg Recuperados)</h6>", unsafe_allow_html=True)
-                        # Agrupamos por empresa y ordenamos
                         df_emp = df_ong.groupby("empresa")["total_kg_recuperados"].sum().reset_index().sort_values(by="total_kg_recuperados", ascending=False).head(5)
-                        # Gráfico de barras horizontales
                         fig_bar = px.bar(df_emp, x="total_kg_recuperados", y="empresa", orientation='h', color_discrete_sequence=["#7C3AED"])
                         fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=10, b=10), xaxis_title="Kg Recuperados", yaxis_title="")
                         st.plotly_chart(fig_bar, use_container_width=True)
 
-                st.write("---")
-                
-                # --- TABLA DE REGISTROS RECIENTES ---
-                st.markdown("##### 🗂️ Últimos Registros")
-                # Preparamos una vista limpia para la tabla
-                df_vista = df_ong[["fecha_recoleccion", "empresa", "evento", "total_kg_recuperados", "total_co2_evitado"]].copy()
-                df_vista = df_vista.rename(columns={
-                    "fecha_recoleccion": "Fecha", "empresa": "Empresa / Donante", "evento": "Campaña / Evento",
-                    "total_kg_recuperados": "Total Kg", "total_co2_evitado": "CO₂e Evitado"
-                })
-                
-                # Mostrar la tabla invirtiendo el orden (para ver el último registro arriba)
-                st.dataframe(df_vista.iloc[::-1], use_container_width=True, hide_index=True)
+        elif st.session_state.pestaña_activa_ong == "🗂️ Historial ONG":
+            st.subheader("🗂️ Historial de Registros - ONG Mujer Power")
+            st.caption("Consulta todos los registros de donaciones. Los administradores pueden eliminar registros incorrectos.")
+            
+            with st.spinner("Cargando historial..."):
+                try:
+                    res_hist = supabase.table("ong_registros").select("*").order("id", desc=True).execute()
+                    historial_ong = res_hist.data
+                except Exception as e:
+                    st.error(f"Error al cargar historial: {e}")
+                    historial_ong = []
+
+            if not historial_ong:
+                st.info("📭 No hay registros en el historial.")
+            else:
+                for reg in historial_ong:
+                    with st.container(border=True):
+                        c1, c2, c3, c4 = st.columns([3, 2, 2, 1.5])
+                        
+                        c1.markdown(f"**🏢 {reg.get('empresa', 'Sin Nombre')}**")
+                        c1.caption(f"Código: `{reg.get('codigo_registro', '')}`")
+                        
+                        c2.markdown(f"📅 **Campaña:** {reg.get('evento', '')}")
+                        c2.caption(f"Fecha: {reg.get('fecha_recoleccion', '')}")
+                        
+                        c3.markdown(f"⚖️ **Total:** {reg.get('total_kg_recuperados', 0):.2f} kg")
+                        c3.caption(f"🌍 CO₂e: {reg.get('total_co2_evitado', 0):.2f} kg")
+                        
+                        # Botón para ver el PDF si existe
+                        if reg.get("pdf_url"):
+                            c4.link_button("📄 Ver Constancia", reg.get("pdf_url"), use_container_width=True)
+                        else:
+                            c4.caption("📄 Sin PDF")
+                        
+                        # Botón de eliminación solo para Admins
+                        if st.session_state.rol == "admin":
+                            if c4.button("🗑️ Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
+                                try:
+                                    supabase.table("ong_registros").delete().eq("id", reg["id"]).execute()
+                                    st.toast(f"🗑️ Registro {reg.get('codigo_registro')} eliminado.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error al eliminar: {e}")
+
+        st.stop()
