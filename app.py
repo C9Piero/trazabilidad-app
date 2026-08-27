@@ -485,10 +485,32 @@ st.markdown(
         border-radius: 12px;
         border: 1px solid var(--border-soft);
         gap: 4px !important;
+        align-items: stretch !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div {
+        display: flex !important;
     }
     [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
         border: none !important;
         border-radius: 9px !important;
+        min-height: 52px !important;
+        height: 100% !important;
+        width: 100% !important;
+        font-size: 0.82rem !important;
+        line-height: 1.15 !important;
+        white-space: normal !important;
+        word-wrap: break-word;
+        padding: 6px 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button p {
+        font-size: 0.82rem !important;
+        line-height: 1.15 !important;
+        white-space: normal !important;
+        text-align: center !important;
     }
     [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
         background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
@@ -1435,10 +1457,10 @@ else:
         st.markdown("### Entorno de Trabajo")
         
         col_w1, col_w2 = st.columns(2)
-        if col_w1.button("Pequeños Det.", use_container_width=True, type="primary" if st.session_state.espacio == "textil" else "secondary"):
+        if col_w1.button("Pequeños Detalles", use_container_width=True, type="primary" if st.session_state.espacio == "textil" else "secondary"):
             st.session_state.espacio = "textil"
             st.rerun()
-        if col_w2.button("ONG Power", use_container_width=True, type="secondary" if st.session_state.espacio == "textil" else "primary"): 
+        if col_w2.button("ONG Mujer Power", use_container_width=True, type="secondary" if st.session_state.espacio == "textil" else "primary"): 
             st.session_state.espacio = "circular"
             st.rerun()
             
