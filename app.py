@@ -3499,8 +3499,8 @@ else:
                             codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{random.randint(100,999)}"
                             datos_ong = {
                                 "codigo_registro": codigo_ong, "empresa": empresa_ong.strip(), "ruc": ruc_ong.strip(),
-                                "fecha_recolecci": fecha_ong.strftime("%d/%m/%Y"), "evento": evento_ong.strip(),
-                                "total_kg_recupe": total_kg_ong, "total_co2_evitado": total_co2_ong,      
+                                "fecha_recoleccion": fecha_ong.strftime("%d/%m/%Y"), "evento": evento_ong.strip(),
+                                "total_kg_recuperados": total_kg_ong, "total_co2_evitado": total_co2_ong,      
                                 "detalle_material": lista_materiales_ong 
                             }
                             try:
