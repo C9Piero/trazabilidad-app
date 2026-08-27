@@ -3430,56 +3430,49 @@ else:
 
             st.write("")
 
-           # --- SECCIÓN B: DETALLE DE MATERIALES Y CÁLCULO DE CO2 ---
+           # --- SECCIÓN B: DETALLE DE MATERIALES (ESTÁTICO Y DIRECTO) ---
             with st.container(border=True):
                 st.markdown("##### 2. Detalle de Residuos Valorizables")
-                st.caption("Aquí tienes las 8 categorías fijas. Ingresa el peso en las que correspondan; las que queden en 0.00 kg se ignorarán automáticamente.")
-                
-                # FORZAMOS que por defecto siempre sean exactamente 8 filas al cargar
-                if "num_items_ong" not in st.session_state or st.session_state.num_items_ong < 8:
-                    st.session_state.num_items_ong = 8
-
-                col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-                if col_btn1.button("➕ Agregar Fila Extra"):
-                    st.session_state.num_items_ong += 1
-                    st.rerun()
-                if col_btn2.button("➖ Quitar Fila") and st.session_state.num_items_ong > 1:
-                    st.session_state.num_items_ong -= 1
-                    st.rerun()
+                st.caption("Ingresa el peso correspondiente a cada categoría. Los materiales que queden en 0.00 kg se ignorarán automáticamente.")
 
                 lista_materiales_ong = []
                 total_kg_ong = 0.0
                 total_co2_ong = 0.0
 
-                opciones_residuos = list(FACTORES_CO2_ONG.keys())
+                # Las 8 categorías fijas basadas exactamente en su estructura de Excel
+                categorias_fijas = [
+                    "PET", "Cocalata", "Papel Blanco", "Cartón", 
+                    "Chapita", "RAEE", "Aluminio", "Lata de Leche"
+                ]
 
-                for i in range(st.session_state.num_items_ong):
+                # Cabeceras visuales para darle aspecto de tabla ordenada
+                h_mat, h_peso, h_co2 = st.columns([2, 1, 1])
+                h_mat.markdown("<span style='font-size: 0.85rem; font-weight: 700; color: #64748B;'>MATERIAL</span>", unsafe_allow_html=True)
+                h_peso.markdown("<span style='font-size: 0.85rem; font-weight: 700; color: #64748B;'>PESO (KG)</span>", unsafe_allow_html=True)
+                h_co2.markdown("<span style='font-size: 0.85rem; font-weight: 700; color: #64748B;'>CO₂E EVITADO</span>", unsafe_allow_html=True)
+                st.write("---")
+
+                for i, material in enumerate(categorias_fijas):
                     c_mat, c_cant, c_co2 = st.columns([2, 1, 1])
                     
-                    # Garantiza que las primeras 8 filas agarren exactamente las 8 categorías base sin repetirse
-                    indice_por_defecto = i if i < 8 else 8
+                    # Mostramos el nombre del material fijo y limpio
+                    c_mat.markdown(f"**{material}**")
                     
-                    mostrar_labels = "visible" if i == 0 else "collapsed"
+                    # Obtenemos su factor respectivo del diccionario
+                    factor_usado = FACTORES_CO2_ONG.get(material, 1.0)
                     
-                    mat_sel = c_mat.selectbox(f"Tipo de Material {i}", opciones_residuos, index=indice_por_defecto, key=f"ong_mat_{i}", label_visibility=mostrar_labels)
+                    # Input de peso
+                    kg_val = c_cant.number_input(f"Peso {material}", min_value=0.0, step=0.5, key=f"ong_kg_{i}", label_visibility="collapsed")
                     
-                    if mat_sel == "➕ Otro (Especificar)":
-                        mat_final = c_mat.text_input(f"Especificar Material {i}", key=f"ong_mat_otro_{i}", placeholder="Escribe el material...", label_visibility="collapsed")
-                        factor_usado = FACTORES_CO2_ONG["➕ Otro (Especificar)"]
-                    else:
-                        mat_final = mat_sel
-                        factor_usado = FACTORES_CO2_ONG[mat_sel]
-                        
-                    kg_val = c_cant.number_input(f"Peso (Kg) {i}", min_value=0.0, step=0.5, key=f"ong_kg_{i}", label_visibility=mostrar_labels)
-                    
+                    # Cálculo en tiempo real
                     co2_calculado = kg_val * factor_usado
                     
                     st.session_state[f"ong_co2_calc_{i}"] = f"{co2_calculado:.2f} kg"
-                    c_co2.text_input(f"CO₂e Evitado {i}", disabled=True, key=f"ong_co2_calc_{i}", label_visibility=mostrar_labels)
+                    c_co2.text_input(f"CO2 {material}", disabled=True, key=f"ong_co2_calc_{i}", label_visibility="collapsed")
                     
-                    if kg_val > 0 and mat_final.strip():
+                    if kg_val > 0:
                         lista_materiales_ong.append({
-                            "material": mat_final.strip(), 
+                            "material": material, 
                             "cantidad_kg": kg_val,
                             "factor_co2_aplicado": factor_usado,
                             "co2_evitado": co2_calculado
@@ -3487,6 +3480,7 @@ else:
                         total_kg_ong += kg_val
                         total_co2_ong += co2_calculado
 
+                st.write("")
                 st.success(f"⚖️ **Total Recuperado:** {total_kg_ong:.2f} Kg | 🌍 **Total CO₂e Evitado:** {total_co2_ong:.2f} Kg")
 
             st.write("")
