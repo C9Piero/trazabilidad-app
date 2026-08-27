@@ -2064,16 +2064,16 @@ else:
                 
                 # NUEVAS MÉTRICAS DEL DASHBOARD
                 dm1, dm2, dm3, dm4 = st.columns(4)
-                dm1.metric("📦 Total Proyectos", f"{len(df_fil)}")
-                dm2.metric("🏢 Clientes Únicos", f"{df_fil['Cliente'].nunique()}")
-                dm3.metric("⚖️ Peso Procesado", f"{df_fil['Kg Procesados'].sum():.2f} kg")
-                dm4.metric("🌍 CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():.2f} kg")
+                dm1.metric("📦 Total Proyectos", f"{len(df_fil):,}")
+                dm2.metric("🏢 Clientes Únicos", f"{df_fil['Cliente'].nunique():,}")
+                dm3.metric("⚖️ Peso Procesado", f"{df_fil['Kg Procesados'].sum():,.2f} kg")
+                dm4.metric("🌍 CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():,.2f} kg")
     
                 st.write("")
                 dm5, dm6, dm7 = st.columns(3)
-                dm5.metric("📥 Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum())} unid")
-                dm6.metric("🛍️ Productos Creados", f"{int(df_fil['Productos Creados'].sum())} unid")
-                dm7.metric("🧑‍🤝‍🧑 Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():.2f} hrs")
+                dm5.metric("📥 Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum()):,} unid")
+                dm6.metric("🛍️ Productos Creados", f"{int(df_fil['Productos Creados'].sum()):,} unid")
+                dm7.metric("🧑‍🤝‍🧑 Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():,.2f} hrs")
     
                 st.write("---")
     
@@ -3644,11 +3644,10 @@ else:
                 total_campanas = df_ong["evento"].nunique()
 
                 m1, m2, m3, m4 = st.columns(4)
-                m1.metric("⚖️ Total Recuperado", f"{total_kg:.2f} kg")
-                m2.metric("🌍 CO₂e Evitado", f"{total_co2:.2f} kg")
-                m3.metric("🏢 Empresas Aliadas", f"{total_empresas}")
-                m4.metric("📢 Campañas/Eventos", f"{total_campanas}")
-                st.write("---")
+                m1.metric("⚖️ Total Recuperado", f"{total_kg:,.2f} kg")
+                m2.metric("🌍 CO₂e Evitado", f"{total_co2:,.2f} kg")
+                m3.metric("🏢 Empresas Aliadas", f"{total_empresas:,}")
+                m4.metric("📢 Campañas/Eventos", f"{total_campanas:,}")
 
                 lista_materiales = []
                 for _, row in df_ong.iterrows():
