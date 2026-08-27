@@ -2096,12 +2096,12 @@ else:
                     cp1, cp2 = st.columns([1, 2])
                     with cp1:
                         with st.container(border=True):
-                            st.metric("Total Productos Diferentes", len(df_p_grp), help="Mide la diversificación e innovación de tu catálogo en el periodo seleccionado.")
+                            st.metric("Total Productos Diferentes", f"{len(df_p_grp):,}", help="Mide la diversificación e innovación de tu catálogo en el periodo seleccionado.")
                         with st.container(border=True):
-                            st.metric("Producto Estrella 🌟", df_p_grp.iloc[0]["Producto"], f"{df_p_grp.iloc[0]['Cantidad']} unid.")
+                            st.metric("Producto Estrella 🌟", df_p_grp.iloc[0]["Producto"], f"{df_p_grp.iloc[0]['Cantidad']:,} unid.")
                         if len(df_p_grp) > 1:
                             with st.container(border=True):
-                                st.metric("Menos Fabricado 📉", df_p_grp.iloc[-1]["Producto"], f"{df_p_grp.iloc[-1]['Cantidad']} unid.")
+                                st.metric("Menos Fabricado 📉", df_p_grp.iloc[-1]["Producto"], f"{df_p_grp.iloc[-1]['Cantidad']:,} unid.")
                     
                     with cp2:
                         fig_p = px.bar(df_p_grp.head(10), x="Cantidad", y="Producto", orientation='h', title="Top 10 Productos Más Fabricados", color_discrete_sequence=["#10B981"])
@@ -2158,12 +2158,12 @@ else:
                             "Cliente": st.column_config.TextColumn("Cliente", width="medium"),
                             "Año": st.column_config.TextColumn("Año", alignment="center"),
                             "Mes": st.column_config.TextColumn("Mes", alignment="center"),
-                            "Kg Procesados": st.column_config.ProgressColumn("Kg Procesados", format="%.1f", min_value=0, max_value=max_k),
-                            "CO₂ Evitado": st.column_config.ProgressColumn("CO₂ Evitado", format="%.1f", min_value=0, max_value=max_c),
-                            "Unidades Recibidas": st.column_config.NumberColumn("Unidades Recibidas", format="%d", alignment="center"),
-                            "Horas de Trabajo": st.column_config.NumberColumn("Horas de Trabajo", format="%.1f", alignment="center"),
-                            "Productos Creados": st.column_config.NumberColumn("Productos Creados", format="%d", alignment="center"),
-                            "Participantes": st.column_config.NumberColumn("Participantes", format="%d", alignment="center"),
+                            "Kg Procesados": st.column_config.ProgressColumn("Kg Procesados", format="%,.1f", min_value=0, max_value=max_k),
+                            "CO₂ Evitado": st.column_config.ProgressColumn("CO₂ Evitado", format="%,.1f", min_value=0, max_value=max_c),
+                            "Unidades Recibidas": st.column_config.NumberColumn("Unidades Recibidas", format="%,d", alignment="center"),
+                            "Horas de Trabajo": st.column_config.NumberColumn("Horas de Trabajo", format="%,.1f", alignment="center"),
+                            "Productos Creados": st.column_config.NumberColumn("Productos Creados", format="%,d", alignment="center"),
+                            "Participantes": st.column_config.NumberColumn("Participantes", format="%,d", alignment="center"),
                             "Tipo de Servicio": st.column_config.TextColumn("Tipo de Servicio", alignment="center"),
                         }
                     )
