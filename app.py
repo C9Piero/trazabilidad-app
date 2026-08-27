@@ -3433,16 +3433,17 @@ else:
             # --- SECCIÓN B: DETALLE DE MATERIALES Y CÁLCULO DE CO2 ---
             with st.container(border=True):
                 st.markdown("##### 2. Detalle de Residuos Valorizables")
-                st.caption("Agrega los materiales recolectados. El cálculo de CO₂e se hará automáticamente.")
+                st.caption("Ingresa el peso de los materiales recolectados. Las filas que dejes en 0.00 kg serán ignoradas automáticamente.")
                 
+                # TRUCO 1: Iniciamos con 8 filas por defecto en lugar de 1
                 if "num_items_ong" not in st.session_state:
-                    st.session_state.num_items_ong = 1
+                    st.session_state.num_items_ong = 8
 
                 col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-                if col_btn1.button("➕ Agregar Material"):
+                if col_btn1.button("➕ Agregar Fila Extra"):
                     st.session_state.num_items_ong += 1
                     st.rerun()
-                if col_btn2.button("➖ Quitar Material") and st.session_state.num_items_ong > 1:
+                if col_btn2.button("➖ Quitar Fila") and st.session_state.num_items_ong > 1:
                     st.session_state.num_items_ong -= 1
                     st.rerun()
 
@@ -3455,23 +3456,28 @@ else:
                 for i in range(st.session_state.num_items_ong):
                     c_mat, c_cant, c_co2 = st.columns([2, 1, 1])
                     
-                    mat_sel = c_mat.selectbox(f"Tipo de Material {i+1}", opciones_residuos, key=f"ong_mat_{i}")
+                    # TRUCO 2: Asignamos un material distinto a cada una de las primeras 8 filas.
+                    # Si el usuario agrega una 9na fila, por defecto dirá "➕ Otro"
+                    indice_por_defecto = i if i < 8 else 8
+                    
+                    # TRUCO 3: Ocultamos los títulos a partir de la fila 2 para que parezca una tabla limpia
+                    mostrar_labels = "visible" if i == 0 else "collapsed"
+                    
+                    mat_sel = c_mat.selectbox(f"Tipo de Material {i}", opciones_residuos, index=indice_por_defecto, key=f"ong_mat_{i}", label_visibility=mostrar_labels)
                     
                     if mat_sel == "➕ Otro (Especificar)":
-                        mat_final = c_mat.text_input(f"Especificar Material {i+1}", key=f"ong_mat_otro_{i}")
+                        mat_final = c_mat.text_input(f"Especificar Material {i}", key=f"ong_mat_otro_{i}", placeholder="Escribe el material...", label_visibility="collapsed")
                         factor_usado = FACTORES_CO2_ONG["➕ Otro (Especificar)"]
                     else:
                         mat_final = mat_sel
                         factor_usado = FACTORES_CO2_ONG[mat_sel]
                         
-                    kg_val = c_cant.number_input(f"Peso (Kg) {i+1}", min_value=0.0, step=0.5, key=f"ong_kg_{i}")
+                    kg_val = c_cant.number_input(f"Peso (Kg) {i}", min_value=0.0, step=0.5, key=f"ong_kg_{i}", label_visibility=mostrar_labels)
                     
-                    # Cálculo en vivo del CO2
                     co2_calculado = kg_val * factor_usado
                     
-                    # Mostrar el CO2 calculado en pantalla bloqueado (solo lectura)
                     st.session_state[f"ong_co2_calc_{i}"] = f"{co2_calculado:.2f} kg"
-                    c_co2.text_input("CO₂e Evitado", disabled=True, key=f"ong_co2_calc_{i}")
+                    c_co2.text_input(f"CO₂e Evitado {i}", disabled=True, key=f"ong_co2_calc_{i}", label_visibility=mostrar_labels)
                     
                     if kg_val > 0 and mat_final.strip():
                         lista_materiales_ong.append({
