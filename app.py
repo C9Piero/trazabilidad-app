@@ -221,11 +221,10 @@ PERSONAL_FIJO_OPERACIONES = [
 ]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="", layout="wide")
+st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="♻️", layout="wide")
 
 # --- PALETA DINÁMICA SEGÚN EL ENTORNO ACTIVO ---
 # "textil" (Pequeños Detalles) usa la paleta rosa; "circular" (ONG Mujer Power) usa la paleta morada.
-_espacio_actual = st.session_state.get("espacio", "textil")
 
 PALETA_ROSA = {
     "BG_MAIN": "#FAF7F8",
@@ -257,7 +256,9 @@ PALETA_MORADA = {
     "FOCUS_RGB": "167, 139, 250",
 }
 
-_paleta_activa = PALETA_MORADA if _espacio_actual == "circular" else PALETA_ROSA
+_espacio_actual = st.session_state.get("espacio", "textil")
+_autenticado_actual = st.session_state.get("autenticado", False)
+_paleta_activa = PALETA_MORADA if (_autenticado_actual and _espacio_actual == "circular") else PALETA_ROSA
 
 # --- ESTILOS CSS ---
 _css_base = \
@@ -513,6 +514,47 @@ _css_base = \
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: var(--border-radius); }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent-strong); }
+
+    /* ===== LOGIN ===== */
+    .login-hero {
+        text-align: center;
+        padding: 56px 10px 28px 10px;
+    }
+    .login-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, var(--accent-strong), %%ACCENT_STRONG_2%%);
+        color: #FFFFFF;
+        font-size: 1.9rem;
+        box-shadow: 0 10px 24px -8px rgba(%%SHADOW_RGB%%, 0.45);
+        margin-bottom: 18px;
+    }
+    .login-title {
+        color: var(--text-main);
+        font-size: 2.1rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin: 0 0 8px 0;
+    }
+    .login-subtitle {
+        color: var(--text-soft);
+        font-size: 0.98rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+    .login-form-title {
+        color: var(--accent-strong) !important;
+        font-weight: 700 !important;
+        font-size: 1.15rem !important;
+        margin-bottom: 18px !important;
+        padding-left: 12px;
+        border-left: 4px solid var(--accent);
+        border-radius: 2px;
+    }
 
     /* Botón "Entorno de trabajo" tipo switch/pill */
     [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
@@ -1486,20 +1528,21 @@ except KeyError:
 if not st.session_state.autenticado:
     st.markdown(
         """
-        <div style="text-align: center; padding: 40px 10px;">
-            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">Pequeños Detalles</h1>
-            <p style="color: #64748B; font-size: 1.1rem;">PEQUEÑOS DETALLES HANDMADE PERU S.A.C. — Gestión de Sostenibilidad</p>
+        <div class="login-hero">
+            <div class="login-badge">♻</div>
+            <h1 class="login-title">Pequeños Detalles</h1>
+            <p class="login-subtitle">PEQUEÑOS DETALLES HANDMADE PERU S.A.C.<br>Gestión de Sostenibilidad</p>
         </div>
     """,
         unsafe_allow_html=True,
     )
 
-    col1, col2, col3 = st.columns([1, 1.2, 1])
+    col1, col2, col3 = st.columns([1, 1.1, 1])
     with col2:
         with st.container(border=True):
-            st.subheader("Iniciar Sesión")
-            usuario_input = st.text_input("Usuario")
-            password_input = st.text_input("Contraseña", type="password")
+            st.markdown('<p class="login-form-title">Iniciar Sesión</p>', unsafe_allow_html=True)
+            usuario_input = st.text_input("Usuario", placeholder="Tu usuario")
+            password_input = st.text_input("Contraseña", type="password", placeholder="Tu contraseña")
 
             if st.button("Ingresar al Sistema", use_container_width=True, type="primary"):
                 if usuario_input == USUARIO_ADMIN and password_input == PASSWORD_ADMIN:
@@ -3679,7 +3722,7 @@ else:
         st.markdown(
             """
             <div class="hero-header" style="border-left: 6px solid #7C3AED;">
-                <h1 style="color: #7C3AED !important;">💜 Sistema Circular - ONG Mujer Power</h1>
+                <h1 style="color: #7C3AED !important;">Sistema Circular - ONG Mujer Power</h1>
                 <p>Gestión y trazabilidad de residuos sólidos valorizables.</p>
             </div>
             """, unsafe_allow_html=True
@@ -3688,7 +3731,7 @@ else:
         pestaña_activa = st.session_state.get("pestaña_activa_ong", "Nuevo Registro")
 
         if pestaña_activa == "Nuevo Registro":
-            st.subheader("📝 Ficha de Ingreso de Residuos")
+            st.subheader("Ficha de Ingreso de Residuos")
             
             with st.container(border=True):
                 st.markdown("##### 1. Datos del Donante / Campaña")
@@ -3742,14 +3785,14 @@ else:
                         total_co2_ong += co2_calculado
 
                 st.write("")
-                st.success(f"⚖️ **Total Recuperado:** {total_kg_ong:,.2f} Kg | 🌍 **Total CO₂e Evitado:** {total_co2_ong:,.2f} Kg")
+                st.success(f"**Total Recuperado:** {total_kg_ong:,.2f} Kg | **Total CO₂e Evitado:** {total_co2_ong:,.2f} Kg")
 
             st.write("")
 
             with st.container(border=True):
-                st.markdown("##### 🚀 Registrar y Generar Documentos")
+                st.markdown("##### Registrar y Generar Documentos")
                 
-                if st.button("💾 Registrar, Subir a Drive y Generar Constancia PDF", type="primary", use_container_width=True):
+                if st.button("Registrar, Subir a Drive y Generar Constancia PDF", type="primary", use_container_width=True):
                     if not empresa_ong.strip() or not direccion_ong.strip() or not evento_ong.strip():
                         st.error("⚠️ Falta el Nombre de la Empresa, Dirección o Evento.")
                     elif total_kg_ong <= 0:
@@ -3827,7 +3870,7 @@ else:
                 st.success("✅ ¡Registro exitoso! La constancia PDF ha sido generada y respaldada en la nube.")
                 st.balloons()
                 st.download_button(
-                    label="📥 Descargar Constancia (.pdf)",
+                    label="Descargar Constancia (.pdf)",
                     data=st.session_state.doc_ong_descarga["bytes"],
                     file_name=st.session_state.doc_ong_descarga["nombre"],
                     mime="application/pdf",
@@ -3839,7 +3882,7 @@ else:
                     st.rerun()
 
         elif pestaña_activa == "Dashboard ONG":
-            st.subheader("📊 Dashboard de Impacto Circular - ONG Mujer Power")
+            st.subheader("Dashboard de Impacto Circular - ONG Mujer Power")
             
             with st.spinner("Cargando métricas desde la nube..."):
                 try:
@@ -3850,7 +3893,7 @@ else:
                     datos_ong = []
 
             if not datos_ong:
-                st.info("📭 Aún no hay registros en la base de datos.")
+                st.info("Aún no hay registros en la base de datos.")
             else:
                 df_ong = pd.DataFrame(datos_ong)
                 total_kg = df_ong["total_kg_recuperados"].sum()
@@ -3859,10 +3902,10 @@ else:
                 total_campanas = df_ong["evento"].nunique()
 
                 m1, m2, m3, m4 = st.columns(4)
-                m1.metric("⚖️ Total Recuperado", f"{total_kg:,.2f} kg")
-                m2.metric("🌍 CO₂e Evitado", f"{total_co2:,.2f} kg")
-                m3.metric("🏢 Empresas Aliadas", f"{total_empresas:,}")
-                m4.metric("📢 Campañas/Eventos", f"{total_campanas:,}")
+                m1.metric("Total Recuperado", f"{total_kg:,.2f} kg")
+                m2.metric("CO₂e Evitado", f"{total_co2:,.2f} kg")
+                m3.metric("Empresas Aliadas", f"{total_empresas:,}")
+                m4.metric("Campañas/Eventos", f"{total_campanas:,}")
                 st.write("---")
 
                 lista_materiales = []
@@ -3899,7 +3942,7 @@ else:
                         st.plotly_chart(fig_bar, use_container_width=True)
 
         elif pestaña_activa == "Historial ONG":
-            st.subheader("🗂️ Historial de Registros - ONG Mujer Power")
+            st.subheader("Historial de Registros - ONG Mujer Power")
             st.caption("Consulta todos los registros de donaciones. Los administradores pueden eliminar registros incorrectos.")
             
             with st.spinner("Cargando historial..."):
@@ -3912,31 +3955,31 @@ else:
                     historial_ong = []
 
             if not historial_ong:
-                st.info("📭 No hay registros en el historial.")
+                st.info("No hay registros en el historial.")
             else:
                 for reg in historial_ong:
                     with st.container(border=True):
                         c1, c2, c3, c4 = st.columns([3, 2, 2, 1.5])
                         
-                        c1.markdown(f"**🏢 {reg.get('empresa', 'Sin Nombre')}**")
+                        c1.markdown(f"**{reg.get('empresa', 'Sin Nombre')}**")
                         c1.caption(f"Código: `{reg.get('codigo_registro', '')}`")
                         
-                        c2.markdown(f"📅 **Campaña:** {reg.get('evento', '')}")
+                        c2.markdown(f"**Campaña:** {reg.get('evento', '')}")
                         c2.caption(f"Fecha: {reg.get('fecha_recoleccion', '')}")
                         
-                        c3.markdown(f"⚖️ **Total:** {reg.get('total_kg_recuperados', 0):,.2f} kg")
-                        c3.caption(f"🌍 CO₂e: {reg.get('total_co2_evitado', 0):,.2f} kg")
+                        c3.markdown(f"**Total:** {reg.get('total_kg_recuperados', 0):,.2f} kg")
+                        c3.caption(f"CO₂e: {reg.get('total_co2_evitado', 0):,.2f} kg")
                         
                         if reg.get("pdf_url"):
-                            c4.link_button("📄 Ver Constancia", reg.get("pdf_url"), use_container_width=True)
+                            c4.link_button("Ver Constancia", reg.get("pdf_url"), use_container_width=True)
                         else:
-                            c4.caption("📄 Sin PDF")
+                            c4.caption("Sin PDF")
                         
                         if st.session_state.rol == "admin":
-                            if c4.button("🗑️ Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
+                            if c4.button("Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
                                 try:
                                     supabase.table("ong_registros").delete().eq("id", reg["id"]).execute()
-                                    st.toast(f"🗑️ Registro {reg.get('codigo_registro')} eliminado.")
+                                    st.toast(f"Registro {reg.get('codigo_registro')} eliminado.")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Error al eliminar: {e}")
