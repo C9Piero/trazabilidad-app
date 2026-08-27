@@ -223,24 +223,60 @@ PERSONAL_FIJO_OPERACIONES = [
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="", layout="wide")
 
+# --- PALETA DINÁMICA SEGÚN EL ENTORNO ACTIVO ---
+# "textil" (Pequeños Detalles) usa la paleta rosa; "circular" (ONG Mujer Power) usa la paleta morada.
+_espacio_actual = st.session_state.get("espacio", "textil")
+
+PALETA_ROSA = {
+    "BG_MAIN": "#FAF7F8",
+    "ACCENT": "#D88C9A",
+    "ACCENT_STRONG": "#C2185B",
+    "ACCENT_STRONG_HOVER": "#A01249",
+    "ACCENT_SOFT_BG": "#FCEEF1",
+    "BG_SIDEBAR": "#FBF3F5",
+    "BORDER_SOFT": "#EFE4E7",
+    "APP_GRADIENT_START": "#F7EEF1",
+    "HERO_GRADIENT_END": "#FDF4F6",
+    "ACCENT_STRONG_2": "#A8134F",
+    "SHADOW_RGB": "194, 24, 91",
+    "FOCUS_RGB": "216, 140, 154",
+}
+
+PALETA_MORADA = {
+    "BG_MAIN": "#F9F7FC",
+    "ACCENT": "#A78BFA",
+    "ACCENT_STRONG": "#7C3AED",
+    "ACCENT_STRONG_HOVER": "#5B21B6",
+    "ACCENT_SOFT_BG": "#F3EEFE",
+    "BG_SIDEBAR": "#F5F1FC",
+    "BORDER_SOFT": "#E6DFF7",
+    "APP_GRADIENT_START": "#EFE6FB",
+    "HERO_GRADIENT_END": "#F5F0FE",
+    "ACCENT_STRONG_2": "#6D28D9",
+    "SHADOW_RGB": "124, 58, 237",
+    "FOCUS_RGB": "167, 139, 250",
+}
+
+_paleta_activa = PALETA_MORADA if _espacio_actual == "circular" else PALETA_ROSA
+
 # --- ESTILOS CSS ---
-st.markdown(
+_css_base = \
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
     :root {
-        --bg-main: #FAF7F8;
+        --bg-main: %%BG_MAIN%%;
         --text-main: #2A2730;
         --text-soft: #756E78;
-        --accent: #D88C9A;
-        --accent-strong: #C2185B;
-        --accent-strong-hover: #A01249;
-        --accent-soft-bg: #FCEEF1;
-        --bg-sidebar: #FBF3F5;
+        --accent: %%ACCENT%%;
+        --accent-strong: %%ACCENT_STRONG%%;
+        --accent-strong-hover: %%ACCENT_STRONG_HOVER%%;
+        --accent-soft-bg: %%ACCENT_SOFT_BG%%;
+        --bg-sidebar: %%BG_SIDEBAR%%;
         --bg-card: #FFFFFF;
         --border-radius: 12px;
-        --border-soft: #EFE4E7;
+        --border-soft: %%BORDER_SOFT%%;
     }
 
     [data-testid="stHeader"] {visibility: hidden; height: 0px;}
@@ -254,7 +290,7 @@ st.markdown(
     }
 
     .stApp {
-        background: linear-gradient(180deg, #F7EEF1 0%, #FAF7F8 280px, #FAF7F8 100%);
+        background: linear-gradient(180deg, %%APP_GRADIENT_START%% 0%, %%BG_MAIN%% 280px, %%BG_MAIN%% 100%);
     }
 
     div[data-testid="stNumberInput"] button { display: none !important; }
@@ -262,11 +298,11 @@ st.markdown(
 
     /* ===== HERO / ENCABEZADO ===== */
     .hero-header {
-        background: linear-gradient(135deg, #FFFFFF 0%, #FDF4F6 100%);
+        background: linear-gradient(135deg, #FFFFFF 0%, %%HERO_GRADIENT_END%% 100%);
         color: var(--text-main);
         padding: 26px 32px;
         border-radius: 18px;
-        box-shadow: 0 10px 28px -12px rgba(194, 24, 91, 0.18);
+        box-shadow: 0 10px 28px -12px rgba(%%SHADOW_RGB%%, 0.18);
         margin-bottom: 28px;
         border: 1px solid var(--border-soft);
         position: relative;
@@ -320,7 +356,7 @@ st.markdown(
         padding: 1.5rem !important;
     }
     div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-        box-shadow: 0 10px 24px -10px rgba(194, 24, 91, 0.18);
+        box-shadow: 0 10px 24px -10px rgba(%%SHADOW_RGB%%, 0.18);
         border-color: var(--accent) !important;
     }
 
@@ -354,15 +390,15 @@ st.markdown(
     button[data-testid^="stBaseButton"][kind="primary"],
     button[kind="primary"],
     button[kind="primaryFormSubmit"] {
-        background: linear-gradient(135deg, var(--accent-strong), #A8134F) !important;
+        background: linear-gradient(135deg, var(--accent-strong), %%ACCENT_STRONG_2%%) !important;
         border: none !important;
         color: #FFFFFF !important;
-        box-shadow: 0 6px 16px -4px rgba(194, 24, 91, 0.4) !important;
+        box-shadow: 0 6px 16px -4px rgba(%%SHADOW_RGB%%, 0.4) !important;
     }
     div[data-testid="stButton"] button[kind="primary"]:hover,
     button[data-testid^="stBaseButton"][kind="primary"]:hover,
     button[kind="primary"]:hover {
-        box-shadow: 0 8px 20px -4px rgba(194, 24, 91, 0.5) !important;
+        box-shadow: 0 8px 20px -4px rgba(%%SHADOW_RGB%%, 0.5) !important;
         transform: translateY(-1px);
         color: #FFFFFF !important;
     }
@@ -396,7 +432,7 @@ st.markdown(
         background: #FFFFFF !important;
         color: var(--accent-strong) !important;
         border: 1px solid var(--accent) !important;
-        box-shadow: 0 2px 8px -2px rgba(194, 24, 91, 0.15) !important;
+        box-shadow: 0 2px 8px -2px rgba(%%SHADOW_RGB%%, 0.15) !important;
         font-weight: 700 !important;
     }
 
@@ -433,7 +469,7 @@ st.markdown(
     div[data-baseweb="number-input"]:focus-within,
     div[data-baseweb="textarea"]:focus-within {
         border-color: var(--accent) !important;
-        box-shadow: 0 0 0 3px rgba(216, 140, 154, 0.22) !important;
+        box-shadow: 0 0 0 3px rgba(%%FOCUS_RGB%%, 0.22) !important;
     }
 
     label p {
@@ -524,9 +560,13 @@ st.markdown(
         box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
     }
     </style>
-""",
-    unsafe_allow_html=True,
-)
+"""
+
+_css_final = _css_base
+for _clave, _valor in _paleta_activa.items():
+    _css_final = _css_final.replace(f"%%{_clave}%%", _valor)
+
+st.markdown(_css_final, unsafe_allow_html=True)
 
 # --- CONEXIÓN SUPABASE ---
 @st.cache_resource
