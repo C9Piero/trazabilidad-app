@@ -280,28 +280,35 @@ _css_base = \
         --border-soft: %%BORDER_SOFT%%;
     }
 
-    /* Ocultar cabecera en PC, pero mostrar el menú hamburguesa en celulares */
+/* Ocultar cabecera en PC, pero mostrar el menú hamburguesa en celulares */
     @media (min-width: 769px) {
         [data-testid="stHeader"] {visibility: hidden; height: 0px;}
     }
     @media (max-width: 768px) {
         [data-testid="stHeader"] {
             visibility: visible !important;
-            background: var(--bg-main) !important;
+            background: transparent !important;
         }
-        /* Colorear el icono de hamburguesa con el tema activo */
-        [data-testid="stHeader"] svg {
+        /* Blindar el icono de hamburguesa contra el modo oscuro */
+        [data-testid="stHeader"] button, 
+        [data-testid="stHeader"] svg, 
+        [data-testid="stHeader"] path {
+            color: var(--accent-strong) !important;
             stroke: var(--accent-strong) !important;
+            fill: var(--accent-strong) !important;
         }
     }
     
     footer {visibility: hidden;}
-    .stAppDeployButton {display: none !important;}
-    [data-testid="stAppViewCreator"] {display: none !important;}
 
-    html, body, [class*="css"] {
-        font-family: 'Poppins', sans-serif;
-        color: var(--text-main);
+    /* Forzar que todos los inputs sean blancos ignorando el modo oscuro del celular */
+    div[data-baseweb="input"] input, 
+    div[data-baseweb="number-input"] input,
+    div[data-baseweb="select"],
+    div[data-baseweb="textarea"] textarea {
+        background-color: #FFFFFF !important;
+        color: #2A2730 !important;
+        -webkit-text-fill-color: #2A2730 !important;
     }
 
     .stApp {
