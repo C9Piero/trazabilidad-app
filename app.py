@@ -3395,6 +3395,51 @@ else:
     # =========================================================================
     elif st.session_state.espacio == "circular":
         
+        # --- NUEVA FUNCIÓN PARA SEPARAR EL DRIVE DE LA ONG ---
+        # Crea una carpeta maestra llamada "ONG MUJER POWER" dentro de tu Drive actual
+        def obtener_carpeta_ong_drive(cliente_ong: str, fecha_dt, nombre_subcarpeta: str):
+            try:
+                if "drive_oauth" not in st.secrets: return None
+                creds_data = st.secrets["drive_oauth"]
+                credentials = Credentials(token=None, refresh_token=creds_data["refresh_token"], client_id=creds_data["client_id"], client_secret=creds_data["client_secret"], token_uri="https://oauth2.googleapis.com/token")
+                service = build('drive', 'v3', credentials=credentials)
+                root_folder_id = creds_data["folder_id"]
+
+                # 1. Carpeta Maestra "ONG MUJER POWER" dentro de la raíz actual
+                query_ong = f"name='ONG MUJER POWER' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
+                res_ong = service.files().list(q=query_ong, fields='files(id)').execute()
+                id_ong = res_ong.get('files')[0].get('id') if res_ong.get('files', []) else service.files().create(body={'name': 'ONG MUJER POWER', 'mimeType': 'application/vnd.google-apps.folder', 'parents': [root_folder_id]}, fields='id').execute().get('id')
+
+                # 2. Año
+                nombre_anio = str(fecha_dt.year)
+                query_anio = f"name='{nombre_anio}' and mimeType='application/vnd.google-apps.folder' and '{id_ong}' in parents and trashed=false"
+                res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
+                id_anio = res_anio.get('files')[0].get('id') if res_anio.get('files', []) else service.files().create(body={'name': nombre_anio, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_ong]}, fields='id').execute().get('id')
+
+                # 3. Mes
+                meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
+                nombre_mes = meses.get(fecha_dt.month, 'MES')
+                query_mes = f"name='{nombre_mes}' and mimeType='application/vnd.google-apps.folder' and '{id_anio}' in parents and trashed=false"
+                res_mes = service.files().list(q=query_mes, fields='files(id)').execute()
+                id_mes = res_mes.get('files')[0].get('id') if res_mes.get('files', []) else service.files().create(body={'name': nombre_mes, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_anio]}, fields='id').execute().get('id')
+
+                # 4. Empresa Donante
+                nombre_cli = cliente_ong.strip().upper().replace("'", "")
+                query_cli = f"name='{nombre_cli}' and mimeType='application/vnd.google-apps.folder' and '{id_mes}' in parents and trashed=false"
+                res_cli = service.files().list(q=query_cli, fields='files(id)').execute()
+                id_cli = res_cli.get('files')[0].get('id') if res_cli.get('files', []) else service.files().create(body={'name': nombre_cli, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_mes]}, fields='id').execute().get('id')
+
+                # 5. Subcarpeta del Evento
+                query_proy = f"name='{nombre_subcarpeta}' and mimeType='application/vnd.google-apps.folder' and '{id_cli}' in parents and trashed=false"
+                res_proy = service.files().list(q=query_proy, fields='files(id)').execute()
+                id_proy = res_proy.get('files')[0].get('id') if res_proy.get('files', []) else service.files().create(body={'name': nombre_subcarpeta, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_cli]}, fields='id').execute().get('id')
+
+                return id_proy
+            except Exception as e:
+                st.caption(f"Aviso Drive ONG: {e}")
+                return None
+        # ------------------------------------------------------
+
         FACTORES_CO2_ONG = {
             "PET": 1.5, "Cocalata": 2.0, "Papel Blanco": 0.9, "Cartón": 0.8,
             "Chapita": 1.2, "RAEE": 2.5, "Aluminio": 8.0, "Lata de Leche": 1.5
@@ -3486,7 +3531,7 @@ else:
                     else:
                         with st.spinner("Registrando en la nube, procesando PDF y subiendo a Drive..."):
                             try:
-                                # 1. Preparar el contexto para el documento
+                                # 1. Lógica del texto de operadoras
                                 reg_transporte = CATALOGO_EORS[eors_transporte]
                                 reg_valorizacion = CATALOGO_EORS[eors_valorizacion]
                                 
@@ -3513,29 +3558,29 @@ else:
                                     "total_kg": f"{total_kg_ong:.2f}", "ciudad_emision": "Lima", "dia": str(datetime.date.today().day)
                                 }
 
-                                # 2. Convertir la plantilla Word a PDF inalterable
+                                # 2. Generar el PDF (usando la función que convierte Word a PDF)
                                 pdf_bytes = generar_constancia_desde_plantilla_word(contexto, "Plantilla_Constancia_Mujer_Power.docx")
                                 
                                 codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{random.randint(100,999)}"
                                 nombre_pdf = f"Constancia_{codigo_ong}.pdf"
 
-                                # 3. Subir el PDF a Supabase Storage (para tener el link en el historial)
+                                # 3. Subir el PDF a Supabase Storage
                                 url_pdf = subir_pdf_supabase(nombre_pdf, pdf_bytes)
 
-                                # 4. Subir a Google Drive
+                                # 4. Subir a Google Drive (USANDO LA NUEVA ESTRUCTURA SEPARADA)
                                 try:
-                                    carpeta_ong_drive = obtener_carpeta_destino_drive(empresa_ong.strip(), fecha_ong, f"ONG_Campaña_{fecha_ong.strftime('%d-%m-%Y')}")
+                                    carpeta_ong_drive = obtener_carpeta_ong_drive(empresa_ong.strip(), fecha_ong, f"Campaña_{evento_ong.strip()}")
                                     subir_a_drive(nombre_pdf, pdf_bytes, "application/pdf", custom_folder_id=carpeta_ong_drive)
                                 except Exception as e_drive:
                                     st.caption(f"Aviso: El PDF se generó pero no se pudo subir a Drive: {e_drive}")
 
-                                # 5. Guardar todo en la base de datos
+                                # 5. Guardar todo en Supabase
                                 datos_ong = {
                                     "codigo_registro": codigo_ong, "empresa": empresa_ong.strip(), "ruc": ruc_ong.strip(),
                                     "fecha_recoleccion": fecha_ong.strftime("%d/%m/%Y"), "evento": evento_ong.strip(),
                                     "total_kg_recuperados": total_kg_ong, "total_co2_evitado": total_co2_ong,      
                                     "detalle_material": lista_materiales_ong,
-                                    "pdf_url": url_pdf # Guardamos el enlace del PDF
+                                    "pdf_url": url_pdf
                                 }
                                 supabase.table("ong_registros").insert(datos_ong).execute()
                                 
@@ -3652,13 +3697,11 @@ else:
                         c3.markdown(f"⚖️ **Total:** {reg.get('total_kg_recuperados', 0):.2f} kg")
                         c3.caption(f"🌍 CO₂e: {reg.get('total_co2_evitado', 0):.2f} kg")
                         
-                        # Botón para ver el PDF si existe
                         if reg.get("pdf_url"):
                             c4.link_button("📄 Ver Constancia", reg.get("pdf_url"), use_container_width=True)
                         else:
                             c4.caption("📄 Sin PDF")
                         
-                        # Botón de eliminación solo para Admins
                         if st.session_state.rol == "admin":
                             if c4.button("🗑️ Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
                                 try:
