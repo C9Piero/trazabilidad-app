@@ -3305,7 +3305,8 @@ else:
                     else:
                         with st.spinner("Generando documentos, subiendo fotos y respaldando en la nube..."):
                             try:
-                                pdf_informe_buffer = generar_pdf_oficial(
+                                # CORRECCIÓN: Ahora se guarda directamente en bytes_informe
+                                bytes_informe = generar_pdf_oficial(
                                     cliente, ruc, proyecto_nom, codigo_proy, fe_inicio, fe_fin, responsable, area,
                                     "Textiles en desuso", "Upcycling", "Kilogramos (kg)", guia_remision, origen, destino,
                                     lista_items, lista_trazabilidad, lista_productos, mat_transformado, retazos_aprovechables,
@@ -3314,8 +3315,7 @@ else:
                                     co2_evitado_total, emisiones_transporte, emisiones_lavado, emisiones_corte, emisiones_bordado,
                                     lista_anexos=lista_anexos,
                                 )
-                                bytes_informe = pdf_informe_buffer.getvalue()
-    
+
                                 mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                                 contexto_word = {
                                     "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
