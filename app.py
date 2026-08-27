@@ -3818,8 +3818,18 @@ else:
                                 meses_str = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
                                 mes_actual = meses_str[fecha_ong.month - 1]
 
+                                # --- CÁLCULO DE CORRELATIVO SECUENCIAL ---
+                                try:
+                                    res_corr = supabase.table("ong_registros").select("id").order("id", desc=True).limit(1).execute()
+                                    siguiente_id = res_corr.data[0]["id"] + 1 if res_corr.data else 1
+                                except Exception:
+                                    siguiente_id = random.randint(1000, 9999) # Respaldo en caso de error de internet
+                                
+                                correlativo_secuencial = f"{siguiente_id:03d}" # Convierte 1 en "001", 15 en "015", etc.
+                                # -----------------------------------------
+
                                 contexto = {
-                                    "anio": str(fecha_ong.year), "correlativo": f"{random.randint(100, 999)}",
+                                    "anio": str(fecha_ong.year), "correlativo": correlativo_secuencial,
                                     "partida": "14886638", "ciudad_sede": "Lima", "resolucion_donaciones": "", 
                                     "empresa_donante": empresa_ong.strip(), "ruc_donante": ruc_ong.strip() if ruc_ong.strip() else "S/N",
                                     "direccion_donante": direccion_ong.strip(), "mes": mes_actual, "texto_operadoras": texto_op,
@@ -3830,10 +3840,11 @@ else:
                                     "total_kg": f"{total_kg_ong:,.2f}", "ciudad_emision": "Lima", "dia": str(datetime.date.today().day)
                                 }
 
-                                # 2. Generar el PDF (usando la función que convierte Word a PDF)
+                                # 2. Generar el PDF
                                 pdf_bytes = generar_constancia_desde_plantilla_word(contexto, "Plantilla_Constancia_Mujer_Power.docx")
                                 
-                                codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{random.randint(100,999)}"
+                                # Usamos también el correlativo para que tu archivo quede súper ordenado
+                                codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{correlativo_secuencial}"
                                 nombre_pdf = f"Constancia_{codigo_ong}.pdf"
 
                                 # 3. Subir el PDF a Supabase Storage
