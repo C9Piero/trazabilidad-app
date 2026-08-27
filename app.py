@@ -3584,6 +3584,85 @@ else:
 
         elif st.session_state.pestaña_activa_ong == "📊 Dashboard ONG":
             st.subheader("📊 Dashboard de Impacto Circular - ONG Mujer Power")
-            st.info("💡 Próximamente: Aquí conectaremos la tabla 'ong_registros' para generar gráficos automáticos.")
+            
+            with st.spinner("Cargando métricas desde la nube..."):
+                try:
+                    # Traemos los datos de tu tabla en Supabase
+                    res_ong = supabase.table("ong_registros").select("*").execute()
+                    datos_ong = res_ong.data
+                except Exception as e:
+                    st.error(f"Error al cargar datos: {e}")
+                    datos_ong = []
 
-        st.stop()
+            if not datos_ong:
+                st.info("📭 Aún no hay registros en la base de datos. ¡Registra la primera donación para ver las métricas!")
+            else:
+                df_ong = pd.DataFrame(datos_ong)
+                
+                # --- KPIs PRINCIPALES ---
+                total_kg = df_ong["total_kg_recuperados"].sum()
+                total_co2 = df_ong["total_co2_evitado"].sum()
+                total_empresas = df_ong["empresa"].nunique()
+                total_campanas = df_ong["evento"].nunique()
+
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("⚖️ Total Recuperado", f"{total_kg:.2f} kg")
+                m2.metric("🌍 CO₂e Evitado", f"{total_co2:.2f} kg")
+                m3.metric("🏢 Empresas Aliadas", f"{total_empresas}")
+                m4.metric("📢 Campañas/Eventos", f"{total_campanas}")
+
+                st.write("---")
+
+                # --- PROCESAMIENTO DE MATERIALES (Extraer del JSON) ---
+                lista_materiales = []
+                for _, row in df_ong.iterrows():
+                    detalles = row.get("detalle_material", [])
+                    if isinstance(detalles, list):
+                        for item in detalles:
+                            lista_materiales.append({
+                                "Material": item.get("material", "Otro"),
+                                "Peso (Kg)": float(item.get("cantidad_kg", 0)),
+                                "CO2 Evitado": float(item.get("co2_evitado", 0))
+                            })
+
+                df_mat = pd.DataFrame(lista_materiales)
+
+                # --- GRÁFICOS ---
+                c_graf1, c_graf2 = st.columns(2)
+
+                with c_graf1:
+                    with st.container(border=True):
+                        st.markdown("<h6 style='text-align: center; color: #475569;'>Distribución por Tipo de Material (Kg)</h6>", unsafe_allow_html=True)
+                        if not df_mat.empty:
+                            df_mat_grp = df_mat.groupby("Material")["Peso (Kg)"].sum().reset_index()
+                            # Gráfico de dona usando Plotly
+                            fig_pie = px.pie(df_mat_grp, values="Peso (Kg)", names="Material", hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
+                            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+                            fig_pie.update_layout(margin=dict(l=0, r=0, t=10, b=10), showlegend=False)
+                            st.plotly_chart(fig_pie, use_container_width=True)
+                        else:
+                            st.caption("No hay detalle de materiales para mostrar.")
+
+                with c_graf2:
+                    with st.container(border=True):
+                        st.markdown("<h6 style='text-align: center; color: #475569;'>Top 5 Empresas Aliadas (Kg Recuperados)</h6>", unsafe_allow_html=True)
+                        # Agrupamos por empresa y ordenamos
+                        df_emp = df_ong.groupby("empresa")["total_kg_recuperados"].sum().reset_index().sort_values(by="total_kg_recuperados", ascending=False).head(5)
+                        # Gráfico de barras horizontales
+                        fig_bar = px.bar(df_emp, x="total_kg_recuperados", y="empresa", orientation='h', color_discrete_sequence=["#7C3AED"])
+                        fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=10, b=10), xaxis_title="Kg Recuperados", yaxis_title="")
+                        st.plotly_chart(fig_bar, use_container_width=True)
+
+                st.write("---")
+                
+                # --- TABLA DE REGISTROS RECIENTES ---
+                st.markdown("##### 🗂️ Últimos Registros")
+                # Preparamos una vista limpia para la tabla
+                df_vista = df_ong[["fecha_recoleccion", "empresa", "evento", "total_kg_recuperados", "total_co2_evitado"]].copy()
+                df_vista = df_vista.rename(columns={
+                    "fecha_recoleccion": "Fecha", "empresa": "Empresa / Donante", "evento": "Campaña / Evento",
+                    "total_kg_recuperados": "Total Kg", "total_co2_evitado": "CO₂e Evitado"
+                })
+                
+                # Mostrar la tabla invirtiendo el orden (para ver el último registro arriba)
+                st.dataframe(df_vista.iloc[::-1], use_container_width=True, hide_index=True)
