@@ -280,7 +280,21 @@ _css_base = \
         --border-soft: %%BORDER_SOFT%%;
     }
 
-    [data-testid="stHeader"] {visibility: hidden; height: 0px;}
+    /* Ocultar cabecera en PC, pero mostrar el menú hamburguesa en celulares */
+    @media (min-width: 769px) {
+        [data-testid="stHeader"] {visibility: hidden; height: 0px;}
+    }
+    @media (max-width: 768px) {
+        [data-testid="stHeader"] {
+            visibility: visible !important;
+            background: var(--bg-main) !important;
+        }
+        /* Colorear el icono de hamburguesa con el tema activo */
+        [data-testid="stHeader"] svg {
+            stroke: var(--accent-strong) !important;
+        }
+    }
+    
     footer {visibility: hidden;}
     .stAppDeployButton {display: none !important;}
     [data-testid="stAppViewCreator"] {display: none !important;}
