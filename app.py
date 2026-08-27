@@ -3390,6 +3390,20 @@ else:
     # ENTORNO 2: ONG MUJER POWER (CIRCULAR)
     # =========================================================================
     elif st.session_state.espacio == "circular":
+        
+        # 1. DICCIONARIO DE FACTORES CO2 PARA LA ONG (¡Modifica estos números con tus datos reales!)
+        FACTORES_CO2_ONG = {
+            "PET": 1.5,           # Ej: 1 kg de PET reciclado evita 1.5 kg de CO2e
+            "Cocalata": 2.0,
+            "Papel Blanco": 0.9,
+            "Cartón": 0.8,
+            "Chapita": 1.2,
+            "RAEE": 2.5,
+            "Aluminio": 8.0,
+            "Lata de Leche": 1.5,
+            "➕ Otro (Especificar)": 1.0 # Valor por defecto si ingresan algo nuevo
+        }
+
         st.markdown(
             """
             <div class="hero-header" style="border-left: 6px solid #7C3AED;">
@@ -3416,10 +3430,10 @@ else:
 
             st.write("")
 
-            # --- SECCIÓN B: DETALLE DE MATERIALES (Dinámico) ---
+            # --- SECCIÓN B: DETALLE DE MATERIALES Y CÁLCULO DE CO2 ---
             with st.container(border=True):
                 st.markdown("##### 2. Detalle de Residuos Valorizables")
-                st.caption("Agrega los materiales recolectados. Solo se guardarán aquellos que tengan un peso mayor a 0.")
+                st.caption("Agrega los materiales recolectados. El cálculo de CO₂e se hará automáticamente.")
                 
                 if "num_items_ong" not in st.session_state:
                     st.session_state.num_items_ong = 1
@@ -3434,31 +3448,42 @@ else:
 
                 lista_materiales_ong = []
                 total_kg_ong = 0.0
+                total_co2_ong = 0.0
 
-                # Lista de materiales basada en tu Excel
-                opciones_residuos = [
-                    "PET", "Cocalata", "Papel Blanco", "Cartón", 
-                    "Chapita", "RAEE", "Aluminio", "Lata de Leche", "➕ Otro (Especificar)"
-                ]
+                opciones_residuos = list(FACTORES_CO2_ONG.keys())
 
                 for i in range(st.session_state.num_items_ong):
-                    c_mat, c_cant = st.columns([2, 1])
+                    c_mat, c_cant, c_co2 = st.columns([2, 1, 1])
                     
                     mat_sel = c_mat.selectbox(f"Tipo de Material {i+1}", opciones_residuos, key=f"ong_mat_{i}")
                     
                     if mat_sel == "➕ Otro (Especificar)":
                         mat_final = c_mat.text_input(f"Especificar Material {i+1}", key=f"ong_mat_otro_{i}")
+                        factor_usado = FACTORES_CO2_ONG["➕ Otro (Especificar)"]
                     else:
                         mat_final = mat_sel
+                        factor_usado = FACTORES_CO2_ONG[mat_sel]
                         
                     kg_val = c_cant.number_input(f"Peso (Kg) {i+1}", min_value=0.0, step=0.5, key=f"ong_kg_{i}")
                     
-                    # Solo agregamos a la lista si tiene peso y nombre
+                    # Cálculo en vivo del CO2
+                    co2_calculado = kg_val * factor_usado
+                    
+                    # Mostrar el CO2 calculado en pantalla bloqueado (solo lectura)
+                    st.session_state[f"ong_co2_calc_{i}"] = f"{co2_calculado:.2f} kg"
+                    c_co2.text_input("CO₂e Evitado", disabled=True, key=f"ong_co2_calc_{i}")
+                    
                     if kg_val > 0 and mat_final.strip():
-                        lista_materiales_ong.append({"material": mat_final.strip(), "cantidad_kg": kg_val})
+                        lista_materiales_ong.append({
+                            "material": mat_final.strip(), 
+                            "cantidad_kg": kg_val,
+                            "factor_co2_aplicado": factor_usado,
+                            "co2_evitado": co2_calculado
+                        })
                         total_kg_ong += kg_val
+                        total_co2_ong += co2_calculado
 
-                st.info(f"⚖️ **Total Recuperado en esta ficha:** {total_kg_ong:.2f} Kg")
+                st.success(f"⚖️ **Total Recuperado:** {total_kg_ong:.2f} Kg | 🌍 **Total CO₂e Evitado:** {total_co2_ong:.2f} Kg")
 
             st.write("")
 
@@ -3472,7 +3497,6 @@ else:
                         st.error("⚠️ Debes ingresar al menos un material con un peso mayor a 0 kg.")
                     else:
                         with st.spinner("Registrando datos en la nube..."):
-                            # Generador de código único para la ONG
                             codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{random.randint(100,999)}"
                             
                             datos_ong = {
@@ -3481,8 +3505,9 @@ else:
                                 "ruc": ruc_ong.strip(),
                                 "fecha_recolecci": fecha_ong.strftime("%d/%m/%Y"), 
                                 "evento": evento_ong.strip(),
-                                "total_kg_recupe": total_kg_ong,                   
-                                "detalle_material": lista_materiales_ong           
+                                "total_kg_recupe": total_kg_ong,
+                                "total_co2_evitado": total_co2_ong,      # <-- Nueva columna para el Dashboard
+                                "detalle_material": lista_materiales_ong # El JSON ahora guarda el CO2 de cada material
                             }
                             
                             try:
@@ -3496,4 +3521,6 @@ else:
 
         elif st.session_state.pestaña_activa_ong == "📊 Dashboard ONG":
             st.subheader("📊 Dashboard de Impacto Circular - ONG Mujer Power")
-            st.info("💡 Próximamente: Aquí conectaremos la tabla 'ong_registros' para generar gráficos automáticos de distribución de PET, RAEE, Cartón y un ranking de las empresas más colaboradoras.")
+            st.info("💡 Próximamente: Aquí conectaremos la tabla 'ong_registros' para generar gráficos automáticos.")
+
+        st.stop()
