@@ -3430,13 +3430,13 @@ else:
 
             st.write("")
 
-            # --- SECCIÓN B: DETALLE DE MATERIALES Y CÁLCULO DE CO2 ---
+           # --- SECCIÓN B: DETALLE DE MATERIALES Y CÁLCULO DE CO2 ---
             with st.container(border=True):
                 st.markdown("##### 2. Detalle de Residuos Valorizables")
-                st.caption("Ingresa el peso de los materiales recolectados. Las filas que dejes en 0.00 kg serán ignoradas automáticamente.")
+                st.caption("Aquí tienes las 8 categorías fijas. Ingresa el peso en las que correspondan; las que queden en 0.00 kg se ignorarán automáticamente.")
                 
-                # TRUCO 1: Iniciamos con 8 filas por defecto en lugar de 1
-                if "num_items_ong" not in st.session_state:
+                # FORZAMOS que por defecto siempre sean exactamente 8 filas al cargar
+                if "num_items_ong" not in st.session_state or st.session_state.num_items_ong < 8:
                     st.session_state.num_items_ong = 8
 
                 col_btn1, col_btn2, _ = st.columns([1, 1, 4])
@@ -3456,11 +3456,9 @@ else:
                 for i in range(st.session_state.num_items_ong):
                     c_mat, c_cant, c_co2 = st.columns([2, 1, 1])
                     
-                    # TRUCO 2: Asignamos un material distinto a cada una de las primeras 8 filas.
-                    # Si el usuario agrega una 9na fila, por defecto dirá "➕ Otro"
+                    # Garantiza que las primeras 8 filas agarren exactamente las 8 categorías base sin repetirse
                     indice_por_defecto = i if i < 8 else 8
                     
-                    # TRUCO 3: Ocultamos los títulos a partir de la fila 2 para que parezca una tabla limpia
                     mostrar_labels = "visible" if i == 0 else "collapsed"
                     
                     mat_sel = c_mat.selectbox(f"Tipo de Material {i}", opciones_residuos, index=indice_por_defecto, key=f"ong_mat_{i}", label_visibility=mostrar_labels)
