@@ -1410,9 +1410,13 @@ else:
             
             if st.button("📝 Nuevo Registro", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "📝 Nuevo Registro" else "secondary"):
                 st.session_state.pestaña_activa_ong = "📝 Nuevo Registro"
+                st.session_state.doc_ong_descarga = None # Limpia descargas previas
                 st.rerun()
             if st.button("📊 Dashboard ONG", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "📊 Dashboard ONG" else "secondary"):
                 st.session_state.pestaña_activa_ong = "📊 Dashboard ONG"
+                st.rerun()
+            if st.button("🗂️ Historial ONG", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "🗂️ Historial ONG" else "secondary"):
+                st.session_state.pestaña_activa_ong = "🗂️ Historial ONG"
                 st.rerun()
 
         st.write("---")
