@@ -596,11 +596,36 @@ def subir_imagen_supabase(nombre_archivo: str, img_bytes: bytes) -> str:
         return supabase.storage.from_("reportes").get_public_url(nombre_archivo)
     except Exception: return ""
 
+def _fecha_para_ordenar(fecha_str):
+    """
+    Convierte un texto de fecha (ej. '31/07/2026 - 18/08/2026' o '31/07/2026')
+    en un datetime real para poder ordenar por la fecha MÁS RECIENTE,
+    en vez de por el orden en que se insertó el registro en la base de datos.
+    Si no se puede interpretar, devuelve la fecha mínima (va al final).
+    """
+    if not fecha_str:
+        return datetime.datetime.min
+    texto = str(fecha_str).strip()
+    # Si es un rango "inicio - fin", usamos la fecha de FIN (la más reciente del proyecto)
+    if " - " in texto:
+        texto = texto.split(" - ")[-1].strip()
+    for formato in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+        try:
+            return datetime.datetime.strptime(texto, formato)
+        except ValueError:
+            continue
+    return datetime.datetime.min
+
 def cargar_proyectos(estado=None):
     try:
         query = supabase.table("proyectos").select("*").order('id', desc=True)
         if estado: query = query.eq("estado", estado)
-        return query.execute().data
+        datos = query.execute().data
+        # Ordenar siempre por la fecha real del proyecto (más reciente primero),
+        # no por el orden de inserción (id), ya que "Carga Rápida Histórica"
+        # puede registrar proyectos antiguos después de proyectos nuevos.
+        datos.sort(key=lambda p: _fecha_para_ordenar(p.get("fecha")), reverse=True)
+        return datos
     except Exception: return []
 
 def eliminar_proyecto_bd(proyecto_id, codigo_proy):
@@ -3870,6 +3895,9 @@ else:
                 try:
                     res_hist = supabase.table("ong_registros").select("*").order("id", desc=True).execute()
                     historial_ong = res_hist.data
+                    # Ordenar por la fecha real de recolección (más reciente primero),
+                    # no por el orden de inserción en la base de datos.
+                    historial_ong.sort(key=lambda r: _fecha_para_ordenar(r.get("fecha_recoleccion")), reverse=True)
                 except Exception as e:
                     st.error(f"Error al cargar historial: {e}")
                     historial_ong = []
