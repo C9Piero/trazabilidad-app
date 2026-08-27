@@ -130,7 +130,7 @@ MESES_ORDEN = [m.capitalize() for m in MESES_ESPANOL.values()]
 PRODUCTOS_CATALOGO_BASE = [
     "Estrellas", "Cartuchera", "Cúbica", "Bolso", "Mochila", "Llavero", "Monedero", "Canguro", "Tote bag", "Neceser", 
     "Portalaptop", "Portacepillos", "Pelota", "Portacubierto", "Juguete", "Cubo", "Corazones", "Peluche", "Morral", 
-    "Portaútiles", "Portabotella", "Cama perrito", "Colets", "Rombo", "Mandiles", "Lonchera", "➕ Otro (Escribir nuevo producto)"
+    "Portaútiles", "Portabotella", "Cama perrito", "Colets", "Rombo", "Mandiles", "Lonchera", "Otro (Escribir nuevo producto)"
 ]
 
 PERSONAL_CONFECCION_BASE = [
@@ -209,7 +209,7 @@ DISTANCIAS_LIMA_SJL = {
     "Punta Negra": 56.0, "Rímac": 7.5, "San Bartolo": 60.0, "San Borja": 12.0, "San Isidro": 13.5, "San Juan de Miraflores": 20.0, 
     "San Luis": 10.0, "San Martín de Porres": 13.0, "San Miguel": 15.5, "Santa Anita": 8.0, "Santa María del Mar": 63.0, 
     "Santa Rosa": 42.0, "Santiago de Surco": 17.0, "Surquillo": 14.5, "Ventanilla (Callao)": 30.0, "Villa El Salvador": 28.0, 
-    "Villa María del Triunfo": 24.0, "➕ Otro / Fuera de Lima (Ingreso manual)": 0.0,
+    "Villa María del Triunfo": 24.0, "Otro / Fuera de Lima (Ingreso manual)": 0.0,
 }
 
 FACTORES_BORDADO = {"Sin bordado / Ninguno": 0.0, "Estampado DTF": 0.020, "Simple (5 min/pieza)": 0.020, "Medio (9 min/pieza)": 0.037, "Complejo (10 min/pieza)": 0.041}
@@ -221,24 +221,26 @@ PERSONAL_FIJO_OPERACIONES = [
 ]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="♻️", layout="wide")
+st.set_page_config(page_title="Pequeños Detalles - Sistema de Trazabilidad", page_icon="️", layout="wide")
 
 # --- ESTILOS CSS ---
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
     :root {
-        --bg-main: #FAFAFA;
-        --text-main: #2D2D2D;
+        --bg-main: #FAF7F8;
+        --text-main: #2A2730;
+        --text-soft: #756E78;
         --accent: #D88C9A;
         --accent-strong: #C2185B;
         --accent-strong-hover: #A01249;
-        --bg-sidebar: #F5EBEE;
+        --accent-soft-bg: #FCEEF1;
+        --bg-sidebar: #FBF3F5;
         --bg-card: #FFFFFF;
-        --border-radius: 8px;
-        --border-soft: #E0E0E0;
+        --border-radius: 12px;
+        --border-soft: #EFE4E7;
     }
 
     [data-testid="stHeader"] {visibility: hidden; height: 0px;}
@@ -246,71 +248,87 @@ st.markdown(
     .stAppDeployButton {display: none !important;}
     [data-testid="stAppViewCreator"] {display: none !important;}
 
-    html, body, [class*="css"] { 
+    html, body, [class*="css"] {
         font-family: 'Poppins', sans-serif;
         color: var(--text-main);
     }
-    
-    .stApp { background-color: var(--bg-main); }
+
+    .stApp {
+        background: linear-gradient(180deg, #F7EEF1 0%, #FAF7F8 280px, #FAF7F8 100%);
+    }
 
     div[data-testid="stNumberInput"] button { display: none !important; }
     div[data-testid="stNumberInput"] input { text-align: left; }
 
+    /* ===== HERO / ENCABEZADO ===== */
     .hero-header {
-        background-color: var(--bg-card);
+        background: linear-gradient(135deg, #FFFFFF 0%, #FDF4F6 100%);
         color: var(--text-main);
-        padding: 24px 30px;
-        border-radius: var(--border-radius);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        margin-bottom: 25px;
-        border-left: 6px solid var(--accent-strong);
+        padding: 26px 32px;
+        border-radius: 18px;
+        box-shadow: 0 10px 28px -12px rgba(194, 24, 91, 0.18);
+        margin-bottom: 28px;
+        border: 1px solid var(--border-soft);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-header::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0;
+        width: 6px; height: 100%;
+        background: linear-gradient(180deg, var(--accent-strong), var(--accent));
     }
     .hero-header h1 {
         color: var(--accent-strong) !important;
-        font-weight: 700;
-        font-size: 1.8rem;
+        font-weight: 800;
+        font-size: 1.75rem;
+        letter-spacing: -0.3px;
         margin: 0;
     }
     .hero-header p {
-        color: var(--text-main) !important;
-        margin: 4px 0 0 0;
+        color: var(--text-soft) !important;
+        margin: 6px 0 0 0;
         font-size: 0.95rem;
-        opacity: 0.8;
     }
 
+    /* ===== SIDEBAR ===== */
     div[data-testid="stSidebar"] {
         background-color: var(--bg-sidebar) !important;
         border-right: 1px solid var(--border-soft);
-        padding: 20px 10px;
+        padding: 22px 12px;
     }
 
     .sidebar-section-title {
-        color: var(--text-main);
-        font-size: 0.85rem;
-        font-weight: 600;
+        color: var(--text-soft);
+        font-size: 0.72rem;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-top: 15px;
-        margin-bottom: 8px;
+        letter-spacing: 0.09em;
+        margin-top: 18px;
+        margin-bottom: 10px;
+        padding-left: 2px;
     }
 
+    /* ===== CONTENEDORES / TARJETAS ===== */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: var(--bg-card) !important;
         border-radius: var(--border-radius) !important;
         border: 1px solid var(--border-soft) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        box-shadow: 0 6px 18px -10px rgba(42, 39, 48, 0.12);
+        transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
         padding: 1.5rem !important;
     }
     div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 10px 24px -10px rgba(194, 24, 91, 0.18);
         border-color: var(--accent) !important;
     }
 
+    /* ===== BOTONES ===== */
     div[data-testid="stButton"] button {
-        border-radius: var(--border-radius) !important;
-        font-weight: 500;
-        transition: all 0.2s ease;
+        border-radius: 10px !important;
+        font-weight: 600;
+        transition: all 0.15s ease;
         border: 1px solid var(--border-soft);
         color: var(--text-main);
         background-color: var(--bg-card);
@@ -318,68 +336,141 @@ st.markdown(
     div[data-testid="stButton"] button:hover {
         border-color: var(--accent);
         color: var(--accent-strong);
-        box-shadow: 0 2px 6px rgba(216, 140, 154, 0.2);
+        background-color: var(--accent-soft-bg);
+        transform: translateY(-1px);
     }
     div[data-testid="stButton"] button[kind="primary"] {
-        background-color: var(--accent-strong) !important;
+        background: linear-gradient(135deg, var(--accent-strong), #A8134F) !important;
         border: none;
         color: #FFFFFF !important;
+        box-shadow: 0 6px 16px -4px rgba(194, 24, 91, 0.4);
     }
     div[data-testid="stButton"] button[kind="primary"]:hover {
-        background-color: var(--accent-strong-hover) !important;
-        box-shadow: 0 4px 12px rgba(194, 24, 91, 0.3);
+        box-shadow: 0 8px 20px -4px rgba(194, 24, 91, 0.5);
         transform: translateY(-1px);
         color: #FFFFFF !important;
     }
 
+    /* Botones de navegación del sidebar: look tipo lista limpia */
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button {
+        text-align: left;
+        justify-content: flex-start;
+        background-color: transparent;
+        border: 1px solid transparent;
+        font-weight: 500;
+        padding: 0.5rem 0.75rem;
+    }
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button:hover {
+        background-color: #FFFFFF;
+        border-color: var(--border-soft);
+        transform: none;
+    }
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"] {
+        background: #FFFFFF !important;
+        color: var(--accent-strong) !important;
+        border: 1px solid var(--accent) !important;
+        box-shadow: 0 2px 8px -2px rgba(194, 24, 91, 0.15);
+        font-weight: 700;
+    }
+
+    /* ===== MÉTRICAS ===== */
     div[data-testid="stMetric"] {
         background-color: var(--bg-card);
         border: 1px solid var(--border-soft);
         border-radius: var(--border-radius);
-        padding: 14px 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        padding: 16px 18px;
+        box-shadow: 0 4px 12px -6px rgba(42, 39, 48, 0.1);
     }
-    div[data-testid="stMetricLabel"] { 
-        color: var(--text-main); 
-        opacity: 0.7; 
+    div[data-testid="stMetricLabel"] {
+        color: var(--text-soft);
+        font-weight: 600;
     }
     div[data-testid="stMetricValue"] {
         color: var(--accent-strong);
+        font-weight: 800;
     }
 
-    div[data-baseweb="input"], 
-    div[data-baseweb="select"] > div, 
+    /* ===== INPUTS ===== */
+    div[data-baseweb="input"],
+    div[data-baseweb="select"] > div,
     div[data-baseweb="number-input"],
     div[data-baseweb="textarea"] {
-        border-radius: var(--border-radius) !important;
+        border-radius: 10px !important;
         border: 1px solid var(--border-soft) !important;
-        background-color: var(--bg-main) !important;
-        transition: all 0.2s ease;
+        background-color: #FFFFFF !important;
+        transition: all 0.15s ease;
     }
-    
-    div[data-baseweb="input"]:focus-within, 
-    div[data-baseweb="select"] > div:focus-within, 
+
+    div[data-baseweb="input"]:focus-within,
+    div[data-baseweb="select"] > div:focus-within,
     div[data-baseweb="number-input"]:focus-within,
     div[data-baseweb="textarea"]:focus-within {
         border-color: var(--accent) !important;
-        box-shadow: 0 0 0 2px rgba(216, 140, 154, 0.2) !important;
+        box-shadow: 0 0 0 3px rgba(216, 140, 154, 0.22) !important;
     }
-    
-    h1, h2, h3, h4, h5, h6 { color: var(--text-main) !important; }
+
+    label p {
+        font-weight: 600 !important;
+        color: var(--text-main) !important;
+        font-size: 0.88rem !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 { color: var(--text-main) !important; font-weight: 700 !important; }
     h3, h4, h5 { color: var(--accent-strong) !important; }
+
+    /* Subtítulos con acento lateral, estilo más moderno */
+    h3::before, h4::before {
+        content: "";
+        display: inline-block;
+        width: 4px;
+        height: 0.9em;
+        background: linear-gradient(180deg, var(--accent-strong), var(--accent));
+        border-radius: 3px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    hr {
+        border: none !important;
+        border-top: 1px solid var(--border-soft) !important;
+        margin: 1.4rem 0 !important;
+    }
+
+    div[data-testid="stDataFrame"] {
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        border: 1px solid var(--border-soft);
+    }
+
+    div[data-testid="stAlertContainer"] {
+        border-radius: var(--border-radius) !important;
+        border: 1px solid var(--border-soft) !important;
+    }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: var(--border-radius); }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent-strong); }
-    
-    /* CSS PARA EL BOTÓN MORADO DE LA ONG */
+
+    /* Botón "Entorno de trabajo" tipo switch/pill */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
+        background-color: #FFFFFF;
+        padding: 4px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        gap: 4px !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
+        border: none !important;
+        border-radius: 9px !important;
+    }
     [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-        background-color: #7C3AED !important;
+        background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
         border-color: #5B21B6 !important;
         color: white !important;
+        box-shadow: none;
     }
     [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover {
-        background-color: #5B21B6 !important;
+        background: linear-gradient(135deg, #6D28D9, #5B21B6) !important;
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
     }
@@ -434,11 +525,11 @@ def eliminar_proyecto_bd(proyecto_id, codigo_proy):
 def modal_confirmar_eliminacion(proyecto):
     st.warning(f"¿Estás seguro de que deseas eliminar permanentemente el proyecto **{proyecto.get('cliente', 'Sin Nombre')}** (`{proyecto.get('codigo', '')}`)?\n\nEsta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos.")
     col_confirm, col_cancel = st.columns(2)
-    if col_confirm.button("🚨 Sí, Eliminar Definitivamente", use_container_width=True, type="primary"):
+    if col_confirm.button("Sí, Eliminar Definitivamente", use_container_width=True, type="primary"):
         if eliminar_proyecto_bd(proyecto.get("id"), proyecto.get("codigo")):
             st.session_state.proyecto_editar = {}
             st.session_state.form_version += 1
-            st.toast("🗑️ Proyecto eliminado con éxito.")
+            st.toast("️ Proyecto eliminado con éxito.")
             st.rerun()
     if col_cancel.button(" Cancelar", use_container_width=True): st.rerun()
 
@@ -446,11 +537,11 @@ def modal_confirmar_eliminacion(proyecto):
 def modal_confirmar_eliminacion_masiva(proyectos_a_borrar):
     st.warning(f"¿Estás seguro de que deseas eliminar permanentemente **{len(proyectos_a_borrar)}** proyectos seleccionados?\n\nEsta acción **no se puede deshacer** y borrará todos los datos asociados de la base de datos.")
     col_confirm, col_cancel = st.columns(2)
-    if col_confirm.button("🚨 Sí, Eliminar Todos", use_container_width=True, type="primary"):
+    if col_confirm.button("Sí, Eliminar Todos", use_container_width=True, type="primary"):
         for p in proyectos_a_borrar: eliminar_proyecto_bd(p.get("id"), p.get("codigo"))
         st.session_state.proyecto_editar = {}
         st.session_state.form_version += 1
-        st.toast(f"🗑️ {len(proyectos_a_borrar)} proyectos eliminados con éxito.")
+        st.toast(f"️ {len(proyectos_a_borrar)} proyectos eliminados con éxito.")
         for p in proyectos_a_borrar:
             k = f"bulk_del_{p.get('id', p.get('codigo'))}"
             if k in st.session_state: del st.session_state[k]
@@ -576,8 +667,8 @@ def inicializar_y_cargar_catalogos():
         productos.sort()
         personal.sort()
 
-        if "➕ Otro (Escribir nuevo producto)" in productos: productos.remove("➕ Otro (Escribir nuevo producto)")
-        productos.append("➕ Otro (Escribir nuevo producto)")
+        if "Otro (Escribir nuevo producto)" in productos: productos.remove("Otro (Escribir nuevo producto)")
+        productos.append("Otro (Escribir nuevo producto)")
 
         return materiales, productos, personal
         
@@ -1225,7 +1316,7 @@ if "espacio" not in st.session_state:
     st.session_state.espacio = "textil"
 
 if "pestaña_activa_ong" not in st.session_state:
-    st.session_state.pestaña_activa_ong = "📝 Nuevo Registro"
+    st.session_state.pestaña_activa_ong = "Nuevo Registro"
 
 if "num_items_ong" not in st.session_state:
     st.session_state.num_items_ong = 1
@@ -1237,7 +1328,7 @@ if "rol" not in st.session_state:
     st.session_state.rol = "operario"
 
 if "pestaña_activa" not in st.session_state:
-    st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+    st.session_state.pestaña_activa = "Nuevo Reporte PDF"
 
 if "proyecto_editar" not in st.session_state:
     st.session_state.proyecto_editar = {}
@@ -1282,7 +1373,7 @@ if not st.session_state.autenticado:
     st.markdown(
         """
         <div style="text-align: center; padding: 40px 10px;">
-            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">♻️ Pequeños Detalles</h1>
+            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">️ Pequeños Detalles</h1>
             <p style="color: #64748B; font-size: 1.1rem;">PEQUEÑOS DETALLES HANDMADE PERU S.A.C. — Gestión de Sostenibilidad</p>
         </div>
     """,
@@ -1292,7 +1383,7 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.subheader("🔐 Iniciar Sesión")
+            st.subheader("Iniciar Sesión")
             usuario_input = st.text_input("Usuario")
             password_input = st.text_input("Contraseña", type="password")
 
@@ -1314,13 +1405,13 @@ else:
     proyectos_wip = cargar_proyectos("EN_PROCESO")
 
     with st.sidebar:
-        st.markdown("### 🏢 Entorno de Trabajo")
+        st.markdown("### Entorno de Trabajo")
         
         col_w1, col_w2 = st.columns(2)
-        if col_w1.button("👚 Pequeños Det.", use_container_width=True, type="primary" if st.session_state.espacio == "textil" else "secondary"):
+        if col_w1.button("Pequeños Det.", use_container_width=True, type="primary" if st.session_state.espacio == "textil" else "secondary"):
             st.session_state.espacio = "textil"
             st.rerun()
-        if col_w2.button("💜 ONG Power", use_container_width=True, type="secondary" if st.session_state.espacio == "textil" else "primary"): 
+        if col_w2.button("ONG Power", use_container_width=True, type="secondary" if st.session_state.espacio == "textil" else "primary"): 
             st.session_state.espacio = "circular"
             st.rerun()
             
@@ -1332,38 +1423,38 @@ else:
             
             st.markdown('<p class="sidebar-section-title">Navegación</p>', unsafe_allow_html=True)
     
-            es_nuevo_activo = (st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF") and (not st.session_state.proyecto_editar)
+            es_nuevo_activo = (st.session_state.pestaña_activa == "Nuevo Reporte PDF") and (not st.session_state.proyecto_editar)
             
             if st.button(
-                "✨     Nuevo Reporte PDF",
+                "Nuevo Reporte PDF",
                 use_container_width=True,
                 type="primary" if es_nuevo_activo else "secondary",
             ):
                 st.session_state.proyecto_editar = {}
                 st.session_state.documentos_descarga = None
-                st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+                st.session_state.pestaña_activa = "Nuevo Reporte PDF"
                 st.session_state.uid_proyecto = str(random.randint(1000, 9999))
                 st.session_state.form_version += 1 
                 st.rerun()
     
             if st.button(
-                "🏭     Producción Interna",
+                "Producción Interna",
                 use_container_width=True,
-                type="primary" if st.session_state.pestaña_activa == "🏭     Producción Interna" else "secondary",
+                type="primary" if st.session_state.pestaña_activa == "Producción Interna" else "secondary",
             ):
                 st.session_state.documentos_descarga = None
-                st.session_state.pestaña_activa = "🏭     Producción Interna"
+                st.session_state.pestaña_activa = "Producción Interna"
                 st.session_state.uid_proyecto = str(random.randint(1000, 9999))
                 st.session_state.form_version += 1
                 st.rerun()
     
             if st.button(
-                "⚡     Carga Rápida Histórica",
+                "Carga Rápida Histórica",
                 use_container_width=True,
-                type="primary" if st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica" else "secondary",
+                type="primary" if st.session_state.pestaña_activa == "Carga Rápida Histórica" else "secondary",
             ):
                 st.session_state.documentos_descarga = None
-                st.session_state.pestaña_activa = "⚡     Carga Rápida Histórica"
+                st.session_state.pestaña_activa = "Carga Rápida Histórica"
                 st.rerun()
     
             st.markdown('<p class="sidebar-section-title">Proyectos Pendientes</p>', unsafe_allow_html=True)
@@ -1371,7 +1462,7 @@ else:
             if proyectos_wip:
                 for p in proyectos_wip:
                     cli_nombre = p.get("cliente", "Sin Nombre")
-                    label_btn = f"📁 {cli_nombre}"
+                    label_btn = f"{cli_nombre}"
     
                     es_activo = st.session_state.proyecto_editar.get("id") == p.get("id") or st.session_state.proyecto_editar.get("codigo") == p.get("codigo")
     
@@ -1383,36 +1474,36 @@ else:
                     ):
                         st.session_state.proyecto_editar = p
                         st.session_state.documentos_descarga = None
-                        st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+                        st.session_state.pestaña_activa = "Nuevo Reporte PDF"
                         st.session_state.form_version += 1 
                         st.rerun()
     
                 st.write("")
-                if st.button("📋 Ver Lista en Proceso", use_container_width=True):
+                if st.button("Ver Lista en Proceso", use_container_width=True):
                     st.session_state.documentos_descarga = None
-                    st.session_state.pestaña_activa = "📋 Proyectos en Proceso"
+                    st.session_state.pestaña_activa = "Proyectos en Proceso"
                     st.rerun()
             else:
-                st.caption("📭 No hay proyectos en borrador")
+                st.caption("No hay proyectos en borrador")
     
             st.markdown('<p class="sidebar-section-title">Analítica e Histórico</p>', unsafe_allow_html=True)
     
             if st.button(
-                "📊 Dashboard Analítico",
+                "Dashboard Analítico",
                 use_container_width=True,
-                type="primary" if st.session_state.pestaña_activa == "📊 Dashboard Analítico" else "secondary",
+                type="primary" if st.session_state.pestaña_activa == "Dashboard Analítico" else "secondary",
             ):
                 st.session_state.documentos_descarga = None
-                st.session_state.pestaña_activa = "📊 Dashboard Analítico"
+                st.session_state.pestaña_activa = "Dashboard Analítico"
                 st.rerun()
     
             if st.button(
-                "🗂️ Historial Completo",
+                "Historial Completo",
                 use_container_width=True,
-                type="primary" if st.session_state.pestaña_activa == "🗂️ Historial Completo" else "secondary",
+                type="primary" if st.session_state.pestaña_activa == "Historial Completo" else "secondary",
             ):
                 st.session_state.documentos_descarga = None
-                st.session_state.pestaña_activa = "🗂️ Historial Completo"
+                st.session_state.pestaña_activa = "Historial Completo"
                 st.rerun()
                 
         # --- MENÚ EXCLUSIVO PARA LA ONG ---
@@ -1422,19 +1513,19 @@ else:
             
             st.markdown('<p class="sidebar-section-title">Navegación Circular</p>', unsafe_allow_html=True)
             
-            if st.button("📝 Nuevo Registro", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "📝 Nuevo Registro" else "secondary"):
-                st.session_state.pestaña_activa_ong = "📝 Nuevo Registro"
+            if st.button("Nuevo Registro", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "Nuevo Registro" else "secondary"):
+                st.session_state.pestaña_activa_ong = "Nuevo Registro"
                 st.session_state.doc_ong_descarga = None # Limpia descargas previas
                 st.rerun()
-            if st.button("📊 Dashboard ONG", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "📊 Dashboard ONG" else "secondary"):
-                st.session_state.pestaña_activa_ong = "📊 Dashboard ONG"
+            if st.button("Dashboard ONG", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "Dashboard ONG" else "secondary"):
+                st.session_state.pestaña_activa_ong = "Dashboard ONG"
                 st.rerun()
-            if st.button("🗂️ Historial ONG", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "🗂️ Historial ONG" else "secondary"):
-                st.session_state.pestaña_activa_ong = "🗂️ Historial ONG"
+            if st.button("Historial ONG", use_container_width=True, type="primary" if st.session_state.pestaña_activa_ong == "Historial ONG" else "secondary"):
+                st.session_state.pestaña_activa_ong = "Historial ONG"
                 st.rerun()
 
         st.write("---")
-        if st.button("🚪 Cerrar Sesión", use_container_width=True):
+        if st.button("Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False
             st.session_state.proyecto_editar = {}
             st.session_state.documentos_descarga = None
@@ -1444,23 +1535,23 @@ else:
     # =========================================================================
     if st.session_state.espacio == "textil":
         titulo_header = st.session_state.pestaña_activa
-        if st.session_state.pestaña_activa == "📊 Dashboard Analítico":
+        if st.session_state.pestaña_activa == "Dashboard Analítico":
             titulo_header = "Dashboard Analítico"
             
         st.markdown(
             f"""
             <div class="hero-header">
-                <h1>📄 Sistema de Gestión Textil</h1>
+                <h1>Sistema de Gestión Textil</h1>
                 <p>Sección Activa: <b>{titulo_header}</b></p>
             </div>
         """,
             unsafe_allow_html=True,
         )
     
-        if st.session_state.pestaña_activa == "🏭     Producción Interna":
+        if st.session_state.pestaña_activa == "Producción Interna":
             fv_int = st.session_state.form_version
             
-            st.subheader("🏭 Registro: Producción Interna")
+            st.subheader("Registro: Producción Interna")
             st.caption("Reporte especializado para contabilizar creaciones propias, con ingreso de material, fotos de productos y un mini-informe PDF.")
     
             # --- SECCIÓN 1: DATOS GENERALES FIJOS ---
@@ -1489,12 +1580,12 @@ else:
             with st.container(border=True):
                 st.markdown("##### 2. Ingreso de Material")
                 
-                with st.expander("⚙️ Administrar Catálogo de Materiales y Calcular CO₂e"):
-                    tab_mat_add, tab_mat_del = st.tabs(["➕ Agregar / Calcular Material", "🗑️ Eliminar Material"])
+                with st.expander("️ Administrar Catálogo de Materiales y Calcular CO₂e"):
+                    tab_mat_add, tab_mat_del = st.tabs(["Agregar / Calcular Material", "️ Eliminar Material"])
     
                     with tab_mat_add:
                         st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
-                        modo_manual = st.checkbox("✍️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_int_v{fv_int}")
+                        modo_manual = st.checkbox("️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_int_v{fv_int}")
                         
                         col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
                         nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_int_v{fv_int}")
@@ -1512,7 +1603,7 @@ else:
                             st.session_state[f"mat_calc_int_v{fv_int}"] = f"{factor_final:.3f} kg"
                             col_m2.text_input("Factor Calculado", disabled=True, key=f"mat_calc_int_v{fv_int}")
     
-                        if col_m3.button("💾 Guardar Material", use_container_width=True, key=f"btn_save_mat_int_v{fv_int}"):
+                        if col_m3.button("Guardar Material", use_container_width=True, key=f"btn_save_mat_int_v{fv_int}"):
                             if nuevo_mat.strip():
                                 nombre_formateado = nuevo_mat.strip().capitalize()
                                 try:
@@ -1532,17 +1623,17 @@ else:
                                 try: supabase.table("catalogos").delete().eq("tipo", "material_co2").eq("nombre", mat_a_borrar).execute()
                                 except Exception: pass
                                 del st.session_state.factores_co2[mat_a_borrar]
-                                st.toast(f"🗑️ Material eliminado de la nube: {mat_a_borrar}")
+                                st.toast(f"️ Material eliminado de la nube: {mat_a_borrar}")
                                 st.rerun()
     
                 if "num_items_int" not in st.session_state:
                     st.session_state.num_items_int = 1
     
                 col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-                if col_btn1.button("➕     Agregar Ítem", key=f"add_it_int_v{fv_int}"):
+                if col_btn1.button("    Agregar Ítem", key=f"add_it_int_v{fv_int}"):
                     st.session_state.num_items_int += 1
                     st.rerun()
-                if col_btn2.button("➖     Quitar Ítem", key=f"del_it_int_v{fv_int}") and st.session_state.num_items_int > 1:
+                if col_btn2.button("    Quitar Ítem", key=f"del_it_int_v{fv_int}") and st.session_state.num_items_int > 1:
                     st.session_state.num_items_int -= 1
                     st.rerun()
     
@@ -1577,7 +1668,7 @@ else:
                         "descripcion": desc, "unidades": unid, "peso_unitario": peso_u, "peso_total": p_total, "co2_evitado": co2_item
                     })
     
-                st.info(f"⚖️ **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
+                st.info(f"️ **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
     
             st.write("")
     
@@ -1585,8 +1676,8 @@ else:
             with st.container(border=True):
                 st.markdown("##### 3. Salida de Productos")
                 
-                with st.expander("⚙️ Administrar Catálogo de Productos (Conectado a la Nube)"):
-                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["➕ Agregar Producto", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
+                with st.expander("️ Administrar Catálogo de Productos (Conectado a la Nube)"):
+                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["Agregar Producto", "️ Modificar Nombre", "️ Eliminar de la Lista"])
     
                     with tab_p_add:
                         col_pa1, col_pa2 = st.columns([3, 1])
@@ -1597,7 +1688,7 @@ else:
                                 try: supabase.table("catalogos").insert({"tipo": "producto", "nombre": np_limpio, "valor_num": 0}).execute()
                                 except Exception: pass
                                 
-                                if "➕ Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
+                                if "Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
                                     st.session_state.catalogo_productos.insert(-1, np_limpio)
                                 else:
                                     st.session_state.catalogo_productos.append(np_limpio)
@@ -1629,17 +1720,17 @@ else:
                                 except Exception: pass
                                 
                                 st.session_state.catalogo_productos.remove(prod_a_borrar)
-                                st.toast(f"🗑️ Producto eliminado de la nube: {prod_a_borrar}")
+                                st.toast(f"️ Producto eliminado de la nube: {prod_a_borrar}")
                                 st.rerun()
     
                 if "num_prods_int" not in st.session_state:
                     st.session_state.num_prods_int = 1
     
                 col_btnp1, col_btnp2, _ = st.columns([1, 1, 4])
-                if col_btnp1.button("➕     Agregar Producto", key=f"add_p_int_v{fv_int}"):
+                if col_btnp1.button("    Agregar Producto", key=f"add_p_int_v{fv_int}"):
                     st.session_state.num_prods_int += 1
                     st.rerun()
-                if col_btnp2.button("➖     Quitar Producto", key=f"del_p_int_v{fv_int}") and st.session_state.num_prods_int > 1:
+                if col_btnp2.button("    Quitar Producto", key=f"del_p_int_v{fv_int}") and st.session_state.num_prods_int > 1:
                     st.session_state.num_prods_int -= 1
                     st.rerun()
     
@@ -1653,7 +1744,7 @@ else:
     
                     prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, key=f"prod_sel_int_{i}_v{fv_int}")
     
-                    if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
+                    if prod_seleccionado == "Otro (Escribir nuevo producto)":
                         nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_int_{i}_v{fv_int}")
                         nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
                         if nuevo_nombre.strip() and nuevo_nombre.strip() not in st.session_state.catalogo_productos:
@@ -1676,7 +1767,7 @@ else:
                         "producto": nombre_final, "cantidad": p_cant, "foto_up": p_foto, "foto_url": "", "foto": p_foto
                     })
     
-                st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
+                st.success(f"**Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
     
             st.write("")
     
@@ -1692,7 +1783,7 @@ else:
                 retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
                 perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
     
-                editar_balance = st.checkbox("✏️ Editar balance manually", value=False, key=f"chk_edit_balance_int_v{fv_int}")
+                editar_balance = st.checkbox("️ Editar balance manually", value=False, key=f"chk_edit_balance_int_v{fv_int}")
     
                 col_bm1, col_bm2, col_bm3 = st.columns(3)
                 mat_transformado = col_bm1.number_input("Transformado en productos (kg)", min_value=0.0, value=float(mat_transf_def), step=0.1, disabled=not editar_balance, key=f"bm_mat_transf_int_v{fv_int}")
@@ -1710,10 +1801,10 @@ else:
             
             # --- BOTÓN DE GUARDADO + MINI PDF ---
             with st.container(border=True):
-                st.markdown("##### 🚀 Generar y Registrar")
+                st.markdown("##### Generar y Registrar")
                 st.caption("Se guardará en tu base de datos, se generará el mini-reporte PDF con las fotos y se respaldará en Drive.")
                 
-                if st.button("💾 Crear Reporte y Guardar en Dashboard", type="primary", use_container_width=True):
+                if st.button("Crear Reporte y Guardar en Dashboard", type="primary", use_container_width=True):
                     if peso_total_recibido <= 0:
                         st.error("⚠️ Debes ingresar al menos el peso del material utilizado.")
                     else:
@@ -1796,15 +1887,15 @@ else:
                                 
             if st.session_state.documentos_descarga and "nombre_archivo" in st.session_state.documentos_descarga:
                 docs = st.session_state.documentos_descarga
-                st.success("🎉 ¡Éxito! Tu producción interna ha sido registrada oficialmente y el reporte generado.")
+                st.success("¡Éxito! Tu producción interna ha sido registrada oficialmente y el reporte generado.")
                 st.balloons()
-                st.download_button("📄 Descargar Mini-Reporte PDF", data=docs["bytes_informe"], file_name=docs["nombre_archivo"], mime="application/pdf", use_container_width=True, type="primary")
+                st.download_button("Descargar Mini-Reporte PDF", data=docs["bytes_informe"], file_name=docs["nombre_archivo"], mime="application/pdf", use_container_width=True, type="primary")
     
-        elif st.session_state.pestaña_activa == "⚡     Carga Rápida Histórica":
-            st.subheader("⚡ Carga Rápida de Proyectos Históricos")
+        elif st.session_state.pestaña_activa == "Carga Rápida Histórica":
+            st.subheader("Carga Rápida de Proyectos Históricos")
             st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
     
-            tab_manual, tab_masiva = st.tabs(["✍️ Carga Manual Individual", "📂 Carga Masiva Inteligente (CSV/Excel)"])
+            tab_manual, tab_masiva = st.tabs(["️ Carga Manual Individual", "Carga Masiva Inteligente (CSV/Excel)"])
     
             with tab_manual:
                 with st.container(border=True):
@@ -1833,7 +1924,7 @@ else:
     
                 st.write("")
     
-                if st.button("🚀 Guardar Proyecto Histórico", type="primary", use_container_width=True):
+                if st.button("Guardar Proyecto Histórico", type="primary", use_container_width=True):
                     if not fast_cliente.strip():
                         st.error("El campo **Cliente / Razón Social** es obligatorio.")
                     else:
@@ -1866,7 +1957,7 @@ else:
     
             with tab_masiva:
                 with st.container(border=True):
-                    st.markdown("##### 📂 Carga Masiva Automática")
+                    st.markdown("##### Carga Masiva Automática")
                     st.markdown("El sistema lee CSV (recomendado) o Excel automáticamente. Detecta columnas y soluciona errores de codificación o separadores.")
                     
                     archivo_cargado = st.file_uploader("Selecciona tu archivo CSV o Excel", type=["csv", "xlsx"])
@@ -1892,7 +1983,7 @@ else:
                         if df_subido is not None:
                             st.write("Vista previa inteligente (Columnas detectadas):", df_subido.head(3))
     
-                            if st.button("🚀 Importar Todos los Proyectos", type="primary", use_container_width=True):
+                            if st.button("Importar Todos los Proyectos", type="primary", use_container_width=True):
                                 with st.spinner("Importando masivamente..."):
                                     meses_map = {m.lower(): i for i, m in MESES_ESPANOL.items()}
                                     
@@ -1953,11 +2044,11 @@ else:
                                         }).execute()
                                         count_exito += 1
     
-                                    st.success(f"🎉 ¡Se han importado exitosamente **{count_exito} proyectos** a tu Dashboard!")
+                                    st.success(f"¡Se han importado exitosamente **{count_exito} proyectos** a tu Dashboard!")
                                     st.balloons()
     
-        elif st.session_state.pestaña_activa == "📋 Proyectos en Proceso":
-            st.subheader("📋 Lista de Proyectos en Proceso (Borradores)")
+        elif st.session_state.pestaña_activa == "Proyectos en Proceso":
+            st.subheader("Lista de Proyectos en Proceso (Borradores)")
             st.caption("Proyectos guardados pendientes de culminación o emisión definitiva.")
     
             proyectos_lista = cargar_proyectos("EN_PROCESO")
@@ -1974,20 +2065,20 @@ else:
                         bc2.caption(f"Fecha: {b.get('fecha', '')}")
     
                         if bc3.button(
-                            "✏️ Retomar Edición",
+                            "️ Retomar Edición",
                             key=f"retomar_{b.get('id', b.get('codigo'))}",
                             use_container_width=True,
                             type="primary",
                         ):
                             st.session_state.proyecto_editar = b
                             st.session_state.documentos_descarga = None
-                            st.session_state.pestaña_activa = "➕     Nuevo Reporte PDF"
+                            st.session_state.pestaña_activa = "Nuevo Reporte PDF"
                             st.session_state.form_version += 1 
                             st.rerun()
             else:
-                st.info("📭 No hay borradores en proceso actualmente.")
+                st.info("No hay borradores en proceso actualmente.")
     
-        elif st.session_state.pestaña_activa == "📊 Dashboard Analítico":
+        elif st.session_state.pestaña_activa == "Dashboard Analítico":
             st.markdown("<h3 style='color: #1E293B; font-weight: 700; margin-bottom: 5px;'>Panel de Control y Analítica Avanzada</h3>", unsafe_allow_html=True)
             st.markdown("<p style='color: #64748B; font-size: 0.95rem; margin-bottom: 25px;'>Filtra, analiza y visualiza el impacto histórico generado por los proyectos de sostenibilidad.</p>", unsafe_allow_html=True)
     
@@ -2054,7 +2145,7 @@ else:
                         nombre_archivo = "Reporte_Sostenibilidad_Personalizado.pdf"
     
                     c_tit2.download_button(
-                        label="📥 Descargar Reporte PDF",
+                        label="Descargar Reporte PDF",
                         data=pdf_bytes,
                         file_name=nombre_archivo,
                         mime="application/pdf",
@@ -2064,20 +2155,20 @@ else:
                 
                 # NUEVAS MÉTRICAS DEL DASHBOARD
                 dm1, dm2, dm3, dm4 = st.columns(4)
-                dm1.metric("📦 Total Proyectos", f"{len(df_fil):,}")
-                dm2.metric("🏢 Clientes Únicos", f"{df_fil['Cliente'].nunique():,}")
-                dm3.metric("⚖️ Peso Procesado", f"{df_fil['Kg Procesados'].sum():,.2f} kg")
-                dm4.metric("🌍 CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():,.2f} kg")
+                dm1.metric("Total Proyectos", f"{len(df_fil):,}")
+                dm2.metric("Clientes Únicos", f"{df_fil['Cliente'].nunique():,}")
+                dm3.metric("️ Peso Procesado", f"{df_fil['Kg Procesados'].sum():,.2f} kg")
+                dm4.metric("CO₂e Evitado", f"{df_fil['CO₂ Evitado'].sum():,.2f} kg")
     
                 st.write("")
                 dm5, dm6, dm7 = st.columns(3)
-                dm5.metric("📥 Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum()):,} unid")
-                dm6.metric("🛍️ Productos Creados", f"{int(df_fil['Productos Creados'].sum()):,} unid")
-                dm7.metric("🧑‍🤝‍🧑 Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():,.2f} hrs")
+                dm5.metric("Unidades Recibidas", f"{int(df_fil['Unidades Recibidas'].sum()):,} unid")
+                dm6.metric("️ Productos Creados", f"{int(df_fil['Productos Creados'].sum()):,} unid")
+                dm7.metric("‍‍Horas de Trabajo", f"{df_fil['Horas de Trabajo'].sum():,.2f} hrs")
     
                 st.write("---")
     
-                st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>🛍️ Análisis de Producción e Innovación</h5>", unsafe_allow_html=True)
+                st.markdown("<h5 style='color: #1E293B; margin-bottom: 15px;'>️ Análisis de Producción e Innovación</h5>", unsafe_allow_html=True)
                 
                 prod_list_dash = []
                 for _, row in df_fil.iterrows():
@@ -2098,10 +2189,10 @@ else:
                         with st.container(border=True):
                             st.metric("Total Productos Diferentes", f"{len(df_p_grp):,}", help="Mide la diversificación e innovación de tu catálogo en el periodo seleccionado.")
                         with st.container(border=True):
-                            st.metric("Producto Estrella 🌟", df_p_grp.iloc[0]["Producto"], f"{df_p_grp.iloc[0]['Cantidad']:,} unid.")
+                            st.metric("Producto Estrella ", df_p_grp.iloc[0]["Producto"], f"{df_p_grp.iloc[0]['Cantidad']:,} unid.")
                         if len(df_p_grp) > 1:
                             with st.container(border=True):
-                                st.metric("Menos Fabricado 📉", df_p_grp.iloc[-1]["Producto"], f"{df_p_grp.iloc[-1]['Cantidad']:,} unid.")
+                                st.metric("Menos Fabricado ", df_p_grp.iloc[-1]["Producto"], f"{df_p_grp.iloc[-1]['Cantidad']:,} unid.")
                     
                     with cp2:
                         fig_p = px.bar(df_p_grp.head(10), x="Cantidad", y="Producto", orientation='h', title="Top 10 Productos Más Fabricados", color_discrete_sequence=["#10B981"])
@@ -2168,14 +2259,14 @@ else:
                         }
                     )
     
-        elif st.session_state.pestaña_activa == "🗂️ Historial Completo":
-            st.subheader("🗂️ Historial Completo de Proyectos")
+        elif st.session_state.pestaña_activa == "Historial Completo":
+            st.subheader("Historial Completo de Proyectos")
             st.caption("Listado general de todos los proyectos registrados. Usa el buscador para encontrar reportes rápidos.")
     
             proyectos_lista = cargar_proyectos()
     
             if proyectos_lista:
-                with st.expander("🔍 Buscar y Filtrar Historial", expanded=True):
+                with st.expander("Buscar y Filtrar Historial", expanded=True):
                     f1, f2, f3 = st.columns([2, 1, 1])
                     busqueda = f1.text_input("Buscar por Cliente o Código", placeholder="Ej. Antamina o HIST_...")
                     filtro_estado = f2.selectbox("Estado del Proyecto", ["Todos", "COMPLETADO", "EN_PROCESO"])
@@ -2194,12 +2285,12 @@ else:
                 col_top1, col_top2 = st.columns([4, 2])
                 
                 if st.session_state.rol == "admin":
-                    modo_edicion = col_top1.toggle("🛠️ Habilitar selección múltiple para borrar")
+                    modo_edicion = col_top1.toggle("️ Habilitar selección múltiple para borrar")
                     
                     if modo_edicion:
                         proyectos_seleccionados = [p for p in proyectos_filtrados if st.session_state.get(f"bulk_del_{p.get('id', p.get('codigo'))}", False)]
                         if col_top2.button(
-                            f"🗑️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
+                            f"️ Eliminar Seleccionados ({len(proyectos_seleccionados)})", 
                             disabled=len(proyectos_seleccionados) == 0, 
                             type="secondary",
                             use_container_width=True
@@ -2212,7 +2303,7 @@ else:
                                 st.session_state[k] = False
                 else:
                     modo_edicion = False
-                    col_top1.info("🔒 Modo de solo lectura y edición. La eliminación masiva requiere permisos de Administrador.")
+                    col_top1.info("Modo de solo lectura y edición. La eliminación masiva requiere permisos de Administrador.")
     
                 if len(proyectos_filtrados) == 0:
                     st.info("No se encontraron proyectos con los filtros seleccionados.")
@@ -2242,31 +2333,31 @@ else:
     
                             pdf_link = p.get("pdf_url")
                             if pdf_link:
-                                hc4.link_button("📄 Informe PDF", pdf_link, use_container_width=True)
+                                hc4.link_button("Informe PDF", pdf_link, use_container_width=True)
                             else:
-                                hc4.caption("📄 Sin Informe")
+                                hc4.caption("Sin Informe")
     
                             const_link = p.get("constancia_url")
                             if const_link:
                                 if st.session_state.rol == "admin":
-                                    hc5.link_button("📜 Constancia PDF", const_link, use_container_width=True)
+                                    hc5.link_button("Constancia PDF", const_link, use_container_width=True)
                                 else:
-                                    hc5.link_button("📜 Constancia", const_link, use_container_width=True)
+                                    hc5.link_button("Constancia", const_link, use_container_width=True)
                             else:
-                                hc5.caption("📜 Sin Constancia")
+                                hc5.caption("Sin Constancia")
     
                             if st.session_state.rol == "admin":
                                 if hc6.button(
-                                    "🗑️",
+                                    "️",
                                     key=f"hist_del_{p.get('id', p.get('codigo'))}",
                                     use_container_width=True,
                                     help="Eliminar proyecto",
                                 ):
                                     modal_confirmar_eliminacion(p)
             else:
-                st.info("📭 No hay proyectos registrados en el historial.")
+                st.info("No hay proyectos registrados en el historial.")
 # --- VISTA: NUEVO REPORTE PDF ---
-        elif st.session_state.pestaña_activa == "➕     Nuevo Reporte PDF":
+        elif st.session_state.pestaña_activa == "Nuevo Reporte PDF":
             fv = st.session_state.form_version
             p_edit = st.session_state.proyecto_editar
     
@@ -2309,7 +2400,7 @@ else:
     
             if p_edit:
                 st.warning(
-                    f"✏️ **Modo Edición Activo:** Modificando borrador de **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
+                    f"️ **Modo Edición Activo:** Modificando borrador de **{p_edit.get('cliente', '')}** (`{p_edit.get('codigo', '')}`)"
                 )
                 col_desc, col_elim = st.columns([2, 2])
                 if col_desc.button("❌ Descartar selección y limpiar formulario", use_container_width=True):
@@ -2319,10 +2410,10 @@ else:
                     st.rerun()
     
                 if st.session_state.rol == "admin":
-                    if col_elim.button("🗑️ Eliminar Proyecto Definitivamente", use_container_width=True):
+                    if col_elim.button("️ Eliminar Proyecto Definitivamente", use_container_width=True):
                         modal_confirmar_eliminacion(p_edit)
                 else:
-                    col_elim.info("🔒 Solo los Administradores pueden borrar proyectos guardados.")
+                    col_elim.info("Solo los Administradores pueden borrar proyectos guardados.")
     
             # --- SECCIÓN 1: FICHA GENERAL ---
             with st.container(border=True):
@@ -2387,7 +2478,7 @@ else:
                     help="Responsable(s) internos a cargo del proyecto."
                 )
     
-                nuevo_responsable = c7.text_input("➕ Agregar otro responsable", placeholder="Nombre completo", key=f"nuevo_responsable_proyecto_v{fv}")
+                nuevo_responsable = c7.text_input("Agregar otro responsable", placeholder="Nombre completo", key=f"nuevo_responsable_proyecto_v{fv}")
     
                 if nuevo_responsable.strip():
                     if nuevo_responsable.strip() not in responsables_seleccionados:
@@ -2410,13 +2501,13 @@ else:
             with st.container(border=True):
                 st.subheader("2. Ingreso de Material")
                 
-                with st.expander("⚙️ Administrar Catálogo de Materiales y Calcular CO₂e"):
-                    tab_mat_add, tab_mat_del = st.tabs(["➕ Agregar / Calcular Material", "🗑️ Eliminar Material"])
+                with st.expander("️ Administrar Catálogo de Materiales y Calcular CO₂e"):
+                    tab_mat_add, tab_mat_del = st.tabs(["Agregar / Calcular Material", "️ Eliminar Material"])
     
                     with tab_mat_add:
                         st.caption("Puedes usar la calculadora de porcentajes, o activar la opción manual para ingresar un factor directo.")
                         
-                        modo_manual = st.checkbox("✍️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
+                        modo_manual = st.checkbox("️ Ingresar factor CO₂e manualmente (para materiales puros o mermas nuevas)", key=f"chk_manual_mat_v{fv}")
                         
                         col_m1, col_m2, col_m3 = st.columns([2, 1, 1])
                         nuevo_mat = col_m1.text_input("Nombre de la Prenda/Material (Ej. Buzo)", key=f"mat_new_nom_v{fv}")
@@ -2435,7 +2526,7 @@ else:
                             st.session_state[f"mat_calc_v{fv}"] = f"{factor_final:.3f} kg"
                             col_m2.text_input("Factor Calculado", disabled=True, key=f"mat_calc_v{fv}")
     
-                        if col_m3.button("💾 Guardar Material", use_container_width=True, key=f"btn_save_mat_v{fv}"):
+                        if col_m3.button("Guardar Material", use_container_width=True, key=f"btn_save_mat_v{fv}"):
                             if nuevo_mat.strip():
                                 nombre_formateado = nuevo_mat.strip().capitalize()
                                 try:
@@ -2457,17 +2548,17 @@ else:
                                 except Exception: pass
                                 
                                 del st.session_state.factores_co2[mat_a_borrar]
-                                st.toast(f"🗑️ Material eliminado de la nube: {mat_a_borrar}")
+                                st.toast(f"️ Material eliminado de la nube: {mat_a_borrar}")
                                 st.rerun()
     
                 if "num_items" not in st.session_state:
                     st.session_state.num_items = 2
     
                 col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-                if col_btn1.button("➕     Agregar Ítem"):
+                if col_btn1.button("    Agregar Ítem"):
                     st.session_state.num_items += 1
                     st.rerun()
-                if col_btn2.button("➖     Quitar Ítem") and st.session_state.num_items > 1:
+                if col_btn2.button("    Quitar Ítem") and st.session_state.num_items > 1:
                     st.session_state.num_items -= 1
                     st.rerun()
     
@@ -2531,7 +2622,7 @@ else:
                         "co2_evitado": co2_item,
                     })
     
-                st.info(f"⚖️     **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
+                st.info(f"️     **Total Material Recibido:** {peso_total_recibido:.2f} kg | **CO₂ Evitado Calculado:** {co2_evitado_total:.2f} kg CO₂e")
     
             st.write("")
     
@@ -2578,12 +2669,12 @@ else:
                     foto_url_prev = traza_prev.get("foto_url", "")
     
                     if item_fijo["etapa"] == "Lavado":
-                        no_aplica = col_edit_chk.checkbox("🚫 No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}_v{fv}")
+                        no_aplica = col_edit_chk.checkbox("No aplica", value=bool(no_aplica_prev), key=f"chk_no_aplica_{i}_v{fv}")
                         permitir_editar = not no_aplica
                         deshabilitar_peso = no_aplica
                     else:
                         no_aplica = False
-                        permitir_editar = col_edit_chk.checkbox("✏️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}_v{fv}")
+                        permitir_editar = col_edit_chk.checkbox("️ Editar", value=bool(is_edited_prev), key=f"chk_edit_{i}_v{fv}")
                         deshabilitar_peso = not permitir_editar
     
                     if no_aplica:
@@ -2639,8 +2730,8 @@ else:
             with st.container(border=True):
                 st.subheader("4. Salida de Productos")
                 
-                with st.expander("⚙️ Administrar Catálogo de Productos (Conectado a la Nube)"):
-                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["➕ Agregar Producto", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
+                with st.expander("️ Administrar Catálogo de Productos (Conectado a la Nube)"):
+                    tab_p_add, tab_p_edit, tab_p_del = st.tabs(["Agregar Producto", "️ Modificar Nombre", "️ Eliminar de la Lista"])
     
                     with tab_p_add:
                         col_pa1, col_pa2 = st.columns([3, 1])
@@ -2651,7 +2742,7 @@ else:
                                 try: supabase.table("catalogos").insert({"tipo": "producto", "nombre": np_limpio, "valor_num": 0}).execute()
                                 except Exception: pass
                                 
-                                if "➕ Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
+                                if "Otro (Escribir nuevo producto)" in st.session_state.catalogo_productos:
                                     st.session_state.catalogo_productos.insert(-1, np_limpio)
                                 else:
                                     st.session_state.catalogo_productos.append(np_limpio)
@@ -2683,17 +2774,17 @@ else:
                                 except Exception: pass
                                 
                                 st.session_state.catalogo_productos.remove(prod_a_borrar)
-                                st.toast(f"🗑️ Producto eliminado de la nube: {prod_a_borrar}")
+                                st.toast(f"️ Producto eliminado de la nube: {prod_a_borrar}")
                                 st.rerun()
     
                 if "num_prods" not in st.session_state:
                     st.session_state.num_prods = 2
     
                 col_btnp1, col_btnp2, _ = st.columns([1, 1, 4])
-                if col_btnp1.button("➕     Agregar Producto"):
+                if col_btnp1.button("    Agregar Producto"):
                     st.session_state.num_prods += 1
                     st.rerun()
-                if col_btnp2.button("➖     Quitar Producto") and st.session_state.num_prods > 1:
+                if col_btnp2.button("    Quitar Producto") and st.session_state.num_prods > 1:
                     st.session_state.num_prods -= 1
                     st.rerun()
     
@@ -2718,7 +2809,7 @@ else:
     
                     prod_seleccionado = col_psel.selectbox("Seleccionar Producto Base *", st.session_state.catalogo_productos, index=idx_psel, key=f"prod_sel_{i}_v{fv}")
     
-                    if prod_seleccionado == "➕ Otro (Escribir nuevo producto)":
+                    if prod_seleccionado == "Otro (Escribir nuevo producto)":
                         nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_{i}_v{fv}")
                         nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
                         if nuevo_nombre.strip() and nuevo_nombre.strip() not in st.session_state.catalogo_productos:
@@ -2744,14 +2835,14 @@ else:
                         "foto_up": p_foto, "foto_url": foto_url_prev, "foto": p_foto if p_foto is not None else foto_url_prev
                     })
     
-                st.success(f"🧮 **Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
+                st.success(f"**Suma Total de Productos Obtenidos:** {total_prod_unid} unidades")
     
             st.write("")
     
             # --- SECCIÓN 5: BALANCE ---
             with st.container(border=True):
                 st.subheader("5. Balance de Material")
-                st.info(f"⚖️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
+                st.info(f"️     **Material Recibido (calculado automáticamente):** {peso_total_recibido:.2f} kg")
     
                 pct_aprov_auto = st.session_state.pct_aprovechamiento_random
                 pct_transf_auto = min(st.session_state.pct_transformado_ratio, pct_aprov_auto - 0.05)
@@ -2769,7 +2860,7 @@ else:
                     retazos_def = round(peso_total_recibido * pct_retazos_auto, 2)
                     perdida_def = round(peso_total_recibido - mat_transf_def - retazos_def, 2) if peso_total_recibido > 0 else 0.0
     
-                editar_balance = st.checkbox("✏️ Editar balance manualmente", value=editar_balance_prev, key=f"chk_edit_balance_v{fv}")
+                editar_balance = st.checkbox("️ Editar balance manualmente", value=editar_balance_prev, key=f"chk_edit_balance_v{fv}")
     
                 col_bm1, col_bm2 = st.columns(2)
                 mat_transformado = col_bm1.number_input(
@@ -2810,7 +2901,7 @@ else:
             # --- SECCIÓN 6: EMISIONES ---
             with st.container(border=True):
                 st.subheader("6. Balance de Emisiones (CO₂e)")
-                st.markdown("##### 🚚 A. Cálculo de Transporte")
+                st.markdown("##### A. Cálculo de Transporte")
                 st.caption("Destino Fijo: **Taller Las Flores, San Juan de Lurigancho (SJL)**")
     
                 saved_trans = dc.get("transporte", {})
@@ -2825,7 +2916,7 @@ else:
                 dist_defecto = float(DISTANCIAS_LIMA_SJL.get(distrito_sel, 0.0))
                 saved_dist_km = float(saved_trans.get("distancia", dist_defecto)) if dist_sel_prev == distrito_sel else dist_defecto
     
-                if distrito_sel == "➕ Otro / Fuera de Lima (Ingreso manual)":
+                if distrito_sel == "Otro / Fuera de Lima (Ingreso manual)":
                     distancia_km = col_t2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key=f"dist_km_manual_v{fv}")
                 else:
                     distancia_km = col_t2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_v{fv}")
@@ -2845,7 +2936,7 @@ else:
     
                 st.caption(f"Distancia considerada: **{distancia_km:.1f} km** ({recorrido_tipo}) | Emisión de Transporte estimada: **{emisiones_transporte:.2f} kg CO₂e**")
     
-                st.markdown("##### ✂️  B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
+                st.markdown("##### ️  B. Lavandería y Taller de Corte (Calculado desde Trazabilidad)")
                 emisiones_lavado = peso_lavado_auto * 0.30
                 emisiones_corte = peso_corte_auto * 0.05
     
@@ -2853,7 +2944,7 @@ else:
                 clav.info(f"**Lavandería ({peso_lavado_auto:.2f} kg):** {emisiones_lavado:.2f} kg CO₂e *(Factor: 0.30)*")
                 ccort.info(f"**Corte ({peso_corte_auto:.2f} kg):** {emisiones_corte:.2f} kg CO₂e *(Factor: 0.05)*")
     
-                st.markdown("##### 🧵 C. Cálculo de Bordado o Estampado")
+                st.markdown("##### C. Cálculo de Bordado o Estampado")
                 saved_bord = dc.get("bordado", {})
                 cant_bord_prev = int(saved_bord.get("cantidad", 0))
                 tipo_bord_prev = saved_bord.get("tipo", list(FACTORES_BORDADO.keys())[0])
@@ -2871,7 +2962,7 @@ else:
                 emisiones_proceso = emisiones_transporte + emisiones_lavado + emisiones_corte + emisiones_bordado
                 co2_neto = co2_evitado_total - emisiones_proceso
     
-                st.warning(f"🌍 **Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
+                st.warning(f"**Total Emisiones del Proceso:** {emisiones_proceso:.2f} kg CO₂e | **Impacto Ambiental Neto Evitado:** {co2_neto:.2f} kg CO₂e")
     
             st.write("")
     
@@ -2956,8 +3047,8 @@ else:
                 st.write("---")
     
                 st.markdown("#### Confección y Acabado – Asignación de Personal")
-                with st.expander("⚙️ Administrar Catálogo de Personal (Conectado a la Nube)"):
-                    tab_add, tab_edit, tab_del = st.tabs(["➕ Agregar Personal", "✏️ Modificar Nombre", "🗑️ Eliminar de la Lista"])
+                with st.expander("️ Administrar Catálogo de Personal (Conectado a la Nube)"):
+                    tab_add, tab_edit, tab_del = st.tabs(["Agregar Personal", "️ Modificar Nombre", "️ Eliminar de la Lista"])
     
                     with tab_add:
                         col_a1, col_a2 = st.columns([3, 1])
@@ -2997,7 +3088,7 @@ else:
                                 except Exception: pass
                                 
                                 st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
-                                st.toast(f"🗑️ Eliminado de la nube: {pers_a_borrar}")
+                                st.toast(f"️ Eliminado de la nube: {pers_a_borrar}")
                                 st.rerun()
     
                 lista_confeccion = []
@@ -3011,17 +3102,17 @@ else:
     
                     tiempo_base_ia = estimar_tiempo_unidad(p_nom)
     
-                    st.markdown(f"**📦 Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*")
+                    st.markdown(f"**Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*")
     
                     key_num_pers = f"num_pers_prod_{idx}"
                     if key_num_pers not in st.session_state:
                         st.session_state[key_num_pers] = 1
     
                     col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
-                    if col_b1.button("➕  Persona", key=f"add_pers_{idx}"):
+                    if col_b1.button(" Persona", key=f"add_pers_{idx}"):
                         st.session_state[key_num_pers] += 1
                         st.rerun()
-                    if col_b2.button("➖  Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
+                    if col_b2.button(" Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
                         st.session_state[key_num_pers] -= 1
                         st.rerun()
     
@@ -3040,7 +3131,7 @@ else:
                         rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}_v{fv}")
     
                         opciones_personas = list(st.session_state.lista_personal_confeccion)
-                        opcion_otro = "➕ Otro (Escribir nuevo nombre)"
+                        opcion_otro = "Otro (Escribir nuevo nombre)"
                         if opcion_otro not in opciones_personas:
                             opciones_personas.append(opcion_otro)
     
@@ -3115,7 +3206,7 @@ else:
                         
                 total_personas_social = len(nombres_unicos)
     
-                st.info(f"🧑‍🤝‍🧑 **Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas (conteo único).")
+                st.info(f"‍‍**Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas (conteo único).")
     
             st.write("")
     
@@ -3125,10 +3216,10 @@ else:
                 st.caption("Agrega fotografías adicionales de colaboradoras con sus productos, procesos en taller, etc.")
     
                 col_anx1, col_anx2, _ = st.columns([1, 1, 4])
-                if col_anx1.button("➕     Agregar Anexo"):
+                if col_anx1.button("    Agregar Anexo"):
                     st.session_state.num_anexos += 1
                     st.rerun()
-                if col_anx2.button("➖     Quitar Anexo") and st.session_state.num_anexos > 0:
+                if col_anx2.button("    Quitar Anexo") and st.session_state.num_anexos > 0:
                     st.session_state.num_anexos -= 1
                     st.rerun()
     
@@ -3247,7 +3338,7 @@ else:
             with st.container(border=True):
                 col_gen1, col_gen2 = st.columns([2, 1])
     
-                if col_gen2.button("💾 Guardar como Borrador", use_container_width=True):
+                if col_gen2.button("Guardar como Borrador", use_container_width=True):
                     try:
                         with st.spinner("Guardando en la base de datos y subiendo fotos a la nube..."):
                             datos_detalle = procesar_fotos_y_armar_detalle()
@@ -3297,7 +3388,7 @@ else:
                     except Exception as e:
                         st.error(f"⚠️ Error al guardar el borrador: {e}")
     
-                if col_gen1.button("🚀 Generar Reportes Oficiales (Informe + Constancia)", type="primary", use_container_width=True):
+                if col_gen1.button("Generar Reportes Oficiales (Informe + Constancia)", type="primary", use_container_width=True):
                     errores_final = _validar_informe_final(cliente, ruc, responsable, origen, lista_items)
                     if errores_final:
                         st.error("⚠️  Por favor, corrige los siguientes errores antes de generar los reportes:")
@@ -3400,9 +3491,9 @@ else:
                 st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
     
                 c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
-                c_dzip.download_button("📦 Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
-                c_dinf.download_button("📄 Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
-                c_dconst.download_button("📜 Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
+                c_dzip.download_button("Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
+                c_dinf.download_button("Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
+                c_dconst.download_button("Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
 
 # =========================================================================
     # ENTORNO 2: ONG MUJER POWER (CIRCULAR)
@@ -3469,14 +3560,14 @@ else:
         st.markdown(
             """
             <div class="hero-header" style="border-left: 6px solid #7C3AED;">
-                <h1 style="color: #7C3AED !important;">💜 Sistema Circular - ONG Mujer Power</h1>
+                <h1 style="color: #7C3AED !important;">Sistema Circular - ONG Mujer Power</h1>
                 <p>Gestión y trazabilidad de residuos sólidos valorizables.</p>
             </div>
             """, unsafe_allow_html=True
         )
 
-        if st.session_state.pestaña_activa_ong == "📝 Nuevo Registro":
-            st.subheader("📝 Ficha de Ingreso de Residuos")
+        if st.session_state.pestaña_activa_ong == "Nuevo Registro":
+            st.subheader("Ficha de Ingreso de Residuos")
             
             with st.container(border=True):
                 st.markdown("##### 1. Datos del Donante / Campaña")
@@ -3530,14 +3621,14 @@ else:
                         total_co2_ong += co2_calculado
 
                 st.write("")
-                st.success(f"⚖️ **Total Recuperado:** {total_kg_ong:.2f} Kg | 🌍 **Total CO₂e Evitado:** {total_co2_ong:.2f} Kg")
+                st.success(f"️ **Total Recuperado:** {total_kg_ong:.2f} Kg | **Total CO₂e Evitado:** {total_co2_ong:.2f} Kg")
 
             st.write("")
 
             with st.container(border=True):
-                st.markdown("##### 🚀 Registrar y Generar Documentos")
+                st.markdown("##### Registrar y Generar Documentos")
                 
-                if st.button("💾 Registrar, Subir a Drive y Generar Constancia PDF", type="primary", use_container_width=True):
+                if st.button("Registrar, Subir a Drive y Generar Constancia PDF", type="primary", use_container_width=True):
                     if not empresa_ong.strip() or not direccion_ong.strip() or not evento_ong.strip():
                         st.error("⚠️ Falta el Nombre de la Empresa, Dirección o Evento.")
                     elif total_kg_ong <= 0:
@@ -3612,7 +3703,7 @@ else:
                 st.success("✅ ¡Registro exitoso! La constancia PDF ha sido generada y respaldada en la nube.")
                 st.balloons()
                 st.download_button(
-                    label="📥 Descargar Constancia (.pdf)",
+                    label="Descargar Constancia (.pdf)",
                     data=st.session_state.doc_ong_descarga["bytes"],
                     file_name=st.session_state.doc_ong_descarga["nombre"],
                     mime="application/pdf",
@@ -3623,8 +3714,8 @@ else:
                     st.session_state.doc_ong_descarga = None
                     st.rerun()
 
-        elif st.session_state.pestaña_activa_ong == "📊 Dashboard ONG":
-            st.subheader("📊 Dashboard de Impacto Circular - ONG Mujer Power")
+        elif st.session_state.pestaña_activa_ong == "Dashboard ONG":
+            st.subheader("Dashboard de Impacto Circular - ONG Mujer Power")
             
             with st.spinner("Cargando métricas desde la nube..."):
                 try:
@@ -3635,7 +3726,7 @@ else:
                     datos_ong = []
 
             if not datos_ong:
-                st.info("📭 Aún no hay registros en la base de datos.")
+                st.info("Aún no hay registros en la base de datos.")
             else:
                 df_ong = pd.DataFrame(datos_ong)
                 total_kg = df_ong["total_kg_recuperados"].sum()
@@ -3644,10 +3735,10 @@ else:
                 total_campanas = df_ong["evento"].nunique()
 
                 m1, m2, m3, m4 = st.columns(4)
-                m1.metric("⚖️ Total Recuperado", f"{total_kg:,.2f} kg")
-                m2.metric("🌍 CO₂e Evitado", f"{total_co2:,.2f} kg")
-                m3.metric("🏢 Empresas Aliadas", f"{total_empresas:,}")
-                m4.metric("📢 Campañas/Eventos", f"{total_campanas:,}")
+                m1.metric("️ Total Recuperado", f"{total_kg:,.2f} kg")
+                m2.metric("CO₂e Evitado", f"{total_co2:,.2f} kg")
+                m3.metric("Empresas Aliadas", f"{total_empresas:,}")
+                m4.metric("Campañas/Eventos", f"{total_campanas:,}")
 
                 lista_materiales = []
                 for _, row in df_ong.iterrows():
@@ -3682,8 +3773,8 @@ else:
                         fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=10, b=10), xaxis_title="Kg Recuperados", yaxis_title="")
                         st.plotly_chart(fig_bar, use_container_width=True)
 
-        elif st.session_state.pestaña_activa_ong == "🗂️ Historial ONG":
-            st.subheader("🗂️ Historial de Registros - ONG Mujer Power")
+        elif st.session_state.pestaña_activa_ong == "Historial ONG":
+            st.subheader("️ Historial de Registros - ONG Mujer Power")
             st.caption("Consulta todos los registros de donaciones. Los administradores pueden eliminar registros incorrectos.")
             
             with st.spinner("Cargando historial..."):
@@ -3695,31 +3786,31 @@ else:
                     historial_ong = []
 
             if not historial_ong:
-                st.info("📭 No hay registros en el historial.")
+                st.info("No hay registros en el historial.")
             else:
                 for reg in historial_ong:
                     with st.container(border=True):
                         c1, c2, c3, c4 = st.columns([3, 2, 2, 1.5])
                         
-                        c1.markdown(f"**🏢 {reg.get('empresa', 'Sin Nombre')}**")
+                        c1.markdown(f"**{reg.get('empresa', 'Sin Nombre')}**")
                         c1.caption(f"Código: `{reg.get('codigo_registro', '')}`")
                         
-                        c2.markdown(f"📅 **Campaña:** {reg.get('evento', '')}")
+                        c2.markdown(f"**Campaña:** {reg.get('evento', '')}")
                         c2.caption(f"Fecha: {reg.get('fecha_recoleccion', '')}")
                         
-                        c3.markdown(f"⚖️ **Total:** {reg.get('total_kg_recuperados', 0):.2f} kg")
-                        c3.caption(f"🌍 CO₂e: {reg.get('total_co2_evitado', 0):.2f} kg")
+                        c3.markdown(f"️ **Total:** {reg.get('total_kg_recuperados', 0):.2f} kg")
+                        c3.caption(f"CO₂e: {reg.get('total_co2_evitado', 0):.2f} kg")
                         
                         if reg.get("pdf_url"):
-                            c4.link_button("📄 Ver Constancia", reg.get("pdf_url"), use_container_width=True)
+                            c4.link_button("Ver Constancia", reg.get("pdf_url"), use_container_width=True)
                         else:
-                            c4.caption("📄 Sin PDF")
+                            c4.caption("Sin PDF")
                         
                         if st.session_state.rol == "admin":
-                            if c4.button("🗑️ Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
+                            if c4.button("️ Eliminar", key=f"del_ong_{reg['id']}", type="secondary", use_container_width=True):
                                 try:
                                     supabase.table("ong_registros").delete().eq("id", reg["id"]).execute()
-                                    st.toast(f"🗑️ Registro {reg.get('codigo_registro')} eliminado.")
+                                    st.toast(f"️ Registro {reg.get('codigo_registro')} eliminado.")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Error al eliminar: {e}")
