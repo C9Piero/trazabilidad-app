@@ -3610,7 +3610,8 @@ else:
                 c_dconst.download_button("Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
 
     elif st.session_state.espacio == "circular":
-# =========================================================================
+        
+    # =========================================================================
     # ENTORNO 2: ONG MUJER POWER (CIRCULAR)
     # =========================================================================
     elif st.session_state.get("espacio") == "circular":
