@@ -325,52 +325,79 @@ st.markdown(
     }
 
     /* ===== BOTONES ===== */
-    div[data-testid="stButton"] button {
+    /* Selectores múltiples para cubrir distintas versiones de Streamlit:
+       - div[data-testid="stButton"] button  -> versiones más antiguas
+       - button[data-testid^="stBaseButton"] -> versiones recientes (1.4x+)
+       - button[kind]                        -> respaldo genérico */
+    div[data-testid="stButton"] button,
+    button[data-testid^="stBaseButton"],
+    button[kind="secondary"],
+    button[kind="secondaryFormSubmit"] {
         border-radius: 10px !important;
-        font-weight: 600;
-        transition: all 0.15s ease;
-        border: 1px solid var(--border-soft);
-        color: var(--text-main);
-        background-color: var(--bg-card);
+        font-weight: 600 !important;
+        font-family: 'Poppins', sans-serif !important;
+        transition: all 0.15s ease !important;
+        border: 1px solid var(--border-soft) !important;
+        color: var(--text-main) !important;
+        background-color: var(--bg-card) !important;
+        box-shadow: none !important;
     }
-    div[data-testid="stButton"] button:hover {
-        border-color: var(--accent);
-        color: var(--accent-strong);
-        background-color: var(--accent-soft-bg);
+    div[data-testid="stButton"] button:hover,
+    button[data-testid^="stBaseButton"]:hover,
+    button[kind="secondary"]:hover {
+        border-color: var(--accent) !important;
+        color: var(--accent-strong) !important;
+        background-color: var(--accent-soft-bg) !important;
         transform: translateY(-1px);
     }
-    div[data-testid="stButton"] button[kind="primary"] {
+    div[data-testid="stButton"] button[kind="primary"],
+    button[data-testid^="stBaseButton"][kind="primary"],
+    button[kind="primary"],
+    button[kind="primaryFormSubmit"] {
         background: linear-gradient(135deg, var(--accent-strong), #A8134F) !important;
-        border: none;
+        border: none !important;
         color: #FFFFFF !important;
-        box-shadow: 0 6px 16px -4px rgba(194, 24, 91, 0.4);
+        box-shadow: 0 6px 16px -4px rgba(194, 24, 91, 0.4) !important;
     }
-    div[data-testid="stButton"] button[kind="primary"]:hover {
-        box-shadow: 0 8px 20px -4px rgba(194, 24, 91, 0.5);
+    div[data-testid="stButton"] button[kind="primary"]:hover,
+    button[data-testid^="stBaseButton"][kind="primary"]:hover,
+    button[kind="primary"]:hover {
+        box-shadow: 0 8px 20px -4px rgba(194, 24, 91, 0.5) !important;
         transform: translateY(-1px);
         color: #FFFFFF !important;
+    }
+    /* Asegura que el texto interno del botón herede el color, no un gris/azul por defecto */
+    div[data-testid="stButton"] button p,
+    button[data-testid^="stBaseButton"] p,
+    button[kind] p {
+        color: inherit !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: inherit !important;
     }
 
     /* Botones de navegación del sidebar: look tipo lista limpia */
-    div[data-testid="stSidebar"] div[data-testid="stButton"] button {
-        text-align: left;
-        justify-content: flex-start;
-        background-color: transparent;
-        border: 1px solid transparent;
-        font-weight: 500;
-        padding: 0.5rem 0.75rem;
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button,
+    div[data-testid="stSidebar"] button[data-testid^="stBaseButton"] {
+        text-align: left !important;
+        justify-content: flex-start !important;
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        font-weight: 500 !important;
+        padding: 0.5rem 0.75rem !important;
     }
-    div[data-testid="stSidebar"] div[data-testid="stButton"] button:hover {
-        background-color: #FFFFFF;
-        border-color: var(--border-soft);
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button:hover,
+    div[data-testid="stSidebar"] button[data-testid^="stBaseButton"]:hover {
+        background-color: #FFFFFF !important;
+        border-color: var(--border-soft) !important;
         transform: none;
     }
-    div[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"] {
+    div[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"],
+    div[data-testid="stSidebar"] button[data-testid^="stBaseButton"][kind="primary"] {
         background: #FFFFFF !important;
         color: var(--accent-strong) !important;
         border: 1px solid var(--accent) !important;
-        box-shadow: 0 2px 8px -2px rgba(194, 24, 91, 0.15);
-        font-weight: 700;
+        box-shadow: 0 2px 8px -2px rgba(194, 24, 91, 0.15) !important;
+        font-weight: 700 !important;
     }
 
     /* ===== MÉTRICAS ===== */
