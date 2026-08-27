@@ -1521,28 +1521,31 @@ try:
     
     USUARIO_OPE = st.secrets["auth"]["OPERARIO_USER"]
     PASSWORD_OPE = st.secrets["auth"]["OPERARIO_PASS"]
+    
+    # Credenciales de Arfumm (puedes agregarlas en tu st.secrets o dejarlas fijas aquí por ahora)
+    USUARIO_ARFUMM = st.secrets.get("auth", {}).get("ARFUMM_USER", "arfumm")
+    PASSWORD_ARFUMM = st.secrets.get("auth", {}).get("ARFUMM_PASS", "trujillo2026")
 except KeyError:
-    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`. Asegúrate de tener ADMIN_USER y OPERARIO_USER.")
+    st.error("⚠️ Faltan las credenciales de acceso en `st.secrets`.")
     st.stop()
 
 if not st.session_state.autenticado:
     st.markdown(
         """
-        <div class="login-hero">
-            <div class="login-badge">♻</div>
-            <h1 class="login-title">Pequeños Detalles</h1>
-            <p class="login-subtitle">PEQUEÑOS DETALLES HANDMADE PERU S.A.C.<br>Gestión de Sostenibilidad</p>
+        <div style="text-align: center; padding: 40px 10px;">
+            <h1 style="color: #1E293B; font-size: 2.2rem; font-weight: 800;">Pequeños Detalles</h1>
+            <p style="color: #64748B; font-size: 1.1rem;">Gestión de Sostenibilidad y Trazabilidad Circular</p>
         </div>
     """,
         unsafe_allow_html=True,
     )
 
-    col1, col2, col3 = st.columns([1, 1.1, 1])
+    col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.markdown('<p class="login-form-title">Iniciar Sesión</p>', unsafe_allow_html=True)
-            usuario_input = st.text_input("Usuario", placeholder="Tu usuario")
-            password_input = st.text_input("Contraseña", type="password", placeholder="Tu contraseña")
+            st.subheader("Iniciar Sesión")
+            usuario_input = st.text_input("Usuario")
+            password_input = st.text_input("Contraseña", type="password")
 
             if st.button("Ingresar al Sistema", use_container_width=True, type="primary"):
                 if usuario_input == USUARIO_ADMIN and password_input == PASSWORD_ADMIN:
@@ -1555,6 +1558,12 @@ if not st.session_state.autenticado:
                     st.session_state.rol = "operario"
                     st.success("¡Bienvenido al panel operativo!")
                     st.rerun()
+                elif usuario_input == USUARIO_ARFUMM and password_input == PASSWORD_ARFUMM:
+                    st.session_state.autenticado = True
+                    st.session_state.rol = "aliado_arfumm"
+                    st.session_state.espacio = "circular" # Los fuerza a entrar a la ONG
+                    st.success("¡Bienvenido Equipo Arfumm - Trujillo!")
+                    st.rerun()
                 else:
                     st.error("⚠️ Usuario o contraseña incorrectos.")
 
@@ -1562,17 +1571,22 @@ else:
     proyectos_wip = cargar_proyectos("EN_PROCESO")
 
     with st.sidebar:
-        st.markdown("### Entorno de Trabajo")
-        
-        col_w1, col_w2 = st.columns(2)
-        if col_w1.button("Pequeños Detalles", use_container_width=True, type="primary" if st.session_state.espacio == "textil" else "secondary"):
-            st.session_state.espacio = "textil"
-            st.rerun()
-        if col_w2.button("ONG Mujer Power", use_container_width=True, type="secondary" if st.session_state.espacio == "textil" else "primary"): 
-            st.session_state.espacio = "circular"
-            st.rerun()
-            
-        st.write("---")
+        # Si NO es Arfumm, mostramos los botones para cambiar de espacio
+        if st.session_state.rol != "aliado_arfumm":
+            st.markdown("### Entorno de Trabajo")
+            col_w1, col_w2 = st.columns(2)
+            if col_w1.button("Pequeños Detalles", use_container_width=True, type="primary" if st.session_state.espacio == "textil" else "secondary"):
+                st.session_state.espacio = "textil"
+                st.rerun()
+            if col_w2.button("ONG Mujer Power", use_container_width=True, type="secondary" if st.session_state.espacio == "textil" else "primary"): 
+                st.session_state.espacio = "circular"
+                st.rerun()
+            st.write("---")
+        else:
+            # Si ES Arfumm, ocultamos el acceso a Pequeños Detalles y mostramos su sede
+            st.markdown("### Entorno de Trabajo")
+            st.info("📍 Sede Aliada: **Arfumm Trujillo**")
+            st.write("---")
 
         if st.session_state.espacio == "textil":
             rol_display = "Administrador" if st.session_state.rol == "admin" else "Operario"
@@ -3818,33 +3832,38 @@ else:
                                 meses_str = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
                                 mes_actual = meses_str[fecha_ong.month - 1]
 
-                                # --- CÁLCULO DE CORRELATIVO SECUENCIAL ---
+                                # --- CÁLCULO DE CORRELATIVO Y RASTREO DE SEDE ---
                                 try:
                                     res_corr = supabase.table("ong_registros").select("id").order("id", desc=True).limit(1).execute()
                                     siguiente_id = res_corr.data[0]["id"] + 1 if res_corr.data else 1
                                 except Exception:
-                                    siguiente_id = random.randint(1000, 9999) # Respaldo en caso de error de internet
+                                    siguiente_id = random.randint(1000, 9999) 
                                 
-                                correlativo_secuencial = f"{siguiente_id:03d}" # Convierte 1 en "001", 15 en "015", etc.
+                                correlativo_secuencial = f"{siguiente_id:03d}"
+
+                                # Verificamos si es el aliado de Trujillo para marcar su código y su evento
+                                si_es_arfumm = (st.session_state.get("rol") == "aliado_arfumm")
+                                prefijo_codigo = "ARF" if si_es_arfumm else "ONG"
+                                evento_final = evento_ong.strip() + " (Sede Arfumm Trujillo)" if si_es_arfumm else evento_ong.strip()
                                 # -----------------------------------------
 
                                 contexto = {
                                     "anio": str(fecha_ong.year), "correlativo": correlativo_secuencial,
-                                    "partida": "14886638", "ciudad_sede": "Lima", "resolucion_donaciones": "", 
+                                    "partida": "14886638", "ciudad_sede": "Trujillo" if si_es_arfumm else "Lima", "resolucion_donaciones": "", 
                                     "empresa_donante": empresa_ong.strip(), "ruc_donante": ruc_ong.strip() if ruc_ong.strip() else "S/N",
                                     "direccion_donante": direccion_ong.strip(), "mes": mes_actual, "texto_operadoras": texto_op,
                                     "kg_pet": f"{dict_pesos['PET']:,.2f}", "kg_cocalata": f"{dict_pesos['Cocalata']:,.2f}",
                                     "kg_papel": f"{dict_pesos['Papel Blanco']:,.2f}", "kg_carton": f"{dict_pesos['Cartón']:,.2f}",
                                     "kg_chapita": f"{dict_pesos['Chapita']:,.2f}", "kg_raee": f"{kg_raee_total:,.2f}",
                                     "kg_aluminio": f"{dict_pesos['Aluminio']:,.2f}", "kg_lata": f"{dict_pesos['Lata de Leche']:,.2f}",
-                                    "total_kg": f"{total_kg_ong:,.2f}", "ciudad_emision": "Lima", "dia": str(datetime.date.today().day)
+                                    "total_kg": f"{total_kg_ong:,.2f}", "ciudad_emision": "Trujillo" if si_es_arfumm else "Lima", "dia": str(datetime.date.today().day)
                                 }
 
                                 # 2. Generar el PDF
                                 pdf_bytes = generar_constancia_desde_plantilla_word(contexto, "Plantilla_Constancia_Mujer_Power.docx")
                                 
-                                # Usamos también el correlativo para que tu archivo quede súper ordenado
-                                codigo_ong = f"ONG_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{correlativo_secuencial}"
+                                # Aplicamos el prefijo para saber quién lo hizo
+                                codigo_ong = f"{prefijo_codigo}_{empresa_ong[:4].upper().replace(' ', '')}_{fecha_ong.strftime('%m%y')}-{correlativo_secuencial}"
                                 nombre_pdf = f"Constancia_{codigo_ong}.pdf"
 
                                 # 3. Subir el PDF a Supabase Storage
