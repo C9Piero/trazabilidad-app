@@ -46,16 +46,28 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         service = build('drive', 'v3', credentials=credentials)
         root_folder_id = creds_data["folder_id"]
 
+        # --- 1. CARPETA MAESTRA: PEQUEÑOS DETALLES ---
+        query_master = f"name='PEQUEÑOS DETALLES' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
+        res_master = service.files().list(q=query_master, fields='files(id)').execute()
+        
+        if not res_master.get('files', []):
+            carpeta_master = service.files().create(body={'name': 'PEQUEÑOS DETALLES', 'mimeType': 'application/vnd.google-apps.folder', 'parents': [root_folder_id]}, fields='id').execute()
+            id_master = carpeta_master.get('id')
+        else:
+            id_master = res_master.get('files')[0].get('id')
+
+        # --- 2. CARPETA DEL AÑO (Dentro de la maestra) ---
         nombre_carpeta_anio = str(fecha_fin_dt.year)
-        query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
+        query_anio = f"name='{nombre_carpeta_anio}' and mimeType='application/vnd.google-apps.folder' and '{id_master}' in parents and trashed=false"
         res_anio = service.files().list(q=query_anio, fields='files(id)').execute()
         
         if not res_anio.get('files', []):
-            carpeta_anio = service.files().create(body={'name': nombre_carpeta_anio, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [root_folder_id]}, fields='id').execute()
+            carpeta_anio = service.files().create(body={'name': nombre_carpeta_anio, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [id_master]}, fields='id').execute()
             id_anio = carpeta_anio.get('id')
         else:
             id_anio = res_anio.get('files')[0].get('id')
 
+        # --- 3. CARPETA DEL MES ---
         meses = {1:"ENERO", 2:"FEBRERO", 3:"MARZO", 4:"ABRIL", 5:"MAYO", 6:"JUNIO", 7:"JULIO", 8:"AGOSTO", 9:"SETIEMBRE", 10:"OCTUBRE", 11:"NOVIEMBRE", 12:"DICIEMBRE"}
         nombre_carpeta_mes = meses.get(fecha_fin_dt.month, 'MES')
         query_mes = f"name='{nombre_carpeta_mes}' and mimeType='application/vnd.google-apps.folder' and '{id_anio}' in parents and trashed=false"
@@ -67,6 +79,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         else:
             id_mes = res_mes.get('files')[0].get('id')
 
+        # --- 4. CARPETA DEL CLIENTE ---
         nombre_cliente = cliente.strip().upper().replace("'", "")
         query_cli = f"name='{nombre_cliente}' and mimeType='application/vnd.google-apps.folder' and '{id_mes}' in parents and trashed=false"
         res_cli = service.files().list(q=query_cli, fields='files(id)').execute()
@@ -77,6 +90,7 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
         else:
             id_cli = res_cli.get('files')[0].get('id')
 
+        # --- 5. SUBCARPETA DEL PROYECTO ---
         query_proy = f"name='{nombre_subcarpeta}' and mimeType='application/vnd.google-apps.folder' and '{id_cli}' in parents and trashed=false"
         res_proy = service.files().list(q=query_proy, fields='files(id)').execute()
         
