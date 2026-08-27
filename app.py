@@ -3609,8 +3609,6 @@ else:
                 c_dinf.download_button("Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
                 c_dconst.download_button("Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
 
-    elif st.session_state.espacio == "circular":
-        
     # =========================================================================
     # ENTORNO 2: ONG MUJER POWER (CIRCULAR)
     # =========================================================================
