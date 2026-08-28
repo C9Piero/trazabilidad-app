@@ -1644,12 +1644,12 @@ else:
             "Producción desde 0",
             use_container_width=True,
             type="primary" if st.session_state.pestaña_activa == "Producción desde 0" else "secondary",
-        ):
-            st.session_state.documentos_descarga = None
-            st.session_state.pestaña_activa = "Producción desde 0"
-            st.session_state.uid_proyecto = str(random.randint(1000, 9999))
-            st.session_state.form_version += 1
-            st.rerun()
+            ):
+                st.session_state.documentos_descarga = None
+                st.session_state.pestaña_activa = "Producción desde 0"
+                st.session_state.uid_proyecto = str(random.randint(1000, 9999))
+                st.session_state.form_version += 1
+                st.rerun()
             
             if st.button(
                 "Carga Rápida Histórica",
