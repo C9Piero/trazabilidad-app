@@ -2096,252 +2096,253 @@ else:
     # =========================================================================
     # NUEVO MÓDULO: PRODUCCIÓN DESDE 0 (IMPACTO SOCIAL)
     # =========================================================================
-    elif st.session_state.pestaña_activa == "Producción desde 0":
-        fv_p0 = st.session_state.form_version
+            elif st.session_state.pestaña_activa == "Producción desde 0":
+                fv_p0 = st.session_state.form_version
+                
+                st.subheader("Registro: Producción desde 0 (Impacto Social)")
+                st.caption("Módulo exclusivo para contabilizar la fabricación con tela virgen. Registra las prendas y genera una constancia enfocada 100% en las horas de trabajo social (sin contabilizar mitigación de CO₂e).")
         
-        st.subheader("Registro: Producción desde 0 (Impacto Social)")
-        st.caption("Módulo exclusivo para contabilizar la fabricación con tela virgen. Registra las prendas y genera una constancia enfocada 100% en las horas de trabajo social (sin contabilizar mitigación de CO₂e).")
-
-        # --- SECCIÓN 1: DATOS GENERALES ---
-        with st.container(border=True):
-            st.markdown("##### 1. Ficha General")
-            c1, c2, c5, c6 = st.columns(4)
-            cliente_p0 = c1.text_input("Cliente / Empresa *", key=f"cli_p0_v{fv_p0}")
-            ruc_p0 = c2.text_input("RUC * (11 dígitos)", max_chars=11, key=f"ruc_p0_v{fv_p0}")
-            fe_inicio_dt = c5.date_input("Fecha Inicio", format="DD/MM/YYYY", key=f"f_ini_p0_v{fv_p0}")
-            fe_fin_dt = c6.date_input("Fecha Término", format="DD/MM/YYYY", key=f"f_fin_p0_v{fv_p0}")
-
-            c4, c7 = st.columns(2)
-            tipo_p0 = c4.text_input("Tipo de Proyecto", value="PRODUCCIÓN DESDE CERO", disabled=True)
-            
-            RESPONSABLES_BASE = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado"]
-            opciones_responsables = list(dict.fromkeys(RESPONSABLES_BASE))
-            responsables_seleccionados = c7.multiselect("Responsable *", options=opciones_responsables, placeholder="Selecciona uno o más", key=f"resp_p0_v{fv_p0}")
-            responsable_p0 = ", ".join(responsables_seleccionados) if responsables_seleccionados else "Equipo Interno"
-            
-            mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "MES").upper()
-            str_empresa = cliente_p0.strip() if cliente_p0.strip() else "EMPRESA"
-            cliente_clean = re.sub(r'[^a-zA-Z0-9]', '', str_empresa).upper()[:8]
-            codigo_proy = f"P0_{cliente_clean}_{mes_fin_nombre}{fe_fin_dt.year}-{random.randint(1000, 9999)}"
-
-        st.write("")
-
-        # --- SECCIÓN 2: SALIDA DE PRODUCTOS ---
-        with st.container(border=True):
-            st.markdown("##### 2. Catálogo de Productos Fabricados")
-            
-            if "num_prods_p0" not in st.session_state:
-                st.session_state.num_prods_p0 = 1
-
-            col_btnp1, col_btnp2, _ = st.columns([1, 1, 4])
-            if col_btnp1.button("Agregar Producto", key=f"add_p_p0_v{fv_p0}"):
-                st.session_state.num_prods_p0 += 1
-                st.rerun()
-            if col_btnp2.button("Quitar Producto", key=f"del_p_p0_v{fv_p0}") and st.session_state.num_prods_p0 > 1:
-                st.session_state.num_prods_p0 -= 1
-                st.rerun()
-
-            lista_productos_p0 = []
-            total_prod_unid = 0
-
-            for i in range(st.session_state.num_prods_p0):
-                col_psel, col_pnom_nuevo, col_pcant = st.columns([3, 2.5, 1.5])
-
-                prod_seleccionado = col_psel.selectbox(f"Producto {i+1} *", st.session_state.catalogo_productos, key=f"prod_sel_p0_{i}_v{fv_p0}")
-
-                if prod_seleccionado == "Otro (Escribir nuevo producto)":
-                    nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_p0_{i}_v{fv_p0}")
-                    nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
-                else:
-                    st.session_state[f"prod_dis_p0_{i}_v{fv_p0}"] = prod_seleccionado
-                    col_pnom_nuevo.text_input("Nombre Seleccionado", disabled=True, key=f"prod_dis_p0_{i}_v{fv_p0}")
-                    nombre_final = prod_seleccionado
-
-                p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=1, key=f"prod_cant_p0_{i}_v{fv_p0}")
-
-                total_prod_unid += p_cant
-                lista_productos_p0.append({
-                    "producto": nombre_final, "cantidad": p_cant
-                })
-
-            st.info(f"**Total de Unidades a Fabricar:** {total_prod_unid} unidades")
-
-        st.write("")
-
-        # --- SECCIÓN 3: IMPACTO SOCIAL (MATRIZ) ---
-        with st.container(border=True):
-            st.markdown("##### 3. Equipo de Trabajo y Generación de Horas (Impacto Social)")
-            st.caption("Asigna los tiempos de trabajo manual de corte, logística y confección.")
-
-            st.markdown("#### A. Operaciones – Corte y Logística")
-            lista_operaciones_p0 = []
-            total_horas_ops = 0.0
-
-            h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
-            h_col1.markdown("**Rol**")
-            h_col2.markdown("**Nombre**")
-            h_col3.markdown("**Editar**")
-            h_col4.markdown("**Días**")
-            h_col5.markdown("**Hrs/día**")
-            h_col6.markdown("**Total**")
-            st.write("---")
-
-            for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
-                c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
-
-                rol_val = p_fijo["rol"]
-                c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
-
-                editar_fila = c_chk.checkbox("✅", value=False, key=f"ops_chk_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
-                nom_val = c_nom.text_input("Nombre", value=p_fijo["nombre"], disabled=not editar_fila, key=f"ops_nom_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
-
-                val_dias = c_dias.number_input("Días", min_value=0, value=0, step=1, disabled=not editar_fila, key=f"ops_dias_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
-                val_hdia = c_hdia.number_input("Hrs/Día", min_value=0.0, value=0.0, step=0.5, disabled=not editar_fila, key=f"ops_hdia_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
-
-                tot_hrs_pers = float(val_dias) * float(val_hdia)
-                c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
-
-                total_horas_ops += tot_hrs_pers
-                lista_operaciones_p0.append({
-                    "rol": rol_val, "nombre": nom_val, "dias": val_dias, "horas_dia": val_hdia, "horas_totales": tot_hrs_pers
-                })
-
-            st.write("---")
-            st.markdown("#### B. Confección y Acabado (Base IA)")
-
-            lista_confeccion_p0 = []
-            horas_confeccion_total = 0.0
-
-            for idx, prod in enumerate(lista_productos_p0):
-                p_nom = prod["producto"]
-                p_cant = prod["cantidad"]
-                tiempo_base_ia = estimar_tiempo_unidad(p_nom)
-
-                st.markdown(f"**Producto {idx+1}: {p_nom}** *(Cantidad: {p_cant} unid | Estimado IA: {tiempo_base_ia:.2f} hrs/unid)*")
-
-                key_num_pers = f"num_pers_p0_prod_{idx}"
-                if key_num_pers not in st.session_state:
-                    st.session_state[key_num_pers] = 1
-
-                col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
-                if col_b1.button("Añadir Persona", key=f"add_pers_p0_{idx}"):
-                    st.session_state[key_num_pers] += 1
-                    st.rerun()
-                if col_b2.button("Quitar Persona", key=f"del_pers_p0_{idx}") and st.session_state[key_num_pers] > 1:
-                    st.session_state[key_num_pers] -= 1
-                    st.rerun()
-
-                for p_idx in range(st.session_state[key_num_pers]):
-                    c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([1.8, 3.0, 1.4, 1.8, 1.8])
+                # --- SECCIÓN 1: DATOS GENERALES ---
+                with st.container(border=True):
+                    st.markdown("##### 1. Ficha General")
+                    c1, c2, c5, c6 = st.columns(4)
+                    cliente_p0 = c1.text_input("Cliente / Empresa *", key=f"cli_p0_v{fv_p0}")
+                    ruc_p0 = c2.text_input("RUC * (11 dígitos)", max_chars=11, key=f"ruc_p0_v{fv_p0}")
+                    fe_inicio_dt = c5.date_input("Fecha Inicio", format="DD/MM/YYYY", key=f"f_ini_p0_v{fv_p0}")
+                    fe_fin_dt = c6.date_input("Fecha Término", format="DD/MM/YYYY", key=f"f_fin_p0_v{fv_p0}")
+        
+                    c4, c7 = st.columns(2)
+                    tipo_p0 = c4.text_input("Tipo de Proyecto", value="PRODUCCIÓN DESDE CERO", disabled=True)
                     
-                    rol_sel = c_rol.selectbox("Rol *", ["Confección", "Acabado", "Entretela", "Estampado"], key=f"soc_rol_p0_{idx}_{p_idx}_v{fv_p0}")
-                    persona_sel = c_persona.selectbox("Operaria *", st.session_state.lista_personal_confeccion, key=f"soc_pers_sel_p0_{idx}_{p_idx}_v{fv_p0}")
+                    RESPONSABLES_BASE = ["Evelyn Prada Vizarreta", "Gabriel Manrique Hurtado"]
+                    opciones_responsables = list(dict.fromkeys(RESPONSABLES_BASE))
+                    responsables_seleccionados = c7.multiselect("Responsable *", options=opciones_responsables, placeholder="Selecciona uno o más", key=f"resp_p0_v{fv_p0}")
+                    responsable_p0 = ", ".join(responsables_seleccionados) if responsables_seleccionados else "Equipo Interno"
                     
-                    cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
-                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, value=cant_sugerida, key=f"soc_cant_p0_{idx}_{p_idx}_v{fv_p0}")
-
-                    if rol_sel == "Confección": t_unit = float(tiempo_base_ia)
-                    elif rol_sel == "Acabado": t_unit = round(tiempo_base_ia * 0.20, 3)
-                    elif rol_sel == "Entretela": t_unit = round(tiempo_base_ia * 0.10, 3)
-                    else: t_unit = round(5.0 / 60.0, 3)
-
-                    tiempo_unitario = c_tiempo.number_input("Tiempo (hrs/unid)", min_value=0.0, value=t_unit, step=0.05, key=f"soc_tunit_p0_{idx}_{p_idx}_v{fv_p0}")
+                    mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "MES").upper()
+                    str_empresa = cliente_p0.strip() if cliente_p0.strip() else "EMPRESA"
+                    cliente_clean = re.sub(r'[^a-zA-Z0-9]', '', str_empresa).upper()[:8]
+                    codigo_proy = f"P0_{cliente_clean}_{mes_fin_nombre}{fe_fin_dt.year}-{random.randint(1000, 9999)}"
+        
+                st.write("")
+        
+                # --- SECCIÓN 2: SALIDA DE PRODUCTOS ---
+                with st.container(border=True):
+                    st.markdown("##### 2. Catálogo de Productos Fabricados")
                     
-                    horas_persona = cant_asig * tiempo_unitario
-                    c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_p0_{idx}_{p_idx}_v{fv_p0}")
-
-                    horas_confeccion_total += horas_persona
-                    lista_confeccion_p0.append({
-                        "producto": p_nom, "rol": rol_sel, "persona": persona_sel, "cantidad": cant_asig, "horas_totales": horas_persona
-                    })
-
-            total_horas_social = total_horas_ops + horas_confeccion_total
-            nombres_unicos = set()
-            for op in lista_operaciones_p0:
-                if op.get("horas_totales", 0) > 0 and op.get("nombre", "").strip():
-                    nombres_unicos.add(op["nombre"].strip().title())
-            for conf in lista_confeccion_p0:
-                if conf.get("horas_totales", 0) > 0 and conf.get("persona", "").strip():
-                    nombres_unicos.add(conf["persona"].strip().title())
-                    
-            total_personas_social = len(nombres_unicos)
-
-            st.info(f"‍‍**Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas.")
-
-        st.write("")
-
-        # --- BOTÓN DE GUARDADO + CONSTANCIA SOCIAL ---
-        with st.container(border=True):
-            st.markdown("##### Generar Constancia Social y Registrar")
-            st.caption("Generará el documento Word/PDF basado en tu `Plantilla_Impacto_Social.docx` y guardará los indicadores (CO₂ = 0 kg).")
-            
-            if st.button("Registrar Producción desde 0", type="primary", use_container_width=True):
-                if not cliente_p0.strip():
-                    st.error("⚠️ Debes ingresar el nombre del cliente.")
-                else:
-                    with st.spinner("Generando Constancia Social y guardando en la base de datos..."):
-                        try:
-                            # 1. Generar Documento Word -> PDF
-                            contexto_social = {
-                                "cliente": cliente_p0.upper(),
-                                "ruc": ruc_p0,
-                                "fecha_inicio": fe_inicio_dt.strftime('%d/%m/%Y'),
-                                "fecha_fin": fe_fin_dt.strftime('%d/%m/%Y'),
-                                "total_unidades": str(total_prod_unid),
-                                "total_horas": f"{total_horas_social:.1f}",
-                                "total_personas": str(total_personas_social)
-                            }
-                            
-                            bytes_constancia = generar_constancia_desde_plantilla_word(contexto_social, "Plantilla_Impacto_Social.docx")
-                            url_constancia = subir_pdf_supabase(f"Constancia_Social_{codigo_proy}.pdf", bytes_constancia)
-                            
-                            # 2. Guardar en Base de Datos (Métricas Ambientales bloqueadas en CERO)
-                            datos_sociales = {
-                                "codigo": codigo_proy,
-                                "cliente": cliente_p0,
-                                "ruc": ruc_p0,
-                                "tipo_proyecto": tipo_p0,
-                                "responsable": responsable_p0,
-                                "fecha": f"{fe_inicio_dt.strftime('%d/%m/%Y')} - {fe_fin_dt.strftime('%d/%m/%Y')}",
-                                "estado": "COMPLETADO",
-                                "peso_recibido": 0.0,
-                                "peso_transformado": 0.0,
-                                "aprovechamiento": 0.0,
-                                "co2_neto": 0.0,
-                                "horas_totales": total_horas_social,
-                                "productos_unids": total_prod_unid,
-                                "punto_origen": "Producción desde cero",
-                                "constancia_url": url_constancia,
-                                "pdf_url": "",
-                                "datos_completos": {
-                                    "productos": lista_productos_p0,
-                                    "operaciones": lista_operaciones_p0,
-                                    "confeccion": lista_confeccion_p0,
-                                    "participantes": total_personas_social
-                                }
-                            }
-                            
-                            supabase.table("proyectos").insert(datos_sociales).execute()
-                            
-                            st.session_state.num_prods_p0 = 1
-                            st.session_state.form_version += 1
-                            
-                            st.session_state.documentos_descarga = {
-                                "bytes_informe": bytes_constancia,
-                                "nombre_archivo": f"Constancia_Social_{codigo_proy}.pdf"
-                            }
+                    if "num_prods_p0" not in st.session_state:
+                        st.session_state.num_prods_p0 = 1
+        
+                    col_btnp1, col_btnp2, _ = st.columns([1, 1, 4])
+                    if col_btnp1.button("Agregar Producto", key=f"add_p_p0_v{fv_p0}"):
+                        st.session_state.num_prods_p0 += 1
+                        st.rerun()
+                    if col_btnp2.button("Quitar Producto", key=f"del_p_p0_v{fv_p0}") and st.session_state.num_prods_p0 > 1:
+                        st.session_state.num_prods_p0 -= 1
+                        st.rerun()
+        
+                    lista_productos_p0 = []
+                    total_prod_unid = 0
+        
+                    for i in range(st.session_state.num_prods_p0):
+                        col_psel, col_pnom_nuevo, col_pcant = st.columns([3, 2.5, 1.5])
+        
+                        prod_seleccionado = col_psel.selectbox(f"Producto {i+1} *", st.session_state.catalogo_productos, key=f"prod_sel_p0_{i}_v{fv_p0}")
+        
+                        if prod_seleccionado == "Otro (Escribir nuevo producto)":
+                            nuevo_nombre = col_pnom_nuevo.text_input("Escriba el Nuevo Producto *", key=f"prod_nuevo_txt_p0_{i}_v{fv_p0}")
+                            nombre_final = nuevo_nombre.strip() if nuevo_nombre.strip() else f"Producto {i+1}"
+                        else:
+                            st.session_state[f"prod_dis_p0_{i}_v{fv_p0}"] = prod_seleccionado
+                            col_pnom_nuevo.text_input("Nombre Seleccionado", disabled=True, key=f"prod_dis_p0_{i}_v{fv_p0}")
+                            nombre_final = prod_seleccionado
+        
+                        p_cant = col_pcant.number_input("Cantidad (Unid.) *", min_value=0, value=1, key=f"prod_cant_p0_{i}_v{fv_p0}")
+        
+                        total_prod_unid += p_cant
+                        lista_productos_p0.append({
+                            "producto": nombre_final, "cantidad": p_cant
+                        })
+        
+                    st.info(f"**Total de Unidades a Fabricar:** {total_prod_unid} unidades")
+        
+                st.write("")
+        
+                # --- SECCIÓN 3: IMPACTO SOCIAL (MATRIZ) ---
+                with st.container(border=True):
+                    st.markdown("##### 3. Equipo de Trabajo y Generación de Horas (Impacto Social)")
+                    st.caption("Asigna los tiempos de trabajo manual de corte, logística y confección.")
+        
+                    st.markdown("#### A. Operaciones – Corte y Logística")
+                    lista_operaciones_p0 = []
+                    total_horas_ops = 0.0
+        
+                    h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
+                    h_col1.markdown("**Rol**")
+                    h_col2.markdown("**Nombre**")
+                    h_col3.markdown("**Editar**")
+                    h_col4.markdown("**Días**")
+                    h_col5.markdown("**Hrs/día**")
+                    h_col6.markdown("**Total**")
+                    st.write("---")
+        
+                    for idx, p_fijo in enumerate(PERSONAL_FIJO_OPERACIONES):
+                        c_rol, c_nom, c_chk, c_dias, c_hdia, c_tot = st.columns([1.5, 2.5, 0.8, 1.2, 1.2, 1.2])
+        
+                        rol_val = p_fijo["rol"]
+                        c_rol.text_input("Rol", value=rol_val, disabled=True, key=f"ops_rol_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
+        
+                        editar_fila = c_chk.checkbox("✅", value=False, key=f"ops_chk_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
+                        nom_val = c_nom.text_input("Nombre", value=p_fijo["nombre"], disabled=not editar_fila, key=f"ops_nom_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
+        
+                        val_dias = c_dias.number_input("Días", min_value=0, value=0, step=1, disabled=not editar_fila, key=f"ops_dias_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
+                        val_hdia = c_hdia.number_input("Hrs/Día", min_value=0.0, value=0.0, step=0.5, disabled=not editar_fila, key=f"ops_hdia_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
+        
+                        tot_hrs_pers = float(val_dias) * float(val_hdia)
+                        c_tot.text_input("Total", value=f"{tot_hrs_pers:.2f}", disabled=True, key=f"ops_tot_p0_{idx}_v{fv_p0}", label_visibility="collapsed")
+        
+                        total_horas_ops += tot_hrs_pers
+                        lista_operaciones_p0.append({
+                            "rol": rol_val, "nombre": nom_val, "dias": val_dias, "horas_dia": val_hdia, "horas_totales": tot_hrs_pers
+                        })
+        
+                    st.write("---")
+                    st.markdown("#### B. Confección y Acabado (Base IA)")
+        
+                    lista_confeccion_p0 = []
+                    horas_confeccion_total = 0.0
+        
+                    for idx, prod in enumerate(lista_productos_p0):
+                        p_nom = prod["producto"]
+                        p_cant = prod["cantidad"]
+                        tiempo_base_ia = estimar_tiempo_unidad(p_nom)
+        
+                        st.markdown(f"**Producto {idx+1}: {p_nom}** *(Cantidad: {p_cant} unid | Estimado IA: {tiempo_base_ia:.2f} hrs/unid)*")
+        
+                        key_num_pers = f"num_pers_p0_prod_{idx}"
+                        if key_num_pers not in st.session_state:
+                            st.session_state[key_num_pers] = 1
+        
+                        col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
+                        if col_b1.button("Añadir Persona", key=f"add_pers_p0_{idx}"):
+                            st.session_state[key_num_pers] += 1
                             st.rerun()
+                        if col_b2.button("Quitar Persona", key=f"del_pers_p0_{idx}") and st.session_state[key_num_pers] > 1:
+                            st.session_state[key_num_pers] -= 1
+                            st.rerun()
+        
+                        for p_idx in range(st.session_state[key_num_pers]):
+                            c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([1.8, 3.0, 1.4, 1.8, 1.8])
                             
-                        except FileNotFoundError:
-                            st.error("❌ No se encontró el archivo 'Plantilla_Impacto_Social.docx'. Asegúrate de haberlo subido junto a tu código.")
-                        except Exception as e:
-                            st.error(f"❌ Error al procesar: {e}")
+                            rol_sel = c_rol.selectbox("Rol *", ["Confección", "Acabado", "Entretela", "Estampado"], key=f"soc_rol_p0_{idx}_{p_idx}_v{fv_p0}")
+                            persona_sel = c_persona.selectbox("Operaria *", st.session_state.lista_personal_confeccion, key=f"soc_pers_sel_p0_{idx}_{p_idx}_v{fv_p0}")
                             
-        if st.session_state.documentos_descarga and "Constancia_Social" in st.session_state.documentos_descarga.get("nombre_archivo", ""):
-            docs = st.session_state.documentos_descarga
-            st.success("¡Éxito! Tu producción ha sido registrada como impacto social (CO₂ = 0 kg).")
-            st.balloons()
-            st.download_button("Descargar Constancia Social (PDF)", data=docs["bytes_informe"], file_name=docs["nombre_archivo"], mime="application/pdf", use_container_width=True, type="primary")
+                            cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
+                            cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, value=cant_sugerida, key=f"soc_cant_p0_{idx}_{p_idx}_v{fv_p0}")
+        
+                            if rol_sel == "Confección": t_unit = float(tiempo_base_ia)
+                            elif rol_sel == "Acabado": t_unit = round(tiempo_base_ia * 0.20, 3)
+                            elif rol_sel == "Entretela": t_unit = round(tiempo_base_ia * 0.10, 3)
+                            else: t_unit = round(5.0 / 60.0, 3)
+        
+                            tiempo_unitario = c_tiempo.number_input("Tiempo (hrs/unid)", min_value=0.0, value=t_unit, step=0.05, key=f"soc_tunit_p0_{idx}_{p_idx}_v{fv_p0}")
+                            
+                            horas_persona = cant_asig * tiempo_unitario
+                            c_tot.text_input("Horas Totales", value=f"{horas_persona:.2f} hrs", disabled=True, key=f"soc_htot_p0_{idx}_{p_idx}_v{fv_p0}")
+        
+                            horas_confeccion_total += horas_persona
+                            lista_confeccion_p0.append({
+                                "producto": p_nom, "rol": rol_sel, "persona": persona_sel, "cantidad": cant_asig, "horas_totales": horas_persona
+                            })
+        
+                    total_horas_social = total_horas_ops + horas_confeccion_total
+                    nombres_unicos = set()
+                    for op in lista_operaciones_p0:
+                        if op.get("horas_totales", 0) > 0 and op.get("nombre", "").strip():
+                            nombres_unicos.add(op["nombre"].strip().title())
+                    for conf in lista_confeccion_p0:
+                        if conf.get("horas_totales", 0) > 0 and conf.get("persona", "").strip():
+                            nombres_unicos.add(conf["persona"].strip().title())
+                            
+                    total_personas_social = len(nombres_unicos)
+        
+                    st.info(f"‍‍**Impacto Social Total:** {total_horas_social:.2f} horas generadas | {total_personas_social} personas beneficiadas.")
+        
+                st.write("")
+        
+                # --- BOTÓN DE GUARDADO + CONSTANCIA SOCIAL ---
+                with st.container(border=True):
+                    st.markdown("##### Generar Constancia Social y Registrar")
+                    st.caption("Generará el documento Word/PDF basado en tu `Plantilla_Impacto_Social.docx` y guardará los indicadores (CO₂ = 0 kg).")
+                    
+                    if st.button("Registrar Producción desde 0", type="primary", use_container_width=True):
+                        if not cliente_p0.strip():
+                            st.error("⚠️ Debes ingresar el nombre del cliente.")
+                        else:
+                            with st.spinner("Generando Constancia Social y guardando en la base de datos..."):
+                                try:
+                                    # 1. Generar Documento Word -> PDF
+                                    contexto_social = {
+                                        "cliente": cliente_p0.upper(),
+                                        "ruc": ruc_p0,
+                                        "fecha_inicio": fe_inicio_dt.strftime('%d/%m/%Y'),
+                                        "fecha_fin": fe_fin_dt.strftime('%d/%m/%Y'),
+                                        "total_unidades": str(total_prod_unid),
+                                        "total_horas": f"{total_horas_social:.1f}",
+                                        "total_personas": str(total_personas_social)
+                                    }
+                                    
+                                    bytes_constancia = generar_constancia_desde_plantilla_word(contexto_social, "Plantilla_Impacto_Social.docx")
+                                    url_constancia = subir_pdf_supabase(f"Constancia_Social_{codigo_proy}.pdf", bytes_constancia)
+                                    
+                                    # 2. Guardar en Base de Datos (Métricas Ambientales bloqueadas en CERO)
+                                    datos_sociales = {
+                                        "codigo": codigo_proy,
+                                        "cliente": cliente_p0,
+                                        "ruc": ruc_p0,
+                                        "tipo_proyecto": tipo_p0,
+                                        "responsable": responsable_p0,
+                                        "fecha": f"{fe_inicio_dt.strftime('%d/%m/%Y')} - {fe_fin_dt.strftime('%d/%m/%Y')}",
+                                        "estado": "COMPLETADO",
+                                        "peso_recibido": 0.0,
+                                        "peso_transformado": 0.0,
+                                        "aprovechamiento": 0.0,
+                                        "co2_neto": 0.0,
+                                        "horas_totales": total_horas_social,
+                                        "productos_unids": total_prod_unid,
+                                        "punto_origen": "Producción desde cero",
+                                        "constancia_url": url_constancia,
+                                        "pdf_url": "",
+                                        "datos_completos": {
+                                            "productos": lista_productos_p0,
+                                            "operaciones": lista_operaciones_p0,
+                                            "confeccion": lista_confeccion_p0,
+                                            "participantes": total_personas_social
+                                        }
+                                    }
+                                    
+                                    supabase.table("proyectos").insert(datos_sociales).execute()
+                                    
+                                    st.session_state.num_prods_p0 = 1
+                                    st.session_state.form_version += 1
+                                    
+                                    st.session_state.documentos_descarga = {
+                                        "bytes_informe": bytes_constancia,
+                                        "nombre_archivo": f"Constancia_Social_{codigo_proy}.pdf"
+                                    }
+                                    st.rerun()
+                                    
+                                except FileNotFoundError:
+                                    st.error("❌ No se encontró el archivo 'Plantilla_Impacto_Social.docx'. Asegúrate de haberlo subido junto a tu código.")
+                                except Exception as e:
+                                    st.error(f"❌ Error al procesar: {e}")
+                                    
+                if st.session_state.documentos_descarga and "Constancia_Social" in st.session_state.documentos_descarga.get("nombre_archivo", ""):
+                    docs = st.session_state.documentos_descarga
+                    st.success("¡Éxito! Tu producción ha sido registrada como impacto social (CO₂ = 0 kg).")
+                    st.balloons()
+                    st.download_button("Descargar Constancia Social (PDF)", data=docs["bytes_informe"], file_name=docs["nombre_archivo"], mime="application/pdf", use_container_width=True, type="primary")
+            
         elif st.session_state.pestaña_activa == "Carga Rápida Histórica":
             st.subheader("Carga Rápida de Proyectos Históricos")
             st.caption("Registra proyectos individuales o sube tu tabla completa en segundos.")
