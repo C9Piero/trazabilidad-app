@@ -2562,7 +2562,7 @@ else:
                         "Horas de Trabajo": float(p.get("horas_totales") or 0),
                         "Productos Creados": int(p.get("productos_unids") or 0),
                         "Participantes": partic,
-                        "Tipo de Servicio": p.get("tipo_proyecto", "UPCYCLING"),
+                        "Tipo de Servicio": str(p.get("tipo_proyecto", "UPCYCLING")).upper(),
                         "DatosCompletos": dc
                     })
     
