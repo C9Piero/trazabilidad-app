@@ -3875,7 +3875,7 @@ else:
 
                                 mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                                 contexto_word = {
-                                    "titulo_constancia": titulo_constancia,  # <--- ¡La nueva etiqueta para tu Word!
+                                    "titulo_constancia": titulo_constancia,"tipo_proyecto_texto": tipo_proyecto_texto,
                                     "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
                                     "peso_recibido": f"{peso_total_recibido:.1f}", "unidades_ingreso": str(total_piezas_ingresadas),
                                     "co2_evitado": f"{co2_neto:.2f}", "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
