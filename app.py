@@ -2901,7 +2901,7 @@ else:
     
                 c4, c7, c8, c9 = st.columns(4)
                 
-                opciones_tipo_proyecto = ["Upcycling", "Residuos / Mermas", "Cambio de logo", "Banner", "Mixto"]
+                opciones_tipo_proyecto = ["Upcycling", "Mermas Textiles", "Cambio logo", "Banner"]
                 tipo_actual = p_edit.get("tipo_proyecto", "Upcycling")
                 idx_tipo = opciones_tipo_proyecto.index(tipo_actual) if tipo_actual in opciones_tipo_proyecto else 0
     
