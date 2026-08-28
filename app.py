@@ -2273,7 +2273,7 @@ else:
                 # --- BOTÓN DE GUARDADO + CONSTANCIA SOCIAL ---
                 with st.container(border=True):
                     st.markdown("##### Generar Constancia Social y Registrar")
-                    st.caption("Generará el documento Word/PDF basado en tu `Plantilla_Impacto_Social.docx` y guardará los indicadores (CO₂ = 0 kg).")
+                    st.caption("Este proceso emitirá la constancia oficial de impacto social en formato PDF y registrará las horas de trabajo generadas.")
                     
                     if st.button("Registrar Producción desde 0", type="primary", use_container_width=True):
                         if not cliente_p0.strip():
