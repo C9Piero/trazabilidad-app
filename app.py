@@ -2779,7 +2779,7 @@ else:
                             hc1.markdown(f"**{nombre_cli_ui}**")
                             hc1.caption(f"ID/Código: `{p.get('codigo', '')}`")
                             hc2.markdown(f"Estado: **{p.get('estado', 'N/D')}**")
-                            hc2.caption(f"Tipo: {p.get('tipo_proyecto', 'Upcycling')}")
+                            hc2.caption(f"Tipo: {str(p.get('tipo_proyecto', 'UPCYCLING')).upper()}")
                             hc3.markdown(f"Peso: `{float(p.get('peso_recibido', 0) or 0):.2f} kg`")
                             hc3.caption(f"Fecha: {p.get('fecha', 'N/D')}")
     
