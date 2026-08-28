@@ -3859,8 +3859,19 @@ else:
                                     lista_anexos=lista_anexos,
                                 )
 
+                                # Definir el título dinámico según el tipo de proyecto seleccionado
+                                if proyecto_nom == "Mermas Textiles":
+                                    titulo_constancia = "Constancia de valorización de mermas textiles"
+                                elif proyecto_nom == "Banner":
+                                    titulo_constancia = "Constancia de valorización y upcycling de banners"
+                                elif proyecto_nom == "Cambio logo":
+                                    titulo_constancia = "Constancia de servicios de customización y cambio de logo"
+                                else:
+                                    titulo_constancia = "Constancia de transformación de uniformes en desuso"
+
                                 mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                                 contexto_word = {
+                                    "titulo_constancia": titulo_constancia,  # <--- ¡La nueva etiqueta para tu Word!
                                     "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
                                     "peso_recibido": f"{peso_total_recibido:.1f}", "unidades_ingreso": str(total_piezas_ingresadas),
                                     "co2_evitado": f"{co2_neto:.2f}", "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
@@ -3868,7 +3879,7 @@ else:
                                     "productos_elaborados": str(total_prod_unid),
                                     "fecha_cierre": f"{fe_fin_dt.strftime('%d')} de {mes_fin_nombre} de {fe_fin_dt.year}",
                                 }
-                                bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word)
+                                bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word, ruta_plantilla="plantilla_constancia.docx")
     
                                 cliente_limpio = cliente.strip().replace("/", "-")
                                 nombre_informe_limpio = f"Informe_Tecnico_{cliente_limpio}.pdf"
