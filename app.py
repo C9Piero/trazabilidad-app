@@ -2356,7 +2356,7 @@ else:
                     fast_cliente = rq1.text_input("Cliente / Razón Social *")
                     fast_mes = rq2.selectbox("Mes del pedido *", MESES_ORDEN, index=datetime.date.today().month - 1)
                     fast_anio = rq3.selectbox("Año", [2024, 2025, 2026, 2027], index=2)
-                    fast_tipo = rq4.selectbox("Tipo de Proyecto", ["UPCYCLING", "Residuos / Mermas", "Producción Interna", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
+                    fast_tipo = rq4.selectbox("Tipo de Proyecto", ["Upcycling", "Mermas Textiles", "Producción Interna", "Producción desde 0", "Cambio logo", "Banner"])
                     
                     mes_num = MESES_ORDEN.index(fast_mes) + 1
                     cli_clean = fast_cliente.strip() if fast_cliente.strip() else "EMPRESA"
@@ -2722,7 +2722,7 @@ else:
                     f1, f2, f3 = st.columns([2, 1, 1])
                     busqueda = f1.text_input("Buscar por Cliente o Código", placeholder="Ej. Antamina o HIST_...")
                     filtro_estado = f2.selectbox("Estado del Proyecto", ["Todos", "COMPLETADO", "EN_PROCESO"])
-                    filtro_tipo = f3.selectbox("Tipo de Servicio", ["Todos", "UPCYCLING", "Residuos / Mermas", "Producción Interna", "PRODUCCIÓN DESDE CERO", "CAMBIO DE LOGO", "MIXTO", "BANNER"])
+                    filtro_tipo = f3.selectbox("Tipo de Servicio", ["Todos", "UPCYCLING", "Mermas Textiles", "Producción Interna", "PRODUCCIÓN DESDE CERO", "CAMBIO LOGO", "BANNER"])
                 
                 proyectos_filtrados = []
                 for p in proyectos_lista:
@@ -3020,9 +3020,9 @@ else:
                 total_piezas_ingresadas = 0
     
                 todas_prendas = sorted(list(st.session_state.factores_co2.keys()))
-                if proyecto_nom == "Residuos / Mermas":
+                if proyecto_nom == "Mermas Textiles":
                     opciones_prendas = [p for p in todas_prendas if "merma" in p.lower()]
-                elif proyecto_nom in ["Mixto", "Banner"]:
+                elif proyecto_nom == "Banner":
                     opciones_prendas = todas_prendas
                 else:
                     opciones_prendas = [p for p in todas_prendas if "merma" not in p.lower()]
