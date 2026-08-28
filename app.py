@@ -2096,7 +2096,7 @@ else:
     # =========================================================================
     # NUEVO MÓDULO: PRODUCCIÓN DESDE 0 (IMPACTO SOCIAL)
     # =========================================================================
-            elif st.session_state.pestaña_activa == "Producción desde 0":
+        elif st.session_state.pestaña_activa == "Producción desde 0":
                 fv_p0 = st.session_state.form_version
                 
                 st.subheader("Registro: Producción desde 0 (Impacto Social)")
