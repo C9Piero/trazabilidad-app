@@ -3859,15 +3859,19 @@ else:
                                     lista_anexos=lista_anexos,
                                 )
 
-                                # Definir el título dinámico según el tipo de proyecto seleccionado
+                                # Definir el texto dinámico según el tipo de proyecto seleccionado
                                 if proyecto_nom == "Mermas Textiles":
                                     titulo_constancia = "Constancia de valorización de mermas textiles"
+                                    tipo_proyecto_texto = "mermas textiles"
                                 elif proyecto_nom == "Banner":
                                     titulo_constancia = "Constancia de valorización y upcycling de banners"
+                                    tipo_proyecto_texto = "banners publicitarios"
                                 elif proyecto_nom == "Cambio logo":
                                     titulo_constancia = "Constancia de servicios de customización y cambio de logo"
+                                    tipo_proyecto_texto = "textiles para servicio de customización"
                                 else:
                                     titulo_constancia = "Constancia de transformación de uniformes en desuso"
+                                    tipo_proyecto_texto = "uniformes en desuso"
 
                                 mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                                 contexto_word = {
