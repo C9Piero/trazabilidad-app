@@ -1741,6 +1741,21 @@ else:
                 st.rerun()
 
         st.write("---")
+        if st.session_state.rol == "admin":
+            with st.expander("🔧 Diagnóstico de Secrets"):
+                claves_secrets = list(st.secrets.keys())
+                st.caption("Claves visibles en st.secrets (solo nombres, ningún valor):")
+                st.code("\n".join(claves_secrets) if claves_secrets else "(vacío — no se está leyendo ningún secret)")
+                st.write("¿'google_credentials' presente?:", "google_credentials" in st.secrets)
+                st.write("¿'folder_id' presente?:", "folder_id" in st.secrets)
+                if "google_credentials" in st.secrets:
+                    try:
+                        _info_test = json.loads(st.secrets["google_credentials"])
+                        st.write("¿JSON válido?:", True)
+                        st.write("client_email:", _info_test.get("client_email", "(no encontrado)"))
+                    except Exception as _e_json:
+                        st.write("¿JSON válido?:", False, f"— Error: {_e_json}")
+        st.write("---")
         if st.button("Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False
             st.session_state.proyecto_editar = {}
