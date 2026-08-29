@@ -40,6 +40,9 @@ def _drive_service():
     Devuelve (service, root_folder_id) o (None, None) si no están configurados.
     """
     if "google_credentials" not in st.secrets or "folder_id" not in st.secrets:
+        st.session_state["_drive_last_error"] = (
+            "Faltan 'google_credentials' o 'folder_id' en los Secrets de la app."
+        )
         return None, None
     info = json.loads(st.secrets["google_credentials"])
     credentials = service_account.Credentials.from_service_account_info(
@@ -111,13 +114,16 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
 
         return id_proy
     except Exception as e:
-        st.caption(f"Aviso Carpetas Drive: {e}")
+        st.session_state["_drive_last_error"] = f"Carpetas Drive: {e}"
         return None
 
 def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
     try:
         service, root_folder_id = _drive_service()
         if service is None:
+            st.session_state["_drive_last_error"] = (
+                "Faltan credenciales de Drive en Secrets (google_credentials / folder_id)."
+            )
             return None
         folder_id = custom_folder_id if custom_folder_id else root_folder_id
         
@@ -127,7 +133,7 @@ def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application
         archivo_subido = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
         return archivo_subido.get('id')
     except Exception as e:
-        st.caption(f"Aviso Drive: No se pudo respaldar el archivo {nombre_archivo} - {e}")
+        st.session_state["_drive_last_error"] = f"No se pudo subir '{nombre_archivo}': {e}"
         return None
 
 # --- CONSTANTES GLOBALES ---
@@ -2043,12 +2049,14 @@ else:
                                 
                                 url_pdf = subir_pdf_supabase(f"Produccion_Interna_{codigo_proy}.pdf", pdf_bytes)
                                 
+                                st.session_state.pop("_drive_last_error", None)
                                 try:
                                     nombre_subcarpeta = f"Prod_Interna {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})"
                                     carpeta_id = obtener_carpeta_destino_drive(cliente_int, fe_fin_dt, nombre_subcarpeta)
                                     subir_a_drive(f"Reporte_Interno_{codigo_proy}.pdf", pdf_bytes, "application/pdf", custom_folder_id=carpeta_id)
                                 except Exception as e_drive:
-                                    st.caption(f"Aviso interno: No se respaldó en Drive: {e_drive}")
+                                    st.session_state["_drive_last_error"] = str(e_drive)
+                                drive_error_int = st.session_state.pop("_drive_last_error", None)
                                 
                                 datos_completado = {
                                     "codigo": codigo_proy,
@@ -2088,7 +2096,8 @@ else:
                                 
                                 st.session_state.documentos_descarga = {
                                     "bytes_informe": pdf_bytes,
-                                    "nombre_archivo": f"Reporte_Interno_{codigo_proy}.pdf"
+                                    "nombre_archivo": f"Reporte_Interno_{codigo_proy}.pdf",
+                                    "drive_error": drive_error_int,
                                 }
                                 st.rerun()
                                 
@@ -2097,7 +2106,10 @@ else:
                                 
             if st.session_state.documentos_descarga and "nombre_archivo" in st.session_state.documentos_descarga:
                 docs = st.session_state.documentos_descarga
-                st.success("¡Éxito! Tu producción interna ha sido registrada oficialmente y el reporte generado.")
+                if docs.get("drive_error"):
+                    st.warning(f"⚠️ El reporte se generó y guardó correctamente, pero NO se pudo respaldar en Google Drive. Detalle: {docs['drive_error']}")
+                else:
+                    st.success("¡Éxito! Tu producción interna ha sido registrada oficialmente y el reporte generado.")
                 st.balloons()
                 st.download_button("Descargar Mini-Reporte PDF", data=docs["bytes_informe"], file_name=docs["nombre_archivo"], mime="application/pdf", use_container_width=True, type="primary")
     # =========================================================================
@@ -3907,6 +3919,7 @@ else:
                                 url_informe = subir_pdf_supabase(f"Informe_{codigo_proy}.pdf", bytes_informe)
                                 url_constancia = subir_pdf_supabase(f"Constancia_{codigo_proy}.pdf", bytes_constancia)
                                 
+                                st.session_state.pop("_drive_last_error", None)
                                 try:
                                     nombre_subcarpeta = f"Pedido {fe_fin_dt.strftime('%d-%m-%Y')} (PIN {st.session_state.uid_proyecto})"
                                     carpeta_destino_id = obtener_carpeta_destino_drive(cliente, fe_fin_dt, nombre_subcarpeta)
@@ -3915,7 +3928,8 @@ else:
                                     subir_a_drive(nombre_constancia_limpia, bytes_constancia, "application/pdf", custom_folder_id=carpeta_destino_id)
                                     subir_a_drive(nombre_zip_limpio, bytes_zip, "application/zip", custom_folder_id=carpeta_destino_id)
                                 except Exception as e_drive:
-                                    st.caption(f"Aviso interno: No se pudo respaldar en Drive: {e_drive}")
+                                    st.session_state["_drive_last_error"] = str(e_drive)
+                                drive_error_actual = st.session_state.pop("_drive_last_error", None)
     
                                 st.session_state.documentos_descarga = {
                                     "codigo": codigo_proy, 
@@ -3923,6 +3937,7 @@ else:
                                     "bytes_informe": bytes_informe,
                                     "bytes_constancia": bytes_constancia, 
                                     "bytes_zip": bytes_zip,
+                                    "drive_error": drive_error_actual,
                                 }
     
                                 try:
@@ -3962,7 +3977,13 @@ else:
     
             if st.session_state.documentos_descarga:
                 docs = st.session_state.documentos_descarga
-                st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
+                if docs.get("drive_error"):
+                    st.warning(
+                        f"⚠️ Los reportes se generaron y guardaron correctamente, pero NO se pudieron "
+                        f"respaldar en Google Drive. Detalle: {docs['drive_error']}"
+                    )
+                else:
+                    st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
     
                 c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
                 c_dzip.download_button("Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
@@ -4013,7 +4034,7 @@ else:
 
                 return id_proy
             except Exception as e:
-                st.caption(f"Aviso Drive ONG: {e}")
+                st.session_state["_drive_last_error"] = f"Carpetas Drive ONG: {e}"
                 return None
         # ------------------------------------------------------
 
@@ -4171,11 +4192,13 @@ else:
                                 url_pdf = subir_pdf_supabase(nombre_pdf, pdf_bytes)
 
                                 # 4. Subir a Google Drive (USANDO LA NUEVA ESTRUCTURA SEPARADA)
+                                st.session_state.pop("_drive_last_error", None)
                                 try:
                                     carpeta_ong_drive = obtener_carpeta_ong_drive(empresa_ong.strip(), fecha_ong, f"Campaña_{evento_ong.strip()}")
                                     subir_a_drive(nombre_pdf, pdf_bytes, "application/pdf", custom_folder_id=carpeta_ong_drive)
                                 except Exception as e_drive:
-                                    st.caption(f"Aviso: El PDF se generó pero no se pudo subir a Drive: {e_drive}")
+                                    st.session_state["_drive_last_error"] = str(e_drive)
+                                drive_error_ong = st.session_state.pop("_drive_last_error", None)
 
                                 # 5. Guardar todo en Supabase
                                 datos_ong = {
@@ -4188,7 +4211,7 @@ else:
                                 supabase.table("ong_registros").insert(datos_ong).execute()
                                 
                                 # 6. Mantener el PDF listo para descarga en pantalla
-                                st.session_state.doc_ong_descarga = {"nombre": nombre_pdf, "bytes": pdf_bytes}
+                                st.session_state.doc_ong_descarga = {"nombre": nombre_pdf, "bytes": pdf_bytes, "drive_error": drive_error_ong}
                                 st.rerun()
 
                             except FileNotFoundError:
@@ -4198,7 +4221,13 @@ else:
 
             # Mostrar botón de descarga si el PDF se acaba de generar
             if "doc_ong_descarga" in st.session_state and st.session_state.doc_ong_descarga:
-                st.success("✅ ¡Registro exitoso! La constancia PDF ha sido generada y respaldada en la nube.")
+                if st.session_state.doc_ong_descarga.get("drive_error"):
+                    st.warning(
+                        f"⚠️ ¡Registro guardado! Pero la constancia NO se pudo respaldar en Google Drive. "
+                        f"Detalle: {st.session_state.doc_ong_descarga['drive_error']}"
+                    )
+                else:
+                    st.success("✅ ¡Registro exitoso! La constancia PDF ha sido generada y respaldada en la nube.")
                 st.balloons()
                 st.download_button(
                     label="Descargar Constancia (.pdf)",
