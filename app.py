@@ -27,26 +27,35 @@ from reportlab.platypus import (
 )
 from supabase import Client, create_client
 
-# --- LIBRERÍAS DE GOOGLE DRIVE (CUENTA DE SERVICIO) ---
-from google.oauth2 import service_account
+# --- LIBRERÍAS DE GOOGLE DRIVE (OAUTH - CUENTA PERSONAL) ---
+# Nota: se usa OAuth (no Cuenta de Servicio) porque las Cuentas de Servicio
+# no tienen espacio de almacenamiento propio y no pueden subir archivos
+# a un Google Drive personal (@gmail.com). Con OAuth, la app sube los
+# archivos actuando como el usuario real dueño del Drive.
+from google.oauth2.credentials import Credentials as UserCredentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 def _drive_service():
     """
-    Crea y devuelve el servicio autenticado de Google Drive usando una
-    Cuenta de Servicio (Service Account), leyendo el JSON de credenciales
-    y el folder_id raíz desde st.secrets.
+    Crea y devuelve el servicio autenticado de Google Drive usando OAuth
+    (la cuenta personal real), leyendo client_id, client_secret,
+    refresh_token y folder_id desde st.secrets.
     Devuelve (service, root_folder_id) o (None, None) si no están configurados.
     """
-    if "google_credentials" not in st.secrets or "folder_id" not in st.secrets:
+    requeridos = ["drive_client_id", "drive_client_secret", "drive_refresh_token", "folder_id"]
+    faltantes = [k for k in requeridos if k not in st.secrets]
+    if faltantes:
         st.session_state["_drive_last_error"] = (
-            "Faltan 'google_credentials' o 'folder_id' en los Secrets de la app."
+            f"Faltan estos Secrets de Drive: {', '.join(faltantes)}"
         )
         return None, None
-    info = json.loads(st.secrets["google_credentials"])
-    credentials = service_account.Credentials.from_service_account_info(
-        info, scopes=["https://www.googleapis.com/auth/drive"]
+    credentials = UserCredentials(
+        token=None,
+        refresh_token=st.secrets["drive_refresh_token"],
+        client_id=st.secrets["drive_client_id"],
+        client_secret=st.secrets["drive_client_secret"],
+        token_uri="https://oauth2.googleapis.com/token",
     )
     service = build("drive", "v3", credentials=credentials)
     root_folder_id = st.secrets["folder_id"]
@@ -1744,17 +1753,23 @@ else:
         if st.session_state.rol == "admin":
             with st.expander("🔧 Diagnóstico de Secrets"):
                 claves_secrets = list(st.secrets.keys())
-                st.caption("Claves visibles en st.secrets (solo nombres, ningún valor):")
+                st.caption("Claves de nivel superior en st.secrets:")
                 st.code("\n".join(claves_secrets) if claves_secrets else "(vacío — no se está leyendo ningún secret)")
-                st.write("¿'google_credentials' presente?:", "google_credentials" in st.secrets)
+
+                st.caption("Contenido dentro de cada sección (solo nombres, ningún valor):")
+                for _clave_top in claves_secrets:
+                    _valor_top = st.secrets[_clave_top]
+                    if hasattr(_valor_top, "keys"):
+                        sub_claves = list(_valor_top.keys())
+                        st.write(f"**[{_clave_top}]** contiene:", ", ".join(sub_claves) if sub_claves else "(vacío)")
+                    else:
+                        st.write(f"**{_clave_top}** → valor suelto (no es una sección)")
+
+                st.write("---")
+                st.write("¿'drive_client_id' presente?:", "drive_client_id" in st.secrets)
+                st.write("¿'drive_client_secret' presente?:", "drive_client_secret" in st.secrets)
+                st.write("¿'drive_refresh_token' presente?:", "drive_refresh_token" in st.secrets)
                 st.write("¿'folder_id' presente?:", "folder_id" in st.secrets)
-                if "google_credentials" in st.secrets:
-                    try:
-                        _info_test = json.loads(st.secrets["google_credentials"])
-                        st.write("¿JSON válido?:", True)
-                        st.write("client_email:", _info_test.get("client_email", "(no encontrado)"))
-                    except Exception as _e_json:
-                        st.write("¿JSON válido?:", False, f"— Error: {_e_json}")
         st.write("---")
         if st.button("Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False
