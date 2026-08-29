@@ -1,5 +1,6 @@
 import datetime
 import io
+import json
 import os
 import random
 import re
@@ -26,25 +27,33 @@ from reportlab.platypus import (
 )
 from supabase import Client, create_client
 
-# --- LIBRERÍAS DE GOOGLE DRIVE (OAUTH) ---
-from google.oauth2.credentials import Credentials
+# --- LIBRERÍAS DE GOOGLE DRIVE (CUENTA DE SERVICIO) ---
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
+def _drive_service():
+    """
+    Crea y devuelve el servicio autenticado de Google Drive usando una
+    Cuenta de Servicio (Service Account), leyendo el JSON de credenciales
+    y el folder_id raíz desde st.secrets.
+    Devuelve (service, root_folder_id) o (None, None) si no están configurados.
+    """
+    if "google_credentials" not in st.secrets or "folder_id" not in st.secrets:
+        return None, None
+    info = json.loads(st.secrets["google_credentials"])
+    credentials = service_account.Credentials.from_service_account_info(
+        info, scopes=["https://www.googleapis.com/auth/drive"]
+    )
+    service = build("drive", "v3", credentials=credentials)
+    root_folder_id = st.secrets["folder_id"]
+    return service, root_folder_id
+
 def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta: str):
     try:
-        if "drive_oauth" not in st.secrets:
+        service, root_folder_id = _drive_service()
+        if service is None:
             return None
-        creds_data = st.secrets["drive_oauth"]
-        credentials = Credentials(
-            token=None,
-            refresh_token=creds_data["refresh_token"],
-            client_id=creds_data["client_id"],
-            client_secret=creds_data["client_secret"],
-            token_uri="https://oauth2.googleapis.com/token"
-        )
-        service = build('drive', 'v3', credentials=credentials)
-        root_folder_id = creds_data["folder_id"]
 
         # --- 1. CARPETA MAESTRA: PEQUEÑOS DETALLES ---
         query_master = f"name='PEQUEÑOS DETALLES' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
@@ -107,12 +116,10 @@ def obtener_carpeta_destino_drive(cliente: str, fecha_fin_dt, nombre_subcarpeta:
 
 def subir_a_drive(nombre_archivo: str, file_bytes: bytes, mime_type="application/pdf", custom_folder_id=None):
     try:
-        if "drive_oauth" not in st.secrets:
-            return None 
-        creds_data = st.secrets["drive_oauth"]
-        credentials = Credentials(token=None, refresh_token=creds_data["refresh_token"], client_id=creds_data["client_id"], client_secret=creds_data["client_secret"], token_uri="https://oauth2.googleapis.com/token")
-        service = build('drive', 'v3', credentials=credentials)
-        folder_id = custom_folder_id if custom_folder_id else creds_data["folder_id"]
+        service, root_folder_id = _drive_service()
+        if service is None:
+            return None
+        folder_id = custom_folder_id if custom_folder_id else root_folder_id
         
         file_metadata = {'name': nombre_archivo, 'parents': [folder_id]}
         media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
@@ -3971,11 +3978,9 @@ else:
         # Crea una carpeta maestra llamada "ONG MUJER POWER" dentro de tu Drive actual
         def obtener_carpeta_ong_drive(cliente_ong: str, fecha_dt, nombre_subcarpeta: str):
             try:
-                if "drive_oauth" not in st.secrets: return None
-                creds_data = st.secrets["drive_oauth"]
-                credentials = Credentials(token=None, refresh_token=creds_data["refresh_token"], client_id=creds_data["client_id"], client_secret=creds_data["client_secret"], token_uri="https://oauth2.googleapis.com/token")
-                service = build('drive', 'v3', credentials=credentials)
-                root_folder_id = creds_data["folder_id"]
+                service, root_folder_id = _drive_service()
+                if service is None:
+                    return None
 
                 # 1. Carpeta Maestra "ONG MUJER POWER" dentro de la raíz actual
                 query_ong = f"name='ONG MUJER POWER' and mimeType='application/vnd.google-apps.folder' and '{root_folder_id}' in parents and trashed=false"
