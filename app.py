@@ -36,28 +36,29 @@ from google.oauth2.credentials import Credentials as UserCredentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
+# --- LIBRERÍAS DE GOOGLE DRIVE (OAUTH) ---
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+
 def _drive_service():
     """
-    Crea y devuelve el servicio autenticado de Google Drive usando OAuth
-    (la cuenta personal real), leyendo client_id, client_secret,
-    refresh_token y folder_id desde st.secrets.
-    Devuelve (service, root_folder_id) o (None, None) si no están configurados.
+    Crea y devuelve el servicio autenticado de Google Drive usando OAuth 2.0,
+    leyendo el client_id, client_secret y refresh_token desde st.secrets.
     """
-    requeridos = ["drive_client_id", "drive_client_secret", "drive_refresh_token", "folder_id"]
-    faltantes = [k for k in requeridos if k not in st.secrets]
-    if faltantes:
-        st.session_state["_drive_last_error"] = (
-            f"Faltan estos Secrets de Drive: {', '.join(faltantes)}"
-        )
+    if "drive_oauth" not in st.secrets or "folder_id" not in st.secrets:
         return None, None
-    credentials = UserCredentials(
+        
+    creds_data = st.secrets["drive_oauth"]
+    credentials = Credentials(
         token=None,
-        refresh_token=st.secrets["drive_refresh_token"],
-        client_id=st.secrets["drive_client_id"],
-        client_secret=st.secrets["drive_client_secret"],
-        token_uri="https://oauth2.googleapis.com/token",
+        refresh_token=creds_data["refresh_token"],
+        client_id=creds_data["client_id"],
+        client_secret=creds_data["client_secret"],
+        token_uri="https://oauth2.googleapis.com/token"
     )
-    service = build("drive", "v3", credentials=credentials)
+    
+    service = build('drive', 'v3', credentials=credentials)
     root_folder_id = st.secrets["folder_id"]
     return service, root_folder_id
 
