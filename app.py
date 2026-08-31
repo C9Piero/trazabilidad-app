@@ -3425,10 +3425,11 @@ else:
                 dist_defecto = float(DISTANCIAS_LIMA_SJL.get(distrito_sel, 0.0))
                 saved_dist_km = float(saved_trans.get("distancia", dist_defecto)) if dist_sel_prev == distrito_sel else dist_defecto
     
+                # FIX: Se añade el nombre del distrito al 'key' para forzar la actualización visual
                 if distrito_sel == "Otro / Fuera de Lima (Ingreso manual)":
-                    distancia_km = col_t2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key=f"dist_km_manual_v{fv}")
+                    distancia_km = col_t2.number_input("Distancia (km) *", min_value=0.0, value=saved_dist_km, step=1.0, key=f"dist_km_manual_{distrito_sel}_v{fv}")
                 else:
-                    distancia_km = col_t2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_v{fv}")
+                    distancia_km = col_t2.number_input("Distancia (km)", min_value=0.0, value=saved_dist_km, step=0.5, key=f"dist_km_auto_{distrito_sel}_v{fv}")
     
                 vehiculo_prev = saved_trans.get("vehiculo", list(FACTORES_TRANSPORTE.keys())[0])
                 idx_veh = list(FACTORES_TRANSPORTE.keys()).index(vehiculo_prev) if vehiculo_prev in FACTORES_TRANSPORTE else 0
