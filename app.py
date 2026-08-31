@@ -3184,8 +3184,8 @@ else:
                         peso_val_ui = 0.0
                         tipo_val_ui = "N/A"
                     else:
-                        resp_val_ui = resp_prev_val
-                        peso_val_ui = peso_prev_val
+                        resp_val_ui = resp_prev_val if permitir_editar else item_fijo["resp_defecto"]
+                        peso_val_ui = peso_prev_val if permitir_editar else item_fijo["peso_defecto"]
                         tipo_val_ui = tipo_prev_val
     
                     st.session_state[f"tr_etapa_{i}_v{fv}"] = item_fijo["etapa"]
@@ -3194,9 +3194,16 @@ else:
                     deshabilitar_fec = (item_fijo["etapa"] == "Clasificación") or no_aplica
                     e_fec_val = col_fecha.date_input("Fecha *", value=fec_val_def, format="DD/MM/YYYY", disabled=deshabilitar_fec, key=f"tr_fecha_{i}_v{fv}")
     
-                    e_res = col_resp.text_input("Responsable *", value=resp_val_ui, disabled=not permitir_editar, key=f"tr_resp_{i}_v{fv}")
+                    # FIX: Obligar a Streamlit a refrescar el valor usando una key dinámica atada al peso
+                    if not permitir_editar:
+                        e_res = col_resp.text_input("Responsable *", value=resp_val_ui, disabled=True, key=f"tr_resp_dis_{i}_{resp_val_ui}_v{fv}")
+                    else:
+                        e_res = col_resp.text_input("Responsable *", value=resp_val_ui, key=f"tr_resp_{i}_v{fv}")
     
-                    e_pes_str = col_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=deshabilitar_peso, key=f"tr_peso_{i}_v{fv}")
+                    if deshabilitar_peso:
+                        e_pes_str = col_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", disabled=True, key=f"tr_peso_dis_{i}_{peso_val_ui}_v{fv}")
+                    else:
+                        e_pes_str = col_peso.text_input("Peso (kg) *", value=f"{peso_val_ui:.2f}", key=f"tr_peso_{i}_v{fv}")
     
                     try: e_pes_num = float(e_pes_str)
                     except ValueError: e_pes_num = 0.0
