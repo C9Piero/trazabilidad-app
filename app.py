@@ -4123,7 +4123,7 @@ else:
 
             st.write("")
 
-                with st.container(border=True):
+            with st.container(border=True):
                 st.markdown("##### 2. Trazabilidad EO-RS")
                 c_trans, c_val = st.columns(2)
                 opciones_transporte = ["No aplica (Transporte particular / Taxi)"] + list(CATALOGO_EORS.keys())
