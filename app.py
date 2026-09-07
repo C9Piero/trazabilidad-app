@@ -4125,10 +4125,10 @@ else:
 
             with st.container(border=True):
                 st.markdown("##### 2. Trazabilidad EO-RS")
+                no_aplica_eors = st.checkbox("No aplica (Omitir empresas EO-RS en la constancia)")
                 c_trans, c_val = st.columns(2)
-                opciones_transporte = ["No aplica (Transporte particular / Taxi)"] + list(CATALOGO_EORS.keys())
-                eors_transporte = c_trans.selectbox("EO-RS Transportista *", opciones_transporte)
-                eors_valorizacion = c_val.selectbox("EO-RS Valorizadora / Acondicionadora *", list(CATALOGO_EORS.keys()))
+                eors_transporte = c_trans.selectbox("EO-RS Transportista *", list(CATALOGO_EORS.keys()), disabled=no_aplica_eors)
+                eors_valorizacion = c_val.selectbox("EO-RS Valorizadora / Acondicionadora *", list(CATALOGO_EORS.keys()), disabled=no_aplica_eors)
 
             st.write("")
 
@@ -4177,13 +4177,13 @@ else:
                     else:
                         with st.spinner("Registrando en la nube, procesando PDF y subiendo a Drive..."):
                             try:
-                                # 1. Lógica del texto de operadoras
-                                reg_valorizacion = CATALOGO_EORS[eors_valorizacion]
-                                
-                                if eors_transporte == "No aplica (Transporte particular / Taxi)":
-                                    texto_op = f"los cuales fueron entregados directamente a la empresa operadora de valorización {eors_valorizacion}, con Registro Autoritativo N° {reg_valorizacion}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
+                               # 1. Lógica del texto de operadoras
+                                if no_aplica_eors:
+                                    texto_op = ""
                                 else:
                                     reg_transporte = CATALOGO_EORS[eors_transporte]
+                                    reg_valorizacion = CATALOGO_EORS[eors_valorizacion]
+                                    
                                     if eors_transporte == eors_valorizacion:
                                         texto_op = f"los cuales fueron recolectados, transportados y valorizados por la empresa operadora {eors_transporte}, con Registro Autoritativo N° {reg_transporte}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
                                     else:
