@@ -4123,10 +4123,11 @@ else:
 
             st.write("")
 
-            with st.container(border=True):
+                with st.container(border=True):
                 st.markdown("##### 2. Trazabilidad EO-RS")
                 c_trans, c_val = st.columns(2)
-                eors_transporte = c_trans.selectbox("EO-RS Transportista *", list(CATALOGO_EORS.keys()))
+                opciones_transporte = ["No aplica (Transporte particular / Taxi)"] + list(CATALOGO_EORS.keys())
+                eors_transporte = c_trans.selectbox("EO-RS Transportista *", opciones_transporte)
                 eors_valorizacion = c_val.selectbox("EO-RS Valorizadora / Acondicionadora *", list(CATALOGO_EORS.keys()))
 
             st.write("")
@@ -4177,13 +4178,16 @@ else:
                         with st.spinner("Registrando en la nube, procesando PDF y subiendo a Drive..."):
                             try:
                                 # 1. Lógica del texto de operadoras
-                                reg_transporte = CATALOGO_EORS[eors_transporte]
                                 reg_valorizacion = CATALOGO_EORS[eors_valorizacion]
                                 
-                                if eors_transporte == eors_valorizacion:
-                                    texto_op = f"los cuales fueron recolectados, transportados y valorizados por la empresa operadora {eors_transporte}, con Registro Autoritativo N° {reg_transporte}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
+                                if eors_transporte == "No aplica (Transporte particular / Taxi)":
+                                    texto_op = f"los cuales fueron entregados directamente a la empresa operadora de valorización {eors_valorizacion}, con Registro Autoritativo N° {reg_valorizacion}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
                                 else:
-                                    texto_op = f"los cuales fueron recolectados y transportados por la empresa operadora de transporte de residuos sólidos {eors_transporte}, con Registro Autoritativo N° {reg_transporte}, y posteriormente entregados a la empresa operadora de valorización {eors_valorizacion}, con Registro Autoritativo N° {reg_valorizacion}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
+                                    reg_transporte = CATALOGO_EORS[eors_transporte]
+                                    if eors_transporte == eors_valorizacion:
+                                        texto_op = f"los cuales fueron recolectados, transportados y valorizados por la empresa operadora {eors_transporte}, con Registro Autoritativo N° {reg_transporte}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
+                                    else:
+                                        texto_op = f"los cuales fueron recolectados y transportados por la empresa operadora de transporte de residuos sólidos {eors_transporte}, con Registro Autoritativo N° {reg_transporte}, y posteriormente entregados a la empresa operadora de valorización {eors_valorizacion}, con Registro Autoritativo N° {reg_valorizacion}, entidad encargada de su correspondiente valorización y aprovechamiento final,"
 
                                 dict_pesos = { mat: 0.0 for mat in FACTORES_CO2_ONG.keys() }
                                 for mat in lista_materiales_ong: dict_pesos[mat["material"]] = mat["cantidad_kg"]
