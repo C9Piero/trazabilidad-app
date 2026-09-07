@@ -4081,6 +4081,7 @@ else:
         FACTORES_CO2_ONG = {
             "PET": 1.5, "Cocalata": 8.0, "Papel Blanco": 0.9, "Cartón": 0.8,
             "Chapita": 1.2, "Aluminio": 8.0, "Lata de Leche": 1.5,
+            "Tela": 5.0,
             "RAEE Cat 1 (Línea Blanca)": 15.0,         
             "RAEE Cat 2 (Pequeños Electrod.)": 1.8,    
             "RAEE Cat 3 (Informática/Celulares)": 4.2, 
@@ -4217,6 +4218,7 @@ else:
                                     "kg_papel": f"{dict_pesos['Papel Blanco']:,.2f}", "kg_carton": f"{dict_pesos['Cartón']:,.2f}",
                                     "kg_chapita": f"{dict_pesos['Chapita']:,.2f}", "kg_raee": f"{kg_raee_total:,.2f}",
                                     "kg_aluminio": f"{dict_pesos['Aluminio']:,.2f}", "kg_lata": f"{dict_pesos['Lata de Leche']:,.2f}",
+                                    "kg_tela": f"{dict_pesos['Tela']:,.2f}",
                                     "total_kg": f"{total_kg_ong:,.2f}", "ciudad_emision": "Trujillo" if si_es_arfumm else "Lima", "dia": str(datetime.date.today().day)
                                 }
 
