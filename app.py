@@ -303,23 +303,27 @@ _css_base = \
         --border-soft: %%BORDER_SOFT%%;
     }
 
-/* Ocultar cabecera en PC, pero mostrar el menú hamburguesa en celulares */
-    @media (min-width: 769px) {
-        [data-testid="stHeader"] {visibility: hidden; height: 0px;}
+/* --- CABECERA Y MENÚ LATERAL --- */
+    /* 1. Fondo transparente para la cabecera */
+    [data-testid="stHeader"] {
+        background: transparent !important;
     }
-    @media (max-width: 768px) {
-        [data-testid="stHeader"] {
-            visibility: visible !important;
-            background: transparent !important;
-        }
-        /* Blindar el icono de hamburguesa contra el modo oscuro */
-        [data-testid="stHeader"] button, 
-        [data-testid="stHeader"] svg, 
-        [data-testid="stHeader"] path {
-            color: var(--accent-strong) !important;
-            stroke: var(--accent-strong) !important;
-            fill: var(--accent-strong) !important;
-        }
+    
+    /* 2. Ocultar SOLAMENTE los botones de la derecha (GitHub, Deploy, etc) */
+    [data-testid="stAppToolbar"], 
+    .stAppDeployButton {
+        display: none !important;
+    }
+
+    /* 3. Asegurar que el botón del menú SIEMPRE sea visible y del color correcto en PC y Celular */
+    [data-testid="collapsedControl"],
+    [data-testid="stHeader"] button, 
+    [data-testid="stHeader"] svg, 
+    [data-testid="stHeader"] path {
+        visibility: visible !important;
+        color: var(--accent-strong) !important;
+        stroke: var(--accent-strong) !important;
+        fill: var(--accent-strong) !important;
     }
     
     footer {visibility: hidden;}
