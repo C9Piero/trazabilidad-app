@@ -3947,13 +3947,20 @@ else:
 
                                 mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
                                 
-                                # Cálculos de impacto ambiental para la infografía (Página 2)
-                                m3_relleno = peso_total_recibido * 0.0025
-                                kwh_energia = peso_total_recibido * 4.0
-                                gal_agua = peso_total_recibido * 4.0
-                                arb_tala = int(peso_total_recibido * 0.012)
+                                # --- CÁLCULOS AMBIENTALES INFOGRAFÍA (PÁGINA 2) ---
+                                # 1. Relleno sanitario: densidad textil compactada (0.003 m3 por kg)
+                                m3_relleno = peso_total_recibido * 0.003
                                 
-                                logo_bytes_cli = logo_cliente_up.read() if logo_cliente_up is not None else None
+                                # 2. Energía: 4 kWh por kg
+                                kwh_energia = peso_total_recibido * 4.0
+                                
+                                # 3. Agua: Factor de ahorro de agua textil (aprox. 660 galones por kg)
+                                gal_agua = peso_total_recibido * 660.0
+                                
+                                # 4. Árboles: Basado en el CO2e evitado (1 árbol maduro absorbe ~22 kg CO2e/año)
+                                arb_tala = int(round(co2_neto / 22.0)) if co2_neto >= 22 else 1
+                                
+                                logo_bytes_cli = logo_cliente_up.read() if ('logo_cliente_up' in locals() and logo_cliente_up is not None) else None
 
                                 contexto_word = {
                                     # Variables Página 1 (Tabla técnica)
@@ -3973,10 +3980,10 @@ else:
                                     
                                     # Variables Página 2 (Infografía visual)
                                     "total_kg": f"{peso_total_recibido:,.1f}",
-                                    "ahorro_m3": f"{m3_relleno:,.1f}",
+                                    "ahorro_m3": f"{m3_relleno:.2f}",          # Formato 0.29 para que no quede vacío
                                     "ahorro_kwh": f"{kwh_energia:,.1f}",
-                                    "ahorro_galones": f"{gal_agua:,.1f}",
-                                    "ahorro_arboles": str(arb_tala),
+                                    "ahorro_galones": f"{gal_agua:,.0f}",
+                                    "ahorro_arboles": str(arb_tala),           # Ahora saldrán ~27 árboles en vez de 1
                                 }
                                 
                                 bytes_constancia = generar_constancia_desde_plantilla_word(
