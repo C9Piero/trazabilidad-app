@@ -4069,9 +4069,9 @@ else:
                                     else:
                                         supabase.table("proyectos").insert(datos_completado).execute()
                                         
-                                    st.session_state.proyecto_editar = {}
-                                    st.session_state.uid_proyecto = str(random.randint(1000, 9999))
-                                    st.session_state.form_version += 1
+                                    datos_completado["id"] = proyecto_id
+                                    datos_completado["datos_formulario"] = datos_detalle
+                                    st.session_state.proyecto_editar = datos_completado
                                     st.rerun()
     
                                 except Exception as e_bd:
@@ -4089,11 +4089,20 @@ else:
                     )
                 else:
                     st.success("✅ ¡Reportes generados, guardados y respaldados en Drive con éxito!")
-    
+            
                 c_dzip, c_dinf, c_dconst = st.columns([1.5, 1.2, 1.2])
                 c_dzip.download_button("Descargar Ambos (.ZIP)", data=docs["bytes_zip"], file_name=f"Documentos_{docs['cliente_limpio']}.zip", mime="application/zip", use_container_width=True, type="primary")
                 c_dinf.download_button("Descargar Informe PDF", data=docs["bytes_informe"], file_name=f"Informe_Tecnico_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
                 c_dconst.download_button("Descargar Constancia PDF", data=docs["bytes_constancia"], file_name=f"Constancia_{docs['cliente_limpio']}.pdf", mime="application/pdf", use_container_width=True)
+            
+                # --- BOTÓN PARA INICIAR OTRO REPORTE EN BLANCO ---
+                st.write("")
+                if st.button("➕ Iniciar Nuevo Reporte en Blanco", use_container_width=True):
+                    st.session_state.proyecto_editar = {}
+                    st.session_state.documentos_descarga = None
+                    st.session_state.uid_proyecto = str(random.randint(1000, 9999))
+                    st.session_state.form_version += 1
+                    st.rerun()
 
 # =========================================================================
     # ENTORNO 2: ONG MUJER POWER (CIRCULAR)
