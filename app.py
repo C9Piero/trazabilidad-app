@@ -7,6 +7,7 @@ import re
 import subprocess
 import tempfile
 import zipfile
+import shutil
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -37,6 +38,17 @@ from google.oauth2.credentials import Credentials as UserCredentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
+# --- CONFIGURACIÓN DE FUENTES PERSONALIZADAS PARA LIBREOFFICE ---
+base_dir = os.path.dirname(os.path.abspath(__file__))
+fonts_dir = os.path.join(base_dir, "fonts")
+if os.path.exists(fonts_dir):
+    user_fonts = os.path.expanduser("~/.local/share/fonts")
+    os.makedirs(user_fonts, exist_ok=True)
+    for archivo in os.listdir(fonts_dir):
+        if archivo.lower().endswith((".ttf", ".otf")):
+            shutil.copy2(os.path.join(fonts_dir, archivo), os.path.join(user_fonts, archivo))
+    subprocess.run(["fc-cache", "-f"], check=False)
+    
 # --- LIBRERÍAS DE GOOGLE DRIVE (OAUTH) ---
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
