@@ -10,7 +10,8 @@ import zipfile
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-from docxtpl import DocxTemplate
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -774,7 +775,7 @@ class ReporteCanvas(canvas.Canvas):
         self.drawCentredString(612 / 2.0, 12, "emprendedoras")
         self.restoreState()
 
-def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None) -> bytes:
+def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None, logo_bytes=None) -> bytes:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     cwd_dir = os.getcwd()
     posibles_rutas = [
@@ -802,6 +803,12 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
     if not ruta_encontrada: raise FileNotFoundError("No se encontró el archivo de plantilla Word (.docx)")
 
     doc = DocxTemplate(ruta_encontrada)
+    
+    if logo_bytes is not None:
+        contexto["logo_empresa"] = InlineImage(doc, io.BytesIO(logo_bytes), width=Mm(45))
+    else:
+        contexto["logo_empresa"] = ""
+        
     doc.render(contexto)
     with tempfile.TemporaryDirectory() as tmpdir:
         docx_temp = os.path.join(tmpdir, "constancia_generada.docx")
@@ -811,7 +818,6 @@ def generar_constancia_desde_plantilla_word(contexto: dict, ruta_plantilla=None)
         if os.path.exists(pdf_temp) and os.path.getsize(pdf_temp) > 0:
             with open(pdf_temp, "rb") as f: return f.read()
         else: raise RuntimeError("Error al convertir DOCX a PDF con LibreOffice.")
-
 # --- CARGA INTELIGENTE DE CATÁLOGOS DESDE SUPABASE ---
 def inicializar_y_cargar_catalogos():
     try:
@@ -2996,8 +3002,12 @@ else:
     
                 origen_default = p_edit.get("origen", "") or p_edit.get("punto_origen", "") or dc.get("origen", "")
                 
-                st.markdown("**Punto Origen \*** <span style='font-weight: normal; color: #64748B; font-size: 0.85rem;'>(Lugar o dirección de donde vinieron los uniformes)</span>", unsafe_allow_html=True)
-                origen = st.text_input("Punto Origen *", value=origen_default, label_visibility="collapsed")
+                col_orig, col_logocli = st.columns([2.5, 1.5])
+                with col_orig:
+                    st.markdown("**Punto Origen \*** <span style='font-weight: normal; color: #64748B; font-size: 0.85rem;'>(Lugar o dirección de donde vinieron los uniformes)</span>", unsafe_allow_html=True)
+                    origen = st.text_input("Punto Origen *", value=origen_default, label_visibility="collapsed")
+                with col_logocli:
+                    logo_cliente_up = st.file_uploader("Logo de la Empresa (PNG/JPG)", type=["png", "jpg", "jpeg"], key=f"logo_cli_v{fv}")
                 
                 destino = "Jr. Las Caléndulas 610, Las Flores, SJL."
     
@@ -3936,16 +3946,44 @@ else:
                                     tipo_proyecto_texto = "uniformes en desuso"
 
                                 mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
+                                
+                                # Cálculos de impacto ambiental para la infografía (Página 2)
+                                m3_relleno = peso_total_recibido * 0.0025
+                                kwh_energia = peso_total_recibido * 4.0
+                                gal_agua = peso_total_recibido * 4.0
+                                arb_tala = int(peso_total_recibido * 0.012)
+                                
+                                logo_bytes_cli = logo_cliente_up.read() if logo_cliente_up is not None else None
+
                                 contexto_word = {
-                                    "titulo_constancia": titulo_constancia,"tipo_proyecto_texto": tipo_proyecto_texto,
-                                    "cliente": cliente.upper(), "mes": mes_fin_nombre, "anio": str(fe_fin_dt.year),
-                                    "peso_recibido": f"{peso_total_recibido:.1f}", "unidades_ingreso": str(total_piezas_ingresadas),
-                                    "co2_evitado": f"{co2_neto:.2f}", "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
-                                    "total_mujeres": str(total_personas_social), "total_horas": f"{total_horas_social:.1f}",
+                                    # Variables Página 1 (Tabla técnica)
+                                    "titulo_constancia": titulo_constancia,
+                                    "tipo_proyecto_texto": tipo_proyecto_texto,
+                                    "cliente": cliente.upper(),
+                                    "mes": mes_fin_nombre,
+                                    "anio": str(fe_fin_dt.year),
+                                    "peso_recibido": f"{peso_total_recibido:.1f}",
+                                    "unidades_ingreso": str(total_piezas_ingresadas),
+                                    "co2_evitado": f"{co2_neto:.2f}",
+                                    "aprovechamiento": f"{pct_aprovechamiento_total:.2f}",
+                                    "total_mujeres": str(total_personas_social),
+                                    "total_horas": f"{total_horas_social:.1f}",
                                     "productos_elaborados": str(total_prod_unid),
                                     "fecha_cierre": f"{fe_fin_dt.strftime('%d')} de {mes_fin_nombre} de {fe_fin_dt.year}",
+                                    
+                                    # Variables Página 2 (Infografía visual)
+                                    "total_kg": f"{peso_total_recibido:,.1f}",
+                                    "ahorro_m3": f"{m3_relleno:,.1f}",
+                                    "ahorro_kwh": f"{kwh_energia:,.1f}",
+                                    "ahorro_galones": f"{gal_agua:,.1f}",
+                                    "ahorro_arboles": str(arb_tala),
                                 }
-                                bytes_constancia = generar_constancia_desde_plantilla_word(contexto_word, ruta_plantilla="plantilla_constancia.docx")
+                                
+                                bytes_constancia = generar_constancia_desde_plantilla_word(
+                                    contexto_word, 
+                                    ruta_plantilla="plantilla_constancia.docx", 
+                                    logo_bytes=logo_bytes_cli
+                                )
     
                                 cliente_limpio = cliente.strip().replace("/", "-")
                                 nombre_informe_limpio = f"Informe_Tecnico_{cliente_limpio}.pdf"
