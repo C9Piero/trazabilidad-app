@@ -2359,6 +2359,8 @@ else:
                             with st.spinner("Generando Constancia Social y guardando en la base de datos..."):
                                 try:
                                     # 1. Generar Documento Word -> PDF
+                                    mes_fin_nombre = MESES_ESPANOL.get(fe_fin_dt.month, "")
+                                    
                                     contexto_social = {
                                         "cliente": cliente_p0.upper(),
                                         "ruc": ruc_p0,
@@ -2366,7 +2368,12 @@ else:
                                         "fecha_fin": fe_fin_dt.strftime('%d/%m/%Y'),
                                         "total_unidades": str(total_prod_unid),
                                         "total_horas": f"{total_horas_social:.1f}",
-                                        "total_personas": str(total_personas_social)
+                                        "total_personas": str(total_personas_social),
+                                        
+                                        # Variables faltantes para la plantilla:
+                                        "mes": mes_fin_nombre,
+                                        "anio": str(fe_fin_dt.year),
+                                        "fecha_cierre": f"{fe_fin_dt.strftime('%d')} de {mes_fin_nombre} de {fe_fin_dt.year}"
                                     }
                                     
                                     bytes_constancia = generar_constancia_desde_plantilla_word(contexto_social, "Plantilla_Impacto_Social.docx")
