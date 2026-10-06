@@ -1205,7 +1205,7 @@ def generar_pdf_oficial(
     return buffer.getvalue()
     # --- GENERADOR DEL MINI INFORME (PRODUCCIÓN INTERNA) ---
 def generar_pdf_produccion_interna(
-    cliente, codigo_proy, fe_inicio, fe_fin, responsable, lista_items, 
+    cliente, ruc, codigo_proy, fe_inicio, fe_fin, responsable, lista_items, 
     lista_productos, mat_transformado, retazos_aprovechables, perdida_no_aprovechable, 
     total_procesado, pct_aprovechamiento_total, co2_neto, total_prod_unidades
 ):
@@ -2099,7 +2099,7 @@ else:
                                     pr["foto"] = pr["foto_up"] 
                                     
                                 pdf_bytes = generar_pdf_produccion_interna(
-                                    cliente_int, codigo_proy, fe_inicio_dt.strftime('%d/%m/%Y'), fe_fin_dt.strftime('%d/%m/%Y'), 
+                                    cliente_int, ruc_int, codigo_proy, fe_inicio_dt.strftime('%d/%m/%Y'), fe_fin_dt.strftime('%d/%m/%Y'), 
                                     responsable_int, lista_items_int, lista_productos_int, 
                                     mat_transformado, retazos_aprovechables, perdida_no_aprovechable, 
                                     total_procesado, pct_aprovechamiento_total, co2_evitado_total, total_prod_unid
