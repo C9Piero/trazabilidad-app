@@ -3594,159 +3594,159 @@ else:
     
                 st.write("---")
     
-               st.markdown("#### Confección y Acabado – Asignación de Personal")
-                
-                # Checkbox exclusivo para el Administrador que habilita tiempo manual
-                es_admin = (st.session_state.get("rol") == "admin")
-                tiempo_manual_global = False
-                if es_admin:
-                    tiempo_manual_global = st.checkbox("🔓 Habilitar Edición Manual de Tiempo en Confección (Modo Admin)", value=False, key=f"chk_admin_tiempo_manual_conf_v{fv}")
+st.markdown("#### Confección y Acabado – Asignación de Personal")
+            
+            # Checkbox exclusivo para el Administrador que habilita tiempo manual
+            es_admin = (st.session_state.get("rol") == "admin")
+            tiempo_manual_global = False
+            if es_admin:
+                tiempo_manual_global = st.checkbox("🔓 Habilitar Edición Manual de Tiempo en Confección (Modo Admin)", value=False, key=f"chk_admin_tiempo_manual_conf_v{fv}")
 
-                with st.expander("Administrar Catálogo de Personal (Conectado a la Nube)"):
-                    tab_add, tab_edit, tab_del = st.tabs(["Agregar Personal", "Modificar Nombre", "Eliminar de la Lista"])
-    
-                    with tab_add:
-                        col_a1, col_a2 = st.columns([3, 1])
-                        nuevo_integrante = col_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key=f"adm_input_add_v{fv}")
-                        if col_a2.button("Guardar en Nube", use_container_width=True, key=f"btn_add_pers_v{fv}"):
-                            n_limpio = nuevo_integrante.strip()
-                            if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
-                                try: supabase.table("catalogos").insert({"tipo": "personal", "nombre": n_limpio, "valor_num": 0}).execute()
-                                except Exception: pass
-                                
-                                st.session_state.lista_personal_confeccion.append(n_limpio)
-                                st.session_state.lista_personal_confeccion.sort()
-                                st.toast(f"✅ Guardado en la nube: {n_limpio}")
-                                st.rerun()
-    
-                    with tab_edit:
-                        col_e1, col_e2, col_e3 = st.columns([2, 2, 1])
-                        pers_a_mod = col_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key=f"adm_sel_mod_v{fv}")
-                        nombre_modificado = col_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_v{fv}")
-                        if col_e3.button("Actualizar", use_container_width=True, key=f"btn_edit_pers_v{fv}"):
-                            if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
-                                try: supabase.table("catalogos").update({"nombre": nombre_modificado.strip()}).eq("tipo", "personal").eq("nombre", pers_a_mod).execute()
-                                except Exception: pass
-                                
-                                idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
-                                st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
-                                st.session_state.lista_personal_confeccion.sort()
-                                st.toast(f"✅ Actualizado en la nube: {nombre_modificado.strip()}")
-                                st.rerun()
-    
-                    with tab_del:
-                        col_d1, col_d2 = st.columns([3, 1])
-                        pers_a_borrar = col_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key=f"adm_sel_del_v{fv}")
-                        if col_d2.button("Eliminar", use_container_width=True, key=f"btn_del_pers_v{fv}"):
-                            if pers_a_borrar in st.session_state.lista_personal_confeccion:
-                                try: supabase.table("catalogos").delete().eq("tipo", "personal").eq("nombre", pers_a_borrar).execute()
-                                except Exception: pass
-                                
-                                st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
-                                st.toast(f"Eliminado de la nube: {pers_a_borrar}")
-                                st.rerun()
-    
-                lista_confeccion = []
-                horas_confeccion_total = 0.0
-                
-                saved_conf_list = dc.get("confeccion", [])
-    
-                for idx, prod in enumerate(lista_productos):
-                    p_nom = prod["producto"]
-                    p_cant = prod["cantidad"]
-    
-                    tiempo_base_ia = estimar_tiempo_unidad(p_nom)
-    
-                    st.markdown(f"**Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*")
-    
-                    key_num_pers = f"num_pers_prod_{idx}"
-                    if key_num_pers not in st.session_state:
-                        st.session_state[key_num_pers] = 1
-    
-                    col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
-                    if col_b1.button("Persona", key=f"add_pers_{idx}"):
-                        st.session_state[key_num_pers] += 1
-                        st.rerun()
-                    if col_b2.button("Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
-                        st.session_state[key_num_pers] -= 1
-                        st.rerun()
-    
-                    conf_del_prod = [c for c in saved_conf_list if c.get("producto") == p_nom]
-    
-                    for p_idx in range(st.session_state[key_num_pers]):
-                        
-                        c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([1.8, 3.0, 1.4, 1.8, 1.8])
-    
-                        c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
-                        rol_prev_val = c_item_prev.get("rol", "Confección")
-                        
-                        opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado", "Manual / Libre"]
-                        idx_rol = opciones_roles.index(rol_prev_val) if rol_prev_val in opciones_roles else 0
-    
-                        rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}_v{fv}")
-    
-                        opciones_personas = list(st.session_state.lista_personal_confeccion)
-                        opcion_otro = "Otro (Escribir nuevo nombre)"
-                        if opcion_otro not in opciones_personas:
-                            opciones_personas.append(opcion_otro)
-    
-                        pers_guardada = c_item_prev.get("persona", "")
-                        if pers_guardada and pers_guardada not in opciones_personas and pers_guardada != opcion_otro:
-                            st.session_state.lista_personal_confeccion.append(pers_guardada)
+            with st.expander("Administrar Catálogo de Personal (Conectado a la Nube)"):
+                tab_add, tab_edit, tab_del = st.tabs(["Agregar Personal", "Modificar Nombre", "Eliminar de la Lista"])
+
+                with tab_add:
+                    col_a1, col_a2 = st.columns([3, 1])
+                    nuevo_integrante = col_a1.text_input("Nombre completo de la nueva persona:", placeholder="Ej. Rosa María Quispe", key=f"adm_input_add_v{fv}")
+                    if col_a2.button("Guardar en Nube", use_container_width=True, key=f"btn_add_pers_v{fv}"):
+                        n_limpio = nuevo_integrante.strip()
+                        if n_limpio and n_limpio not in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").insert({"tipo": "personal", "nombre": n_limpio, "valor_num": 0}).execute()
+                            except Exception: pass
+                            
+                            st.session_state.lista_personal_confeccion.append(n_limpio)
                             st.session_state.lista_personal_confeccion.sort()
-                            opciones_personas = list(st.session_state.lista_personal_confeccion) + [opcion_otro]
-    
-                        idx_pers = opciones_personas.index(pers_guardada) if pers_guardada in opciones_personas else 0
-    
-                        persona_sel = c_persona.selectbox("Persona Encargada *", opciones_personas, index=idx_pers, key=f"soc_pers_sel_{idx}_{p_idx}_v{fv}")
-    
-                        if persona_sel == opcion_otro:
-                            nuevo_nombre_escrito = c_persona.text_input("Escribe el nombre *", placeholder="Nombre y Apellido", key=f"soc_pers_txt_custom_{idx}_{p_idx}_v{fv}")
-                            persona_nom = nuevo_nombre_escrito.strip() if nuevo_nombre_escrito.strip() else f"Persona {p_idx+1}"
-                            if nuevo_nombre_escrito.strip() and nuevo_nombre_escrito.strip() not in st.session_state.lista_personal_confeccion:
-                                try: supabase.table("catalogos").insert({"tipo": "personal", "nombre": nuevo_nombre_escrito.strip(), "valor_num": 0}).execute()
-                                except Exception: pass
-                                
-                                st.session_state.lista_personal_confeccion.append(nuevo_nombre_escrito.strip())
-                                st.session_state.lista_personal_confeccion.sort()
-                        else:
-                            persona_nom = persona_sel
-    
-                        cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
-                        cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
-    
-                        limite_maximo = max(p_cant * 3, cant_init, 9999)
-                        cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=limite_maximo, value=cant_init, key=f"soc_cant_{idx}_{p_idx}_v{fv}")
-    
-                        tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
+                            st.toast(f"✅ Guardado en la nube: {n_limpio}")
+                            st.rerun()
 
-                        if rol_sel == "Manual / Libre" or (es_admin and tiempo_manual_global):
-                            tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}_v{fv}")
-                        else:
-                            if rol_sel == "Confección":
-                                tiempo_unitario = float(tiempo_base_ia)
-                            elif rol_sel == "Acabado":
-                                tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                            elif rol_sel == "Entretela":
-                                tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
-                            elif rol_sel == "Estampado":
-                                tiempo_unitario = round(5.0 / 60.0, 3)
-                            else:
-                                tiempo_unitario = float(tunit_init)
+                with tab_edit:
+                    col_e1, col_e2, col_e3 = st.columns([2, 2, 1])
+                    pers_a_mod = col_e1.selectbox("Persona a modificar:", st.session_state.lista_personal_confeccion, key=f"adm_sel_mod_v{fv}")
+                    nombre_modificado = col_e2.text_input("Nombre corregido:", value=pers_a_mod, key=f"adm_txt_mod_v{fv}")
+                    if col_e3.button("Actualizar", use_container_width=True, key=f"btn_edit_pers_v{fv}"):
+                        if nombre_modificado.strip() and pers_a_mod in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").update({"nombre": nombre_modificado.strip()}).eq("tipo", "personal").eq("nombre", pers_a_mod).execute()
+                            except Exception: pass
+                            
+                            idx_mod = st.session_state.lista_personal_confeccion.index(pers_a_mod)
+                            st.session_state.lista_personal_confeccion[idx_mod] = nombre_modificado.strip()
+                            st.session_state.lista_personal_confeccion.sort()
+                            st.toast(f"✅ Actualizado en la nube: {nombre_modificado.strip()}")
+                            st.rerun()
 
-                            st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
-                            c_tiempo.text_input("Tiempo/Unid (hrs) [Automático]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
-    
-                        horas_persona = cant_asig * tiempo_unitario
-                        st.session_state[f"soc_htot_{idx}_{p_idx}_v{fv}"] = f"{horas_persona:.2f} hrs"
-                        c_tot.text_input("Horas Totales", disabled=True, key=f"soc_htot_{idx}_{p_idx}_v{fv}")
-    
-                        horas_confeccion_total += horas_persona
-                        
-                        lista_confeccion.append({
-                            "producto": p_nom, "rol": rol_sel, "persona": persona_nom,
-                            "cantidad": cant_asig, "tiempo_unitario": tiempo_unitario, "horas_totales": horas_persona,
-                        })
+                with tab_del:
+                    col_d1, col_d2 = st.columns([3, 1])
+                    pers_a_borrar = col_d1.selectbox("Persona a eliminar del catálogo:", st.session_state.lista_personal_confeccion, key=f"adm_sel_del_v{fv}")
+                    if col_d2.button("Eliminar", use_container_width=True, key=f"btn_del_pers_v{fv}"):
+                        if pers_a_borrar in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").delete().eq("tipo", "personal").eq("nombre", pers_a_borrar).execute()
+                            except Exception: pass
+                            
+                            st.session_state.lista_personal_confeccion.remove(pers_a_borrar)
+                            st.toast(f"Eliminado de la nube: {pers_a_borrar}")
+                            st.rerun()
+
+            lista_confeccion = []
+            horas_confeccion_total = 0.0
+            
+            saved_conf_list = dc.get("confeccion", [])
+
+            for idx, prod in enumerate(lista_productos):
+                p_nom = prod["producto"]
+                p_cant = prod["cantidad"]
+
+                tiempo_base_ia = estimar_tiempo_unidad(p_nom)
+
+                st.markdown(f"**Producto {idx+1}: {p_nom}** *(Cantidad Total: {p_cant} unid | Base IA Confección: {tiempo_base_ia:.2f} hrs/unid)*")
+
+                key_num_pers = f"num_pers_prod_{idx}"
+                if key_num_pers not in st.session_state:
+                    st.session_state[key_num_pers] = 1
+
+                col_b1, col_b2, _ = st.columns([1.5, 1.5, 5])
+                if col_b1.button("Persona", key=f"add_pers_{idx}"):
+                    st.session_state[key_num_pers] += 1
+                    st.rerun()
+                if col_b2.button("Quitar", key=f"del_pers_{idx}") and st.session_state[key_num_pers] > 1:
+                    st.session_state[key_num_pers] -= 1
+                    st.rerun()
+
+                conf_del_prod = [c for c in saved_conf_list if c.get("producto") == p_nom]
+
+                for p_idx in range(st.session_state[key_num_pers]):
+                    
+                    c_rol, c_persona, c_cant_asig, c_tiempo, c_tot = st.columns([1.8, 3.0, 1.4, 1.8, 1.8])
+
+                    c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
+                    rol_prev_val = c_item_prev.get("rol", "Confección")
+                    
+                    opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado", "Manual / Libre"]
+                    idx_rol = opciones_roles.index(rol_prev_val) if rol_prev_val in opciones_roles else 0
+
+                    rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}_v{fv}")
+
+                    opciones_personas = list(st.session_state.lista_personal_confeccion)
+                    opcion_otro = "Otro (Escribir nuevo nombre)"
+                    if opcion_otro not in opciones_personas:
+                        opciones_personas.append(opcion_otro)
+
+                    pers_guardada = c_item_prev.get("persona", "")
+                    if pers_guardada and pers_guardada not in opciones_personas and pers_guardada != opcion_otro:
+                        st.session_state.lista_personal_confeccion.append(pers_guardada)
+                        st.session_state.lista_personal_confeccion.sort()
+                        opciones_personas = list(st.session_state.lista_personal_confeccion) + [opcion_otro]
+
+                    idx_pers = opciones_personas.index(pers_guardada) if pers_guardada in opciones_personas else 0
+
+                    persona_sel = c_persona.selectbox("Persona Encargada *", opciones_personas, index=idx_pers, key=f"soc_pers_sel_{idx}_{p_idx}_v{fv}")
+
+                    if persona_sel == opcion_otro:
+                        nuevo_nombre_escrito = c_persona.text_input("Escribe el nombre *", placeholder="Nombre y Apellido", key=f"soc_pers_txt_custom_{idx}_{p_idx}_v{fv}")
+                        persona_nom = nuevo_nombre_escrito.strip() if nuevo_nombre_escrito.strip() else f"Persona {p_idx+1}"
+                        if nuevo_nombre_escrito.strip() and nuevo_nombre_escrito.strip() not in st.session_state.lista_personal_confeccion:
+                            try: supabase.table("catalogos").insert({"tipo": "personal", "nombre": nuevo_nombre_escrito.strip(), "valor_num": 0}).execute()
+                            except Exception: pass
+                            
+                            st.session_state.lista_personal_confeccion.append(nuevo_nombre_escrito.strip())
+                            st.session_state.lista_personal_confeccion.sort()
+                    else:
+                        persona_nom = persona_sel
+
+                    cant_sugerida = max(1, int(p_cant / st.session_state[key_num_pers])) if p_cant > 0 else 0
+                    cant_init = int(c_item_prev.get("cantidad", cant_sugerida))
+
+                    limite_maximo = max(p_cant * 3, cant_init, 9999)
+                    cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=limite_maximo, value=cant_init, key=f"soc_cant_{idx}_{p_idx}_v{fv}")
+
+                    tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
+
+                    if rol_sel == "Manual / Libre" or (es_admin and tiempo_manual_global):
+                        tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}_v{fv}")
+                    else:
+                        if rol_sel == "Confección":
+                            tiempo_unitario = float(tiempo_base_ia)
+                        elif rol_sel == "Acabado":
+                            tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
+                        elif rol_sel == "Entretela":
+                            tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
+                        elif rol_sel == "Estampado":
+                            tiempo_unitario = round(5.0 / 60.0, 3)
+                        else:
+                            tiempo_unitario = float(tunit_init)
+
+                        st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
+                        c_tiempo.text_input("Tiempo/Unid (hrs) [Automático]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
+
+                    horas_persona = cant_asig * tiempo_unitario
+                    st.session_state[f"soc_htot_{idx}_{p_idx}_v{fv}"] = f"{horas_persona:.2f} hrs"
+                    c_tot.text_input("Horas Totales", disabled=True, key=f"soc_htot_{idx}_{p_idx}_v{fv}")
+
+                    horas_confeccion_total += horas_persona
+                    
+                    lista_confeccion.append({
+                        "producto": p_nom, "rol": rol_sel, "persona": persona_nom,
+                        "cantidad": cant_asig, "tiempo_unitario": tiempo_unitario, "horas_totales": horas_persona,
+                    })
     
                 total_horas_social = total_horas_ops + horas_confeccion_total
                 
