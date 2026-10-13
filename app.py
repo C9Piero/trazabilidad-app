@@ -3594,7 +3594,7 @@ else:
     
                 st.write("---")
     
-st.markdown("#### Confección y Acabado – Asignación de Personal")
+            st.markdown("#### Confección y Acabado – Asignación de Personal")
             
             # Checkbox exclusivo para el Administrador que habilita tiempo manual
             es_admin = (st.session_state.get("rol") == "admin")
