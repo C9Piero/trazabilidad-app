@@ -3594,7 +3594,14 @@ else:
     
                 st.write("---")
     
-                st.markdown("#### Confección y Acabado – Asignación de Personal")
+               st.markdown("#### Confección y Acabado – Asignación de Personal")
+                
+                # Checkbox exclusivo para el Administrador que habilita tiempo manual
+                es_admin = (st.session_state.get("rol") == "admin")
+                tiempo_manual_global = False
+                if es_admin:
+                    tiempo_manual_global = st.checkbox("🔓 Habilitar Edición Manual de Tiempo en Confección (Modo Admin)", value=False, key=f"chk_admin_tiempo_manual_conf_v{fv}")
+
                 with st.expander("Administrar Catálogo de Personal (Conectado a la Nube)"):
                     tab_add, tab_edit, tab_del = st.tabs(["Agregar Personal", "Modificar Nombre", "Eliminar de la Lista"])
     
@@ -3673,7 +3680,7 @@ else:
                         c_item_prev = conf_del_prod[p_idx] if p_idx < len(conf_del_prod) else {}
                         rol_prev_val = c_item_prev.get("rol", "Confección")
                         
-                        opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado"]
+                        opciones_roles = ["Confección", "Acabado", "Entretela", "Estampado", "Manual / Libre"]
                         idx_rol = opciones_roles.index(rol_prev_val) if rol_prev_val in opciones_roles else 0
     
                         rol_sel = c_rol.selectbox("Rol *", opciones_roles, index=idx_rol, key=f"soc_rol_{idx}_{p_idx}_v{fv}")
@@ -3711,25 +3718,24 @@ else:
                         limite_maximo = max(p_cant * 3, cant_init, 9999)
                         cant_asig = c_cant_asig.number_input("Unid. Asignadas *", min_value=0, max_value=limite_maximo, value=cant_init, key=f"soc_cant_{idx}_{p_idx}_v{fv}")
     
-                        if rol_sel == "Confección":
-                            tiempo_unitario = float(tiempo_base_ia)
-                            st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
-                            c_tiempo.text_input("Tiempo/Unid (hrs) [Base IA]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
-                        elif rol_sel == "Acabado":
-                            tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
-                            st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
-                            c_tiempo.text_input("Tiempo/Unid (hrs) [Acab. 20%]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
-                        elif rol_sel == "Entretela":
-                            tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
-                            st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
-                            c_tiempo.text_input("Tiempo/Unid (hrs) [Entret. 10%]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
-                        elif rol_sel == "Estampado":
-                            tiempo_unitario = round(5.0 / 60.0, 3)
-                            st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
-                            c_tiempo.text_input("Tiempo/Unid (hrs) [5 min]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
-                        else:
-                            tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
+                        tunit_init = float(c_item_prev.get("tiempo_unitario", tiempo_base_ia))
+
+                        if rol_sel == "Manual / Libre" or (es_admin and tiempo_manual_global):
                             tiempo_unitario = c_tiempo.number_input("Tiempo/Unid (hrs) *", min_value=0.0, value=tunit_init, step=0.05, key=f"soc_tunit_{idx}_{p_idx}_{p_nom}_v{fv}")
+                        else:
+                            if rol_sel == "Confección":
+                                tiempo_unitario = float(tiempo_base_ia)
+                            elif rol_sel == "Acabado":
+                                tiempo_unitario = round(tiempo_base_ia * 0.20, 3)
+                            elif rol_sel == "Entretela":
+                                tiempo_unitario = round(tiempo_base_ia * 0.10, 3)
+                            elif rol_sel == "Estampado":
+                                tiempo_unitario = round(5.0 / 60.0, 3)
+                            else:
+                                tiempo_unitario = float(tunit_init)
+
+                            st.session_state[f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}"] = f"{tiempo_unitario:.3f} hrs"
+                            c_tiempo.text_input("Tiempo/Unid (hrs) [Automático]", disabled=True, key=f"calc_{idx}_{p_idx}_{rol_sel}_v{fv}")
     
                         horas_persona = cant_asig * tiempo_unitario
                         st.session_state[f"soc_htot_{idx}_{p_idx}_v{fv}"] = f"{horas_persona:.2f} hrs"
